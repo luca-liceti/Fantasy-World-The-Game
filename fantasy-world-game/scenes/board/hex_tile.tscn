@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bwx6g3hk8ijxs"]
+
+[ext_resource type="Script" path="res://scripts/board/hex_tile.gd" id="1_hex_tile"]
+
+[node name="HexTile" type="Node3D"]
+script = ExtResource("1_hex_tile")
+hex_size = 1.0

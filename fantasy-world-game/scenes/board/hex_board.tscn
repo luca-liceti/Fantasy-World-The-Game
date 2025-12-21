@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://c1xk5l8nvt2qr"]
+
+[ext_resource type="Script" path="res://scripts/board/hex_board.gd" id="1_hex_board"]
+[ext_resource type="PackedScene" uid="uid://bwx6g3hk8ijxs" path="res://scenes/board/hex_tile.tscn" id="2_hex_tile"]
+
+[node name="HexBoard" type="Node3D"]
+script = ExtResource("1_hex_board")
+hex_size = 1.0
+hex_tile_scene = ExtResource("2_hex_tile")
