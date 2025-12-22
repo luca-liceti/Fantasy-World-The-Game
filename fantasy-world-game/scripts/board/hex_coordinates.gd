@@ -10,8 +10,8 @@ extends RefCounted
 # Using axial coordinates (q, r) for storage
 # Can convert to cube coordinates (x, y, z) where x + y + z = 0
 
-var q: int  # Column (axial)
-var r: int  # Row (axial)
+var q: int # Column (axial)
+var r: int # Row (axial)
 
 # Cube coordinates (derived from axial)
 var x: int:
@@ -48,12 +48,12 @@ const SQRT_3: float = 1.7320508075688772
 # Direction vectors for the 6 neighbors (pointy-top orientation)
 # Starting from right, going counter-clockwise
 const DIRECTIONS: Array[Vector2i] = [
-	Vector2i(1, 0),   # Right
-	Vector2i(1, -1),  # Upper Right
-	Vector2i(0, -1),  # Upper Left
-	Vector2i(-1, 0),  # Left
-	Vector2i(-1, 1),  # Lower Left
-	Vector2i(0, 1)    # Lower Right
+	Vector2i(1, 0), # Right
+	Vector2i(1, -1), # Upper Right
+	Vector2i(0, -1), # Upper Left
+	Vector2i(-1, 0), # Left
+	Vector2i(-1, 1), # Lower Left
+	Vector2i(0, 1) # Lower Right
 ]
 
 const DIRECTION_NAMES: Array[String] = [
@@ -142,7 +142,7 @@ static func from_pixel(pixel: Vector2, hex_size: float) -> HexCoordinates:
 static func round_hex(q_frac: float, r_frac: float) -> HexCoordinates:
 	var x_frac = q_frac
 	var z_frac = r_frac
-	var y_frac = -x_frac - z_frac
+	var y_frac = - x_frac - z_frac
 	
 	var rx = round(x_frac)
 	var ry = round(y_frac)
@@ -153,11 +153,11 @@ static func round_hex(q_frac: float, r_frac: float) -> HexCoordinates:
 	var z_diff = abs(rz - z_frac)
 	
 	if x_diff > y_diff and x_diff > z_diff:
-		rx = -ry - rz
+		rx = - ry - rz
 	elif y_diff > z_diff:
-		ry = -rx - rz
+		ry = - rx - rz
 	else:
-		rz = -rx - ry
+		rz = - rx - ry
 	
 	return HexCoordinates.new(int(rx), int(rz))
 
@@ -201,14 +201,14 @@ func find_path_to(target: HexCoordinates, valid_hex_func: Callable, max_distance
 	if not valid_hex_func.call(target):
 		return []
 	
-	var open_set: Array = [{
+	var open_set: Array = [ {
 		"hex": self.duplicate(),
 		"g_cost": 0,
 		"f_cost": distance_to(target)
 	}]
 	
-	var came_from: Dictionary = {}  # HexCoordinates -> HexCoordinates
-	var g_score: Dictionary = {}  # String -> int
+	var came_from: Dictionary = {} # HexCoordinates -> HexCoordinates
+	var g_score: Dictionary = {} # String -> int
 	g_score[_to_key()] = 0
 	
 	while not open_set.is_empty():
@@ -252,7 +252,7 @@ func find_path_to(target: HexCoordinates, valid_hex_func: Callable, max_distance
 						"f_cost": f_cost
 					})
 	
-	return []  # No path found
+	return [] # No path found
 
 
 ## Reconstruct path from came_from dictionary
@@ -272,7 +272,7 @@ func _reconstruct_path(came_from: Dictionary, current: HexCoordinates) -> Array[
 func get_reachable_hexes(speed: int, valid_hex_func: Callable) -> Array[HexCoordinates]:
 	var reachable: Array[HexCoordinates] = []
 	var visited: Dictionary = {}
-	var frontier: Array = [{"hex": self.duplicate(), "distance": 0}]
+	var frontier: Array = [ {"hex": self.duplicate(), "distance": 0}]
 	visited[_to_key()] = true
 	
 	while not frontier.is_empty():
@@ -280,7 +280,7 @@ func get_reachable_hexes(speed: int, valid_hex_func: Callable) -> Array[HexCoord
 		var current_hex: HexCoordinates = current["hex"]
 		var current_dist: int = current["distance"]
 		
-		if current_dist > 0:  # Don't include starting hex
+		if current_dist > 0: # Don't include starting hex
 			reachable.append(current_hex)
 		
 		if current_dist < speed:
@@ -357,14 +357,14 @@ static func get_spawn_positions(radius: int, side: int) -> Array[HexCoordinates]
 		# Left edge (q = -radius)
 		# For q = -radius, valid r values are: 0 to radius
 		# Pick 4 positions centered around middle
-		var start_r = (radius - 3) / 2  # Center the 4 spawns
+		var start_r = (radius - 3) / 2 # Center the 4 spawns
 		for i in range(4):
 			spawns.append(HexCoordinates.new(-radius, start_r + i))
 	else:
 		# Right edge (q = radius)
 		# For q = radius, valid r values are: -radius to 0
 		# Pick 4 positions centered around middle
-		var start_r = (-radius + 3) / 2 - 3  # Center the 4 spawns
+		var start_r = (-radius + 3) / 2 - 3 # Center the 4 spawns
 		for i in range(4):
 			spawns.append(HexCoordinates.new(radius, start_r + i))
 	

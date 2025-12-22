@@ -1,5 +1,5 @@
 ## Hex Board
-## Manages the hexagonal game board (169 hexes, 8 per side)
+## Manages the hexagonal game board
 ## Handles board generation, tile access, and coordinate lookups
 class_name HexBoard
 extends Node3D
@@ -11,15 +11,18 @@ signal tile_selected(tile: HexTile)
 signal tile_hovered(tile: HexTile)
 
 # =============================================================================
-# CONSTANTS
+# PROPERTIES - BOARD SIZE
 # =============================================================================
-const BOARD_RADIUS: int = 7  # 8 hexes per side = radius of 7 from center
+## Board radius (GameConfig.BOARD_SIZE - 1, e.g., 12 hexes per side = radius 11)
+var board_radius: int:
+	get:
+		return GameConfig.BOARD_SIZE - 1
 
 # =============================================================================
 # EXPORTS
 # =============================================================================
-@export var hex_size: float = 1.0  # Size of each hex
-@export var hex_tile_scene: PackedScene  # Reference to hex_tile.tscn
+@export var hex_size: float = 1.0 # Size of each hex
+@export var hex_tile_scene: PackedScene # Reference to hex_tile.tscn
 
 # =============================================================================
 # PROPERTIES
@@ -41,7 +44,7 @@ var highlighted_tiles: Array[HexTile] = []
 # =============================================================================
 
 func _ready() -> void:
-	pass  # Board is generated via generate_board()
+	pass # Board is generated via generate_board()
 
 
 ## Generate the complete hex board with procedural biomes
@@ -49,13 +52,17 @@ func generate_board() -> void:
 	_clear_board()
 	
 	# Generate all hex coordinates for the board
-	all_coordinates = HexCoordinates.generate_hexagonal_board(BOARD_RADIUS)
+	all_coordinates = HexCoordinates.generate_hexagonal_board(board_radius)
 	
 	print("Generating board with %d hexes" % all_coordinates.size())
 	
 	# Generate biomes for the board
 	var biome_generator = BiomeGenerator.new()
 	var biome_map = biome_generator.generate_biomes(all_coordinates)
+	
+	# Print debug info
+	biome_generator.print_distribution(biome_map)
+	biome_generator.print_adjacency_violations(all_coordinates, biome_map)
 	
 	# Create hex tiles
 	for coord in all_coordinates:
@@ -108,9 +115,9 @@ func _create_tile(coord: HexCoordinates, biome: Biomes.Type) -> HexTile:
 ## Set up spawn positions for both players
 func _setup_spawn_positions() -> void:
 	# Player 0 spawns on one edge
-	spawn_positions[0] = HexCoordinates.get_spawn_positions(BOARD_RADIUS, 0)
+	spawn_positions[0] = HexCoordinates.get_spawn_positions(board_radius, 0)
 	# Player 1 spawns on opposite edge
-	spawn_positions[1] = HexCoordinates.get_spawn_positions(BOARD_RADIUS, 1)
+	spawn_positions[1] = HexCoordinates.get_spawn_positions(board_radius, 1)
 	
 	# Mark spawn tiles
 	for player_id in spawn_positions:
@@ -203,7 +210,7 @@ func get_attack_tiles(from_coord: HexCoordinates, attack_range: int) -> Array[He
 	
 	for coord in coords:
 		if coord.equals(from_coord):
-			continue  # Can't attack self
+			continue # Can't attack self
 		var tile = get_tile_at(coord)
 		if tile:
 			result.append(tile)
@@ -238,6 +245,7 @@ func clear_all_highlights() -> void:
 func highlight_movement(coord: HexCoordinates, speed: int) -> void:
 	clear_all_highlights()
 	var tiles_in_range = get_movement_tiles(coord, speed)
+	print("DEBUG: Highlighting %d tiles for movement from %s with speed %d" % [tiles_in_range.size(), coord._to_string(), speed])
 	for tile in tiles_in_range:
 		tile.set_movement_highlight(true)
 		highlighted_tiles.append(tile)

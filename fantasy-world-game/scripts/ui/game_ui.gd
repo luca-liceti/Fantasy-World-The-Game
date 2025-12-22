@@ -23,8 +23,9 @@ var turn_label: Label
 var timer_label: Label
 var current_player_label: Label
 
-# Bottom bar
-var action_container: HBoxContainer
+# Quick action panel (bottom right)
+var quick_action_panel: PanelContainer
+var action_container: VBoxContainer
 var move_button: Button
 var attack_button: Button
 var place_mine_button: Button
@@ -46,6 +47,11 @@ var info_label: Label
 # Selected troop info
 var selected_troop_panel: PanelContainer
 var selected_troop_label: Label
+
+# Troop cards panel (shows current player's troops)
+var troop_cards_panel: PanelContainer
+var troop_cards_container: HBoxContainer
+var troop_card_buttons: Array[Button] = []
 
 # =============================================================================
 # COLORS
@@ -73,10 +79,11 @@ func _create_ui() -> void:
 	add_child(main_container)
 	
 	_create_top_bar()
-	_create_bottom_bar()
 	_create_side_panels()
 	_create_info_panel()
 	_create_selected_troop_panel()
+	_create_troop_cards_panel()
+	_create_quick_action_panel()
 
 
 func _create_top_bar() -> void:
@@ -126,64 +133,99 @@ func _create_top_bar() -> void:
 	hbox.add_child(timer_label)
 
 
-func _create_bottom_bar() -> void:
-	var bottom_bar = PanelContainer.new()
-	bottom_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bottom_bar.custom_minimum_size = Vector2(0, 80)
-	main_container.add_child(bottom_bar)
+func _create_quick_action_panel() -> void:
+	# Create a floating quick action panel in bottom right corner
+	quick_action_panel = PanelContainer.new()
+	quick_action_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	quick_action_panel.position = Vector2(-140, -280) # Offset from bottom right
+	quick_action_panel.custom_minimum_size = Vector2(130, 260)
+	main_container.add_child(quick_action_panel)
 	
-	# Style
+	# Style - sleek dark panel with subtle glow effect
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.15, 0.9)
-	bottom_bar.add_theme_stylebox_override("panel", style)
+	style.bg_color = Color(0.08, 0.08, 0.12, 0.95)
+	style.border_color = Color(0.3, 0.4, 0.6, 0.8)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0.2, 0.3, 0.5, 0.3)
+	style.shadow_size = 4
+	quick_action_panel.add_theme_stylebox_override("panel", style)
 	
-	action_container = HBoxContainer.new()
-	action_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	action_container.add_theme_constant_override("separation", 20)
-	bottom_bar.add_child(action_container)
+	var main_vbox = VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 6)
+	quick_action_panel.add_child(main_vbox)
 	
-	# Create action buttons
-	move_button = _create_action_button("MOVE", "🚶", Color(0.3, 0.6, 1.0))
+	# Header
+	var header = Label.new()
+	header.text = "⚡ ACTIONS"
+	header.add_theme_font_size_override("font_size", 12)
+	header.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	main_vbox.add_child(header)
+	
+	# Action buttons container
+	action_container = VBoxContainer.new()
+	action_container.add_theme_constant_override("separation", 6)
+	main_vbox.add_child(action_container)
+	
+	# Create compact action buttons
+	move_button = _create_quick_action_button("🚶 Move", "M", Color(0.3, 0.6, 1.0))
 	move_button.pressed.connect(func(): action_move_pressed.emit())
 	
-	attack_button = _create_action_button("ATTACK", "⚔️", Color(1.0, 0.3, 0.3))
+	attack_button = _create_quick_action_button("⚔️ Attack", "T", Color(1.0, 0.3, 0.3))
 	attack_button.pressed.connect(func(): action_attack_pressed.emit())
 	
-	place_mine_button = _create_action_button("MINE", "⛏️", Color(1.0, 0.8, 0.2))
+	place_mine_button = _create_quick_action_button("⛏️ Mine", "", Color(1.0, 0.8, 0.2))
 	place_mine_button.pressed.connect(func(): action_place_mine_pressed.emit())
 	
-	upgrade_button = _create_action_button("UPGRADE", "⬆️", Color(0.5, 1.0, 0.5))
+	upgrade_button = _create_quick_action_button("⬆️ Upgrade", "", Color(0.5, 1.0, 0.5))
 	upgrade_button.pressed.connect(func(): action_upgrade_pressed.emit())
 	
-	end_turn_button = _create_action_button("END TURN", "⏭️", Color(0.7, 0.7, 0.7))
+	# Separator
+	var separator = HSeparator.new()
+	separator.add_theme_color_override("separator", Color(0.3, 0.3, 0.4, 0.5))
+	action_container.add_child(separator)
+	
+	end_turn_button = _create_quick_action_button("⏭️ End Turn", "Space", Color(0.7, 0.5, 0.3))
 	end_turn_button.pressed.connect(func(): action_end_turn_pressed.emit())
 
 
-func _create_action_button(text: String, icon: String, color: Color) -> Button:
+func _create_quick_action_button(text: String, hotkey: String, color: Color) -> Button:
 	var button = Button.new()
-	button.text = icon + " " + text
-	button.custom_minimum_size = Vector2(120, 50)
-	button.add_theme_font_size_override("font_size", 16)
+	if hotkey != "":
+		button.text = text + " [" + hotkey + "]"
+	else:
+		button.text = text
+	button.custom_minimum_size = Vector2(110, 36)
+	button.add_theme_font_size_override("font_size", 11)
 	
-	# Style
+	# Style - compact modern buttons
 	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = color.darkened(0.5)
-	normal_style.set_corner_radius_all(8)
+	normal_style.bg_color = color.darkened(0.6)
+	normal_style.border_color = color.darkened(0.3)
+	normal_style.set_border_width_all(1)
+	normal_style.set_corner_radius_all(6)
 	button.add_theme_stylebox_override("normal", normal_style)
 	
 	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = color.darkened(0.3)
-	hover_style.set_corner_radius_all(8)
+	hover_style.bg_color = color.darkened(0.4)
+	hover_style.border_color = color
+	hover_style.set_border_width_all(1)
+	hover_style.set_corner_radius_all(6)
 	button.add_theme_stylebox_override("hover", hover_style)
 	
 	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = color.darkened(0.6)
-	pressed_style.set_corner_radius_all(8)
+	pressed_style.bg_color = color.darkened(0.7)
+	pressed_style.border_color = color.darkened(0.4)
+	pressed_style.set_border_width_all(1)
+	pressed_style.set_corner_radius_all(6)
 	button.add_theme_stylebox_override("pressed", pressed_style)
 	
 	var disabled_style = StyleBoxFlat.new()
-	disabled_style.bg_color = Color(0.2, 0.2, 0.2, 0.5)
-	disabled_style.set_corner_radius_all(8)
+	disabled_style.bg_color = Color(0.15, 0.15, 0.18, 0.6)
+	disabled_style.border_color = Color(0.2, 0.2, 0.25)
+	disabled_style.set_border_width_all(1)
+	disabled_style.set_corner_radius_all(6)
 	button.add_theme_stylebox_override("disabled", disabled_style)
 	
 	action_container.add_child(button)
@@ -294,6 +336,101 @@ func _create_selected_troop_panel() -> void:
 	selected_troop_panel.add_child(selected_troop_label)
 
 
+func _create_troop_cards_panel() -> void:
+	# Create panel for troop cards at absolute bottom center of screen
+	troop_cards_panel = PanelContainer.new()
+	troop_cards_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	troop_cards_panel.position = Vector2(-250, -170) # Positioned at very bottom
+	troop_cards_panel.custom_minimum_size = Vector2(500, 160)
+	main_container.add_child(troop_cards_panel)
+	
+	# Style with a more premium look
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.1, 0.95)
+	style.border_color = Color(0.5, 0.4, 0.3, 0.9) # Warm gold-ish border
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.4)
+	style.shadow_size = 6
+	troop_cards_panel.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	troop_cards_panel.add_child(vbox)
+	
+	# Header with player-specific color (will be updated dynamically)
+	var header = Label.new()
+	header.name = "TroopCardHeader"
+	header.text = "🎴 YOUR TROOPS (Press 1-4)"
+	header.add_theme_font_size_override("font_size", 13)
+	header.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+	
+	# Card container
+	troop_cards_container = HBoxContainer.new()
+	troop_cards_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	troop_cards_container.add_theme_constant_override("separation", 10)
+	vbox.add_child(troop_cards_container)
+	
+	# Create 4 card slots
+	for i in range(4):
+		var card_button = _create_troop_card_slot(i)
+		troop_card_buttons.append(card_button)
+		troop_cards_container.add_child(card_button)
+
+
+func _create_troop_card_slot(slot_index: int) -> Button:
+	var button = Button.new()
+	button.custom_minimum_size = Vector2(110, 110)
+	button.clip_text = true
+	
+	# Default style
+	var normal_style = StyleBoxFlat.new()
+	normal_style.bg_color = Color(0.12, 0.12, 0.16)
+	normal_style.border_color = Color(0.3, 0.3, 0.4)
+	normal_style.set_border_width_all(2)
+	normal_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("normal", normal_style)
+	
+	var hover_style = StyleBoxFlat.new()
+	hover_style.bg_color = Color(0.18, 0.18, 0.24)
+	hover_style.border_color = Color(0.5, 0.5, 0.6)
+	hover_style.set_border_width_all(2)
+	hover_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("hover", hover_style)
+	
+	var pressed_style = StyleBoxFlat.new()
+	pressed_style.bg_color = Color(0.2, 0.25, 0.35)
+	pressed_style.border_color = Color(0.6, 0.7, 1.0)
+	pressed_style.set_border_width_all(3)
+	pressed_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("pressed", pressed_style)
+	
+	var focus_style = StyleBoxFlat.new()
+	focus_style.bg_color = Color(0.2, 0.25, 0.35)
+	focus_style.border_color = Color(1.0, 0.84, 0.0)
+	focus_style.set_border_width_all(3)
+	focus_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("focus", focus_style)
+	
+	var disabled_style = StyleBoxFlat.new()
+	disabled_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
+	disabled_style.border_color = Color(0.2, 0.2, 0.2)
+	disabled_style.set_border_width_all(1)
+	disabled_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("disabled", disabled_style)
+	
+	# Connect signal
+	button.pressed.connect(_on_troop_card_pressed.bind(slot_index))
+	
+	return button
+
+
+func _on_troop_card_pressed(slot_index: int) -> void:
+	troop_slot_selected.emit(slot_index)
+
+
 # =============================================================================
 # UPDATE METHODS
 # =============================================================================
@@ -387,3 +524,69 @@ func show_action_mode(mode: String) -> void:
 			show_info("MINE MODE: Click a tile to place a gold mine")
 		_:
 			hide_info()
+
+
+## Update troop cards display
+func update_troop_cards(player: Player, selected_troop: Troop = null) -> void:
+	if not player:
+		return
+	
+	for i in range(4):
+		var button = troop_card_buttons[i]
+		
+		# Check if there's a troop for this slot
+		if i < player.deck.size():
+			var troop_id = player.deck[i]
+			var troop = _find_troop_by_id(player, troop_id)
+			
+			if troop and troop.is_alive:
+				# Troop is alive - show info
+				button.disabled = false
+				button.text = "[%d]\n%s\n❤️ %d/%d" % [i + 1, troop.display_name, troop.current_hp, troop.max_hp]
+				button.add_theme_font_size_override("font_size", 11)
+				
+				# Highlight if selected
+				if troop == selected_troop:
+					_highlight_troop_card(button, true, player.team_color)
+				else:
+					_highlight_troop_card(button, false, player.team_color)
+				
+				# Show status indicators
+				if troop.has_moved_this_turn or troop.has_attacked_this_turn:
+					button.text += "\n✓ Done"
+			else:
+				# Troop is dead
+				button.disabled = true
+				var card_data = CardData.get_troop(troop_id)
+				var name = card_data.get("name", troop_id) if not card_data.is_empty() else troop_id
+				button.text = "[%d]\n%s\n💀 DEAD" % [i + 1, name]
+				button.add_theme_font_size_override("font_size", 11)
+				_highlight_troop_card(button, false, Color.GRAY)
+		else:
+			# No troop at this slot
+			button.disabled = true
+			button.text = "[%d]\nEmpty" % (i + 1)
+			_highlight_troop_card(button, false, Color.GRAY)
+
+
+func _find_troop_by_id(player: Player, troop_id: String) -> Troop:
+	for troop in player.troops:
+		if troop and troop.troop_id == troop_id:
+			return troop
+	return null
+
+
+func _highlight_troop_card(button: Button, is_selected: bool, team_color: Color) -> void:
+	var normal_style = StyleBoxFlat.new()
+	
+	if is_selected:
+		normal_style.bg_color = team_color.darkened(0.6)
+		normal_style.border_color = Color(1.0, 0.84, 0.0) # Gold border for selected
+		normal_style.set_border_width_all(3)
+	else:
+		normal_style.bg_color = Color(0.12, 0.12, 0.16)
+		normal_style.border_color = team_color.darkened(0.3)
+		normal_style.set_border_width_all(2)
+	
+	normal_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("normal", normal_style)

@@ -417,36 +417,36 @@ fantasy-world-game/
 
 ## TODO List (Prioritized)
 
-1. **setup-project** - Set up project structure: create folders (scenes/, scripts/, data/, assets/), organize Documentation assets
-2. **hex-coordinates** - Implement hex coordinate system utility (axial/cube coordinates, distance, neighbors, pixel conversion)
-3. **hex-board** - Create hex board system: generate 169 hexagons (8 hexagons per side) in hexagonal pattern, hex tile scene and script
-4. **biome-procedural** - Implement procedural biome generation: ensure all 7 biomes present, harmonious biome flow, biome regions and clustering
-5. **biome-system** - Implement biome system: define 7 biome types with properties, visual representation, biome effects
-6. **player-system** - Create player system: Player class, PlayerManager for 2 players (1v1), player data (gold, XP, cards, troops)
-7. **turn-system** - Implement turn system: TurnManager with multiple actions per turn, turn order (initial dice roll), turn timer
-8. **card-system** - Create card system: Card data structure with 12 troop types (all stats: HP, ATK, DEF, Range, Speed, Mana), card selection (pre-game, 4 cards)
-9. **deck-validation** - Implement deck validation: 1 Ground Tank, 1 Air/Hybrid, 1 Ranged/Magic, 1 Flex/Support/Assassin, mana total ≤ 22
-10. **troop-system** - Implement troop system: Troop class with stats (HP, ATK, DEF, Range, Speed), troop spawning, visual representation on board
-11. **movement-system** - Create movement system: pathfinding (hex A*), movement range based on Speed stat, move validation, move action
-12. **combat-system** - Implement combat system: combat initiation (adjacent troops), dice rolling (d20), combat resolution (attacker vs defender), damage application
-13. **gold-system** - Create gold system: gold tracking per player, gold display in UI
-14. **gold-mine-placement** - Implement gold mine placement: allow players to place mines on hexes (max 5 per player), mine placement validation
-15. **gold-mine-generation** - Implement gold mine generation: mines generate gold at configurable rate (every 60 seconds), gold generation timer
-16. **xp-system** - Create XP system: XP tracking per player, XP display in UI
-17. **combat-xp-rewards** - Implement XP rewards from combat: XP gained from killing enemy troops
-18. **npc-system** - Implement NPC system: NPCs spawn in different biomes, NPC types per biome, NPC combat, NPC stats and behavior
-19. **npc-xp-rewards** - Implement NPC XP rewards: XP gained from killing NPCs in biomes
-20. **gold-mine-upgrades** - Implement gold mine upgrades: use XP to upgrade mines, mine upgrade levels and benefits (increased gold generation rate), upgrade UI
-21. **troop-upgrades** - Implement troop stat upgrades: use gold and XP to upgrade troop stats (HP, ATK, DEF), upgrade UI, stat modification system
-22. **game-manager** - Implement GameManager: game state machine, initialization, win conditions (defeat all enemy troops), coordinate all systems
-23. **game-ui** - Create main game UI: HUD, player info, turn indicator, action buttons, card display, gold/XP display
-24. **dice-ui** - Implement dice UI: visual dice representation, roll animation, combat dice display
-25. **card-selection-ui** - Create card selection UI: pre-game deck builder (4 cards), deck validation UI, mana cost display
-26. **biome-strength-effects** - Implement biome strength/weakness effects: troops gain bonuses/penalties based on biome (e.g., Forest +A, Ashlands +S)
-27. **network-manager** - Implement NetworkManager: ENet setup, Host/Join functions, connection signals, RNG seed syncing
-28. **lobby-ui** - Create Lobby UI: Host/Join buttons, IP input, Ready system for starting game
-29. **rpc-implementation** - Convert actions to RPCs: Update Move, Attack, End Turn to use `@rpc` annotations for network sync
-30. **polish-testing** - Polish and testing: UI polish, animations, error handling, game flow testing, bug fixes, performance optimization
+1. ✅ **setup-project** - Set up project structure: create folders (scenes/, scripts/, data/, assets/), organize Documentation assets
+2. ✅ **hex-coordinates** - Implement hex coordinate system utility (axial/cube coordinates, distance, neighbors, pixel conversion)
+3. ✅ **hex-board** - Create hex board system: generate 169 hexagons (8 hexagons per side) in hexagonal pattern, hex tile scene and script
+4. ✅ **biome-procedural** - Implement procedural biome generation: ensure all 7 biomes present, harmonious biome flow, biome regions and clustering
+5. ✅ **biome-system** - Implement biome system: define 7 biome types with properties, visual representation, biome effects
+6. ✅ **player-system** - Create player system: Player class, PlayerManager for 2 players (1v1), player data (gold, XP, cards, troops)
+7. ✅ **turn-system** - Implement turn system: TurnManager with multiple actions per turn, turn order (initial dice roll), turn timer
+8. ✅ **card-system** - Create card system: Card data structure with 12 troop types (all stats: HP, ATK, DEF, Range, Speed, Mana), card selection (pre-game, 4 cards)
+9. ✅ **deck-validation** - Implement deck validation: 1 Ground Tank, 1 Air/Hybrid, 1 Ranged/Magic, 1 Flex/Support/Assassin, mana total ≤ 22
+10. ✅ **troop-system** - Implement troop system: Troop class with stats (HP, ATK, DEF, Range, Speed), troop spawning, visual representation on board
+11. ✅ **movement-system** - Create movement system: pathfinding (hex A*), movement range based on Speed stat, move validation, move action
+12. ✅ **combat-system** - Implement combat system: combat initiation (adjacent troops), dice rolling (d20), combat resolution (attacker vs defender), damage application
+13. ✅ **gold-system** - Create gold system: gold tracking per player, gold display in UI
+14. ✅ **gold-mine-placement** - Implement gold mine placement: allow players to place mines on hexes (max 5 per player), mine placement validation
+15. ✅ **gold-mine-generation** - Implement gold mine generation: mines generate gold at configurable rate (turn-based), gold generation at turn start
+16. ✅ **xp-system** - Create XP system: XP tracking per player, XP display in UI
+17. ✅ **combat-xp-rewards** - Implement XP rewards from combat: XP gained from killing enemy troops
+18. ✅ **npc-system** - Implement NPC system: NPCs spawn in different biomes, NPC types per biome, NPC combat, NPC stats and behavior
+19. ✅ **npc-xp-rewards** - Implement NPC XP rewards: XP gained from killing NPCs in biomes
+20. ✅ **gold-mine-upgrades** - Implement gold mine upgrades: use XP to upgrade mines, mine upgrade levels and benefits (increased gold generation rate), upgrade UI
+21. ✅ **troop-upgrades** - Implement troop stat upgrades: use gold and XP to upgrade troop stats (HP, ATK, DEF), upgrade UI, stat modification system
+22. ✅ **game-manager** - Implement GameManager: game state machine, initialization, win conditions (defeat all enemy troops), coordinate all systems
+23. ✅ **game-ui** - Create main game UI: HUD, player info, turn indicator, action buttons, card display, gold/XP display
+24. ✅ **dice-ui** - Implement dice UI: visual dice representation, roll animation, combat dice display
+25. ✅ **card-selection-ui** - Create card selection UI: pre-game deck builder (4 cards), deck validation UI, mana cost display
+26. ✅ **biome-strength-effects** - Implement biome strength/weakness effects: troops gain bonuses/penalties based on biome (e.g., Forest +A, Ashlands +S)
+27. ✅ **network-manager** - Implement NetworkManager: ENet setup, Host/Join functions, connection signals, RNG seed syncing
+28. ✅ **lobby-ui** - Create Lobby UI: Host/Join buttons, IP input, Ready system for starting game
+29. ✅ **rpc-implementation** - Convert actions to RPCs: Update Move, Attack, End Turn to use `@rpc` annotations for network sync
+30. ⏳ **polish-testing** - Polish and testing: UI polish, animations, error handling, game flow testing, bug fixes, performance optimization
 
 ## Technical Considerations
 

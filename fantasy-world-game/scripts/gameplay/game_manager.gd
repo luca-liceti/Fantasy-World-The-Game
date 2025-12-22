@@ -22,12 +22,12 @@ signal mine_placed(mine: GoldMine, hex: Node)
 # =============================================================================
 enum GameState {
 	UNINITIALIZED,
-	LOBBY,           # Waiting for players
-	DECK_SELECTION,  # Players choosing decks
-	INITIALIZING,    # Setting up board and spawning troops
-	PLAYING,         # Active gameplay
-	PAUSED,          # Game paused
-	GAME_OVER        # Game ended
+	LOBBY, # Waiting for players
+	DECK_SELECTION, # Players choosing decks
+	INITIALIZING, # Setting up board and spawning troops
+	PLAYING, # Active gameplay
+	PAUSED, # Game paused
+	GAME_OVER # Game ended
 }
 
 # =============================================================================
@@ -189,6 +189,10 @@ func start_game() -> void:
 func _spawn_all_troops() -> void:
 	for player in player_manager.players:
 		var spawn_tiles = hex_board.get_available_spawn_tiles(player.player_id)
+		
+		# For Player 2 (ID 1), reverse spawn tiles so Deck Slot 0 -> Visual Top
+		if player.player_id == 1:
+			spawn_tiles.reverse()
 		
 		var deck_index = 0
 		for card_id in player.deck:
