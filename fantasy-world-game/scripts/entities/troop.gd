@@ -88,6 +88,49 @@ var is_alive: bool = true
 var active_buffs: Dictionary = {}
 
 # =============================================================================
+# ENHANCED COMBAT SYSTEM - MOVES
+# =============================================================================
+## Available moves for this troop (loaded from MoveData)
+var available_moves: Array = []
+
+## Move cooldowns: {move_id: turns remaining}
+var move_cooldowns: Dictionary = {}
+
+# =============================================================================
+# ENHANCED COMBAT SYSTEM - STATUS EFFECTS
+# =============================================================================
+## Active status effects: Array of StatusEffect objects
+var active_status_effects: Array = []
+
+## Endure stance uses remaining (resets per combat)
+var endure_uses_remaining: int = 1
+
+# =============================================================================
+# ENHANCED COMBAT SYSTEM - STAT STAGES
+# =============================================================================
+## Stat stages: -6 to +6 (like Pokémon)
+var stat_stages: Dictionary = {
+	"atk": 0,
+	"def": 0,
+	"speed": 0
+}
+
+# =============================================================================
+# ENHANCED COMBAT SYSTEM - TYPE DATA
+# =============================================================================
+## Primary damage type for this troop's attacks
+var damage_type: String = "PHYSICAL"
+
+## Damage types this troop resists (takes 0.5x damage)
+var resistances: Array = []
+
+## Damage types this troop is weak to (takes 1.5x damage)
+var weaknesses: Array = []
+
+## Damage types this troop is immune to (takes 0x damage)
+var immunities: Array = []
+
+# =============================================================================
 # VISUAL COMPONENTS
 # =============================================================================
 var mesh_instance: MeshInstance3D
@@ -131,6 +174,15 @@ func initialize(card_id: String, player_id: int) -> void:
 	ability = troop_data.get("ability", CardData.Ability.NONE)
 	ability_description = troop_data.get("ability_description", "")
 	
+	# Load enhanced combat data
+	damage_type = troop_data.get("damage_type", "PHYSICAL")
+	resistances = troop_data.get("resistances", []).duplicate()
+	weaknesses = troop_data.get("weaknesses", []).duplicate()
+	immunities = troop_data.get("immunities", []).duplicate()
+	
+	# Initialize moves from MoveData
+	_initialize_moves()
+	
 	# Initialize current stats
 	_recalculate_stats()
 	current_hp = max_hp
@@ -141,6 +193,10 @@ func initialize(card_id: String, player_id: int) -> void:
 	has_moved_this_turn = false
 	has_attacked_this_turn = false
 	active_buffs.clear()
+	active_status_effects.clear()
+	move_cooldowns.clear()
+	stat_stages = {"atk": 0, "def": 0, "speed": 0}
+	endure_uses_remaining = 1
 
 
 ## Set team color for visual distinction
@@ -270,8 +326,19 @@ func can_attack(target: Node) -> bool:
 	if target == null or not ("is_alive" in target) or not target.is_alive:
 		return false
 	
-	# Check range (would need hex distance calculation)
-	# This is a placeholder - actual check needs HexCoordinates
+	# Check range using hex distance calculation
+	if current_hex == null or not ("coordinates" in current_hex):
+		return false
+	
+	if not ("current_hex" in target) or target.current_hex == null:
+		return false
+	
+	if not ("coordinates" in target.current_hex):
+		return false
+	
+	var distance = current_hex.coordinates.distance_to(target.current_hex.coordinates)
+	if distance > current_range:
+		return false
 	
 	# Check air vs ground rules
 	if _is_target_air(target) and not _can_hit_air():
@@ -383,11 +450,206 @@ func tick_buffs() -> void:
 func start_turn() -> void:
 	has_moved_this_turn = false
 	has_attacked_this_turn = false
+	
+	# Tick cooldowns at turn start
+	tick_cooldowns()
+	
+	# Tick status effects at turn start
+	tick_status_effects()
 
 
-## Check if troop can still act this turn
+## Check if troop can still act this turn (accounts for status effects)
 func can_act() -> bool:
-	return is_alive and (not has_moved_this_turn or not has_attacked_this_turn)
+	if not is_alive:
+		return false
+	
+	# Check for status effects that prevent action
+	for effect in active_status_effects:
+		if effect.prevents_action:
+			return false
+	
+	return not has_moved_this_turn or not has_attacked_this_turn
+
+
+## Check if troop can move this turn (accounts for status effects)
+func can_move() -> bool:
+	if not is_alive:
+		return false
+	
+	# Check for status effects that prevent movement
+	for effect in active_status_effects:
+		if effect.prevents_movement:
+			return false
+	
+	return not has_moved_this_turn
+
+
+# =============================================================================
+# ENHANCED COMBAT - MOVE SYSTEM
+# =============================================================================
+
+## Initialize moves from MoveData
+func _initialize_moves() -> void:
+	available_moves = MoveData.get_moves_for_troop(troop_id)
+	move_cooldowns.clear()
+
+
+## Check if a move is available (not on cooldown)
+func is_move_available(move_id: String) -> bool:
+	var remaining = move_cooldowns.get(move_id, 0)
+	return remaining <= 0
+
+
+## Use a move (starts its cooldown)
+func use_move(move_id: String) -> void:
+	var move = MoveData.get_move(move_id)
+	if move and move.cooldown_turns > 0:
+		move_cooldowns[move_id] = move.cooldown_turns
+
+
+## Tick all move cooldowns (called at turn start)
+func tick_cooldowns() -> void:
+	var to_remove: Array = []
+	for move_id in move_cooldowns:
+		move_cooldowns[move_id] -= 1
+		if move_cooldowns[move_id] <= 0:
+			to_remove.append(move_id)
+	
+	for move_id in to_remove:
+		move_cooldowns.erase(move_id)
+
+
+## Get remaining cooldown for a move
+func get_move_cooldown(move_id: String) -> int:
+	return move_cooldowns.get(move_id, 0)
+
+
+## Get all available moves (not on cooldown)
+func get_available_moves() -> Array:
+	var result: Array = []
+	for move in available_moves:
+		if is_move_available(move.move_id):
+			result.append(move)
+	return result
+
+
+# =============================================================================
+# ENHANCED COMBAT - STATUS EFFECTS
+# =============================================================================
+
+## Apply a status effect
+func apply_status_effect(effect: StatusEffects.StatusEffect) -> bool:
+	if effect == null:
+		return false
+	
+	# Check immunity
+	if StatusEffects.is_immune(troop_id, effect.effect_id):
+		return false
+	
+	# Check if already has this effect - refresh duration if so
+	for existing in active_status_effects:
+		if existing.effect_id == effect.effect_id:
+			existing.remaining_turns = effect.duration_turns
+			return true
+	
+	# Add new effect
+	active_status_effects.append(effect)
+	_recalculate_stats()
+	return true
+
+
+## Remove a status effect by ID
+func remove_status_effect(effect_id: String) -> void:
+	for i in range(active_status_effects.size() - 1, -1, -1):
+		if active_status_effects[i].effect_id == effect_id:
+			active_status_effects.remove_at(i)
+	_recalculate_stats()
+
+
+## Remove all negative status effects
+func remove_all_debuffs() -> void:
+	for i in range(active_status_effects.size() - 1, -1, -1):
+		if StatusEffects.is_debuff(active_status_effects[i].effect_id):
+			active_status_effects.remove_at(i)
+	_recalculate_stats()
+
+
+## Tick all status effects (called at turn start)
+## Returns total damage taken from DoT effects
+func tick_status_effects() -> int:
+	var total_damage: int = 0
+	var to_remove: Array = []
+	
+	for effect in active_status_effects:
+		# Apply damage over time
+		if effect.damage_per_turn > 0:
+			total_damage += effect.damage_per_turn
+		
+		# Tick duration
+		if effect.tick():
+			to_remove.append(effect)
+	
+	# Remove expired effects
+	for effect in to_remove:
+		active_status_effects.erase(effect)
+	
+	# Apply DoT damage
+	if total_damage > 0:
+		take_damage(total_damage)
+	
+	_recalculate_stats()
+	return total_damage
+
+
+## Check if troop has a specific status effect
+func has_status_effect(effect_id: String) -> bool:
+	for effect in active_status_effects:
+		if effect.effect_id == effect_id:
+			return true
+	return false
+
+
+## Check if troop is in stealth
+func is_stealthed() -> bool:
+	return has_status_effect("stealth")
+
+
+# =============================================================================
+# ENHANCED COMBAT - STAT STAGES
+# =============================================================================
+
+## Modify a stat stage (clamped to -6 to +6)
+func modify_stat_stage(stat: String, amount: int) -> void:
+	if stat in stat_stages:
+		stat_stages[stat] = clamp(stat_stages[stat] + amount, -6, 6)
+		_recalculate_stats()
+
+
+## Reset all stat stages to 0
+func reset_stat_stages() -> void:
+	stat_stages = {"atk": 0, "def": 0, "speed": 0}
+	_recalculate_stats()
+
+
+## Get the multiplier for a stat stage (-6 to +6)
+## Uses Pokémon-style formula: stages >= 0: (2 + stage) / 2, stages < 0: 2 / (2 - stage)
+func get_stat_stage_multiplier(stat: String) -> float:
+	var stage = stat_stages.get(stat, 0)
+	if stage >= 0:
+		return (2.0 + stage) / 2.0
+	else:
+		return 2.0 / (2.0 - stage)
+
+
+## Get the modified stat value after applying stat stages
+func get_modified_stat(stat: String) -> float:
+	var base_value: float = 0.0
+	match stat:
+		"atk": base_value = current_atk
+		"def": base_value = current_def
+		"speed": base_value = current_speed
+	
+	return base_value * get_stat_stage_multiplier(stat)
 
 
 # =============================================================================

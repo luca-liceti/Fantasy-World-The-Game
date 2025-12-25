@@ -1,5 +1,6 @@
 ## Turn Manager
 ## Handles turn flow, timing, and action tracking for the game
+## Enhanced with D&D × Pokémon hybrid combat support
 ## Designed with networking in mind - action functions can be converted to RPCs
 class_name TurnManager
 extends RefCounted
@@ -15,21 +16,29 @@ signal action_performed(player_id: int, action_type: String, data: Dictionary)
 signal all_actions_used(player_id: int)
 signal phase_changed(new_phase: Phase)
 
+# Enhanced Combat Signals
+signal enhanced_combat_started(attacker: Node, defender: Node)
+signal combat_selection_required(attacker: Node, defender: Node, attacker_player_id: int, defender_player_id: int)
+signal enhanced_combat_resolved(result: Dictionary)
+signal status_effects_ticked(player_id: int, damages: Dictionary)
+
 # =============================================================================
 # ENUMS
 # =============================================================================
 enum Phase {
-	WAITING,          # Game not started
-	DECK_SELECTION,   # Players selecting decks
-	GAME_START,       # Initial setup (dice roll for order)
-	PLAYER_TURN,      # Active player's turn
-	COMBAT_RESOLUTION,# Combat being resolved (pause for animation)
-	GAME_OVER         # Game ended
+	WAITING,              # Game not started
+	DECK_SELECTION,       # Players selecting decks
+	GAME_START,           # Initial setup (dice roll for order)
+	PLAYER_TURN,          # Active player's turn
+	COMBAT_RESOLUTION,    # Legacy combat (pause for animation)
+	ENHANCED_COMBAT,      # New D&D × Pokémon combat with selection
+	GAME_OVER             # Game ended
 }
 
 enum ActionType {
 	MOVE,
 	ATTACK,
+	ENHANCED_ATTACK,      # New: Attack with move selection
 	PLACE_MINE,
 	UPGRADE_MINE,
 	UPGRADE_TROOP,
@@ -128,7 +137,27 @@ func _begin_new_turn() -> void:
 		turn_timer_remaining = turn_timer_duration
 		turn_timer_paused = false
 	
-	# Emit signal
+	# Tick cooldowns and status effects for all player's troops
+	var status_damages: Dictionary = {}
+	for troop in active_player.troops:
+		if troop and troop.is_alive:
+			# start_turn() now handles cooldown ticking AND status effect ticking
+			troop.start_turn()
+			
+			# Track any DoT damage for UI feedback
+			var dot_damage = 0
+			for effect in troop.active_status_effects:
+				if "damage_per_turn" in effect and effect.damage_per_turn > 0:
+					dot_damage += effect.damage_per_turn
+			
+			if dot_damage > 0:
+				status_damages[troop.troop_id] = dot_damage
+	
+	# Emit status damage signal if any troops took DoT damage
+	if not status_damages.is_empty():
+		status_effects_ticked.emit(active_player.player_id, status_damages)
+	
+	# Emit turn started signal
 	turn_started.emit(active_player.player_id, player_manager.turn_number)
 
 
@@ -136,6 +165,7 @@ func _begin_new_turn() -> void:
 ## This function will later be an RPC for network sync
 func end_turn() -> void:
 	if current_phase != Phase.PLAYER_TURN:
+		print("WARNING: end_turn blocked - current phase is %s, not PLAYER_TURN" % Phase.keys()[current_phase])
 		return
 	
 	var active_player = player_manager.get_active_player()
@@ -272,6 +302,10 @@ func perform_move(troop: Node, target_hex: Node) -> Dictionary:
 ## Validate and perform an attack action
 ## Returns: Dictionary with "success" and combat data
 func perform_attack(attacker: Node, defender: Node) -> Dictionary:
+	# Block if not in player turn phase
+	if current_phase != Phase.PLAYER_TURN:
+		return {"success": false, "error": "Cannot attack during this phase"}
+	
 	if not can_troop_act(attacker):
 		return {"success": false, "error": "Troop cannot act this turn"}
 	
@@ -301,7 +335,69 @@ func perform_attack(attacker: Node, defender: Node) -> Dictionary:
 	return result
 
 
-## Called when combat resolution is complete
+## Validate and perform an ENHANCED attack (D&D × Pokémon combat)
+## This initiates the move/stance selection phase
+## Returns: Dictionary with "success" - combat resolved via signals
+func perform_enhanced_attack(attacker: Node, defender: Node) -> Dictionary:
+	# Block if not in player turn phase
+	if current_phase != Phase.PLAYER_TURN:
+		return {"success": false, "error": "Cannot attack during this phase"}
+	
+	if not can_troop_act(attacker):
+		return {"success": false, "error": "Troop cannot act this turn"}
+	
+	# Check if defender can participate (has status effects that prevent action?)
+	# Stunned units can still be attacked, but can't select a stance - auto-Brace
+	
+	# Pause timer during combat selection and resolution
+	pause_timer()
+	current_phase = Phase.ENHANCED_COMBAT
+	
+	# Record action
+	_record_action(ActionType.ENHANCED_ATTACK, {
+		"attacker_id": attacker.get_instance_id() if attacker else -1,
+		"defender_id": defender.get_instance_id() if defender else -1
+	})
+	
+	# Mark troop as having acted
+	var active_player = player_manager.get_active_player()
+	active_player.mark_troop_acted(attacker)
+	
+	# Emit signals to trigger UI
+	enhanced_combat_started.emit(attacker, defender)
+	
+	# Get player IDs for UI routing
+	var attacker_player_id = attacker.owner_player_id if "owner_player_id" in attacker else -1
+	var defender_player_id = defender.owner_player_id if "owner_player_id" in defender else -1
+	
+	# Emit signal for combat selection UI
+	combat_selection_required.emit(attacker, defender, attacker_player_id, defender_player_id)
+	
+	var result = {
+		"success": true,
+		"action": ActionType.ENHANCED_ATTACK,
+		"attacker": attacker,
+		"defender": defender,
+		"phase": "selection"  # UI should wait for combat resolution
+	}
+	
+	action_performed.emit(active_player.player_id, "ENHANCED_ATTACK", result)
+	
+	return result
+
+
+## Called when enhanced combat resolution is complete
+func on_enhanced_combat_complete(result: Dictionary) -> void:
+	# Emit result for UI/networking
+	enhanced_combat_resolved.emit(result)
+	
+	# Resume normal gameplay
+	resume_timer()
+	current_phase = Phase.PLAYER_TURN
+	_check_all_actions_used()
+
+
+## Called when combat resolution is complete (legacy)
 func on_combat_complete() -> void:
 	resume_timer()
 	current_phase = Phase.PLAYER_TURN

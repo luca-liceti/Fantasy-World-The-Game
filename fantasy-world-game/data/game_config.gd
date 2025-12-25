@@ -33,6 +33,52 @@ const MAX_REROLLS: int = 3 # Maximum re-rolls on equal dice
 const MIN_DAMAGE: int = 1 # Minimum damage dealt (even if DEF is high)
 
 # =============================================================================
+# COMBAT MODE (NEW PLAYER ACCESSIBILITY)
+# =============================================================================
+## Combat mode determines complexity level
+enum CombatMode {
+	SIMPLE,    # Reduced complexity for new players
+	ENHANCED   # Full D&D × Pokémon hybrid system
+}
+
+## Default combat mode for new games
+const DEFAULT_COMBAT_MODE: int = CombatMode.ENHANCED
+
+## Simple Mode Configuration
+const SIMPLE_MODE_CONFIG: Dictionary = {
+	"moves_visible": 2,              # Only show 2 moves (Standard + 1 Special)
+	"auto_defender_stance": true,    # Auto-select Brace for defender
+	"timer_seconds": 15.0,           # Extended timer (15 seconds)
+	"show_damage_types": false,      # Hide damage type complexity
+	"show_advantage_disadvantage": false,  # Hide adv/disadv
+	"show_hit_chance": true,         # Show simple hit % 
+	"show_positioning": false,       # Hide positioning modifiers
+	"hint_recommended_move": true,   # Highlight best move
+}
+
+## Enhanced Mode Configuration (full complexity)
+const ENHANCED_MODE_CONFIG: Dictionary = {
+	"moves_visible": 4,              # Show all 4 moves
+	"auto_defender_stance": false,   # Player chooses stance
+	"timer_seconds": 10.0,           # Standard timer
+	"show_damage_types": true,       # Show all damage types
+	"show_advantage_disadvantage": true,
+	"show_hit_chance": true,
+	"show_positioning": true,
+	"hint_recommended_move": false,  # No hand-holding
+}
+
+## Get combat config for a given mode
+static func get_combat_mode_config(mode: int) -> Dictionary:
+	match mode:
+		CombatMode.SIMPLE:
+			return SIMPLE_MODE_CONFIG.duplicate()
+		CombatMode.ENHANCED:
+			return ENHANCED_MODE_CONFIG.duplicate()
+		_:
+			return ENHANCED_MODE_CONFIG.duplicate()
+
+# =============================================================================
 # GOLD MINE CONFIGURATION
 # =============================================================================
 const MAX_MINES_PER_PLAYER: int = 5

@@ -57,7 +57,10 @@ const TROOPS: Dictionary = {
 		"mana": 5,
 		"ability": Ability.NONE,
 		"ability_description": "",
-		"description": "A stalwart defender clad in heavy armor. Excels in holding the line."
+		"description": "A stalwart defender clad in heavy armor. Excels in holding the line.",
+		"damage_type": "PHYSICAL",
+		"resistances": [],
+		"weaknesses": ["DARK"]
 	},
 	"stone_giant": {
 		"name": "Stone Giant",
@@ -71,7 +74,10 @@ const TROOPS: Dictionary = {
 		"mana": 8,
 		"ability": Ability.NONE,
 		"ability_description": "",
-		"description": "A towering colossus of living rock. Slow but nearly indestructible."
+		"description": "A towering colossus of living rock. Slow but nearly indestructible.",
+		"damage_type": "PHYSICAL",
+		"resistances": ["PHYSICAL", "FIRE"],
+		"weaknesses": ["NATURE"]
 	},
 	"four_headed_hydra": {
 		"name": "Four-Headed Hydra",
@@ -85,7 +91,10 @@ const TROOPS: Dictionary = {
 		"mana": 9,
 		"ability": Ability.MULTI_STRIKE,
 		"ability_description": "Multi-Strike: Attacks 2 adjacent enemies simultaneously.",
-		"description": "A fearsome beast with four snapping heads. Can attack multiple foes at once."
+		"description": "A fearsome beast with four snapping heads. Can attack multiple foes at once.",
+		"damage_type": "NATURE",
+		"resistances": ["NATURE"],
+		"weaknesses": ["FIRE"]
 	},
 	
 	# =========================================================================
@@ -103,7 +112,10 @@ const TROOPS: Dictionary = {
 		"mana": 8,
 		"ability": Ability.NONE,
 		"ability_description": "",
-		"description": "A corrupted dragon wreathed in dark flames. Dominates the skies."
+		"description": "A corrupted dragon wreathed in dark flames. Dominates the skies.",
+		"damage_type": "FIRE",
+		"resistances": ["FIRE", "DARK"],
+		"weaknesses": ["ICE", "HOLY"]
 	},
 	"sky_serpent": {
 		"name": "Sky Serpent",
@@ -117,7 +129,10 @@ const TROOPS: Dictionary = {
 		"mana": 5,
 		"ability": Ability.NONE,
 		"ability_description": "",
-		"description": "A swift aerial predator. Lightning fast but fragile."
+		"description": "A swift aerial predator. Lightning fast but fragile.",
+		"damage_type": "PHYSICAL",
+		"resistances": [],
+		"weaknesses": ["ICE"]
 	},
 	"frost_valkyrie": {
 		"name": "Frost Valkyrie",
@@ -131,7 +146,10 @@ const TROOPS: Dictionary = {
 		"mana": 6,
 		"ability": Ability.ANTI_AIR,
 		"ability_description": "Anti-Air: Can attack air units from ground or air.",
-		"description": "A warrior of ice who can fight in both realms. Versatile and balanced."
+		"description": "A warrior of ice who can fight in both realms. Versatile and balanced.",
+		"damage_type": "ICE",
+		"resistances": ["ICE"],
+		"weaknesses": ["FIRE"]
 	},
 	
 	# =========================================================================
@@ -149,7 +167,10 @@ const TROOPS: Dictionary = {
 		"mana": 4,
 		"ability": Ability.MAGIC,
 		"ability_description": "Magic: Ignores 25% of target's DEF. Can attack air units.",
-		"description": "A master of dark arts. Frail but devastating spell damage."
+		"description": "A master of dark arts. Frail but devastating spell damage.",
+		"damage_type": "DARK",
+		"resistances": ["DARK"],
+		"weaknesses": ["HOLY"]
 	},
 	"demon_of_darkness": {
 		"name": "Demon of Darkness",
@@ -163,7 +184,10 @@ const TROOPS: Dictionary = {
 		"mana": 7,
 		"ability": Ability.MAGIC,
 		"ability_description": "Magic: Ignores 25% of target's DEF. Can attack air units.",
-		"description": "A powerful demon from the shadow realm. High stats but expensive."
+		"description": "A powerful demon from the shadow realm. High stats but expensive.",
+		"damage_type": "DARK",
+		"resistances": ["FIRE", "DARK"],
+		"weaknesses": ["HOLY"]
 	},
 	"elven_archer": {
 		"name": "Elven Archer",
@@ -177,7 +201,10 @@ const TROOPS: Dictionary = {
 		"mana": 4,
 		"ability": Ability.ANTI_AIR_2X,
 		"ability_description": "Anti-Air 2x: Deals double damage to air units.",
-		"description": "A skilled marksman with unmatched accuracy. Aerial units beware."
+		"description": "A skilled marksman with unmatched accuracy. Aerial units beware.",
+		"damage_type": "PHYSICAL",
+		"resistances": ["NATURE"],
+		"weaknesses": ["DARK"]
 	},
 	
 	# =========================================================================
@@ -195,7 +222,10 @@ const TROOPS: Dictionary = {
 		"mana": 5,
 		"ability": Ability.HEAL,
 		"ability_description": "Heal: Restores 35 HP to ally in range.",
-		"description": "A divine healer blessed by the heavens. Keeps allies fighting."
+		"description": "A divine healer blessed by the heavens. Keeps allies fighting.",
+		"damage_type": "HOLY",
+		"resistances": ["HOLY"],
+		"weaknesses": ["DARK"]
 	},
 	"shadow_assassin": {
 		"name": "Shadow Assassin",
@@ -209,7 +239,10 @@ const TROOPS: Dictionary = {
 		"mana": 4,
 		"ability": Ability.NONE,
 		"ability_description": "",
-		"description": "A deadly glass cannon. Strikes fast and hard but can't take hits."
+		"description": "A deadly glass cannon. Strikes fast and hard but can't take hits.",
+		"damage_type": "PHYSICAL",
+		"resistances": ["DARK"],
+		"weaknesses": ["HOLY"]
 	},
 	"infernal_soul": {
 		"name": "Infernal Soul",
@@ -223,7 +256,10 @@ const TROOPS: Dictionary = {
 		"mana": 3,
 		"ability": Ability.DEATH_BURST,
 		"ability_description": "Death Burst: Deals 30 damage to all adjacent enemies on death.",
-		"description": "A suicidal demon. Cheap and explosive, literally."
+		"description": "A suicidal demon. Cheap and explosive, literally.",
+		"damage_type": "FIRE",
+		"resistances": ["FIRE", "DARK"],
+		"weaknesses": ["HOLY", "ICE"]
 	}
 }
 

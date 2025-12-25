@@ -6,6 +6,9 @@ extends Node3D
 # Preload dependencies
 const SettingsMenuScene = preload("res://scripts/ui/settings_menu.gd")
 const CardSelectionUIScene = preload("res://scripts/ui/card_selection_ui.gd")
+const FirstMoveDiceUIScene = preload("res://scripts/ui/first_move_dice_ui.gd")
+const CombatSelectionUIScene = preload("res://scripts/ui/combat_selection_ui.gd")
+const CombatResolutionUIScene = preload("res://scripts/ui/combat_resolution_ui.gd")
 
 # =============================================================================
 # NODE REFERENCES
@@ -17,6 +20,9 @@ var game_manager: GameManager
 var game_ui: GameUI
 var dice_ui: DiceUI
 var card_selection_ui: Node # CardSelectionUI
+var first_move_dice_ui: FirstMoveDiceUI # UI for initial turn order roll
+var combat_selection_ui: CombatSelectionUI # Enhanced combat UI for move/stance selection
+var combat_resolution_ui: Node # Enhanced combat resolution display
 
 # Deck selection state
 var is_selecting_decks: bool = false
@@ -214,6 +220,28 @@ func _setup_game_ui() -> void:
 		add_child(card_selection_ui)
 		card_selection_ui.deck_confirmed.connect(_on_deck_confirmed)
 		card_selection_ui.selection_canceled.connect(_on_deck_selection_canceled)
+		
+		# DEBUG: Set to true to disable the first move dice UI completely
+		var disable_first_move_dice_ui := false
+		
+		# Create First Move Dice UI for turn order roll
+		if not disable_first_move_dice_ui:
+			first_move_dice_ui = FirstMoveDiceUIScene.new()
+			add_child(first_move_dice_ui)
+			first_move_dice_ui.roll_complete.connect(_on_first_move_roll_complete)
+		else:
+			print("DEBUG: FirstMoveDiceUI creation disabled")
+		
+		# Create Enhanced Combat Selection UI
+		combat_selection_ui = CombatSelectionUIScene.new()
+		combat_selection_ui.layer = 120  # Above most UI
+		add_child(combat_selection_ui)
+		combat_selection_ui.move_selected.connect(_on_enhanced_move_selected)
+		combat_selection_ui.stance_selected.connect(_on_enhanced_stance_selected)
+		combat_selection_ui.timeout.connect(_on_enhanced_combat_timeout)
+		# Initialize with Enhanced mode by default (will be updated when game starts)
+		combat_selection_ui.set_combat_mode(GameConfig.CombatMode.ENHANCED)
+		print("Enhanced Combat Selection UI created")
 	else:
 		push_error("GameUI CanvasLayer not found!")
 
@@ -241,6 +269,10 @@ func _start_test_game() -> void:
 	game_manager.turn_manager.turn_started.connect(_on_turn_started)
 	game_manager.turn_manager.turn_ended.connect(_on_turn_ended)
 	game_manager.game_ended.connect(_on_game_over)
+	
+	# Connect enhanced combat signals
+	game_manager.combat_selection_started.connect(_on_combat_selection_started)
+	game_manager.combat_manager.combat_resolved.connect(_on_combat_resolved)
 	
 	# Hide game UI during deck selection
 	if game_ui and game_ui.main_container:
@@ -302,7 +334,11 @@ func _on_deck_selection_canceled() -> void:
 	# Return to main menu or handle cancellation
 	if card_selection_ui:
 		card_selection_ui.hide_selection()
-	get_tree().change_scene_to_file("res://scenes/ui/start_menu.tscn")
+	# Use SceneManager for smooth transition
+	if SceneManagerAutoload:
+		SceneManagerAutoload.change_scene("start_menu")
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/start_menu.tscn")
 
 
 ## Finalize game start after both players selected decks
@@ -310,26 +346,99 @@ func _finalize_game_start() -> void:
 	is_selecting_decks = false
 	decks_confirmed = true
 	
+	print("=== FINALIZE GAME START ===")
+	print("Both players have selected decks - showing first move roll...")
+	
+	# DEBUG: Check what CanvasLayers exist
+	print("DEBUG: Checking all CanvasLayers...")
+	for child in get_children():
+		if child is CanvasLayer:
+			print("  - CanvasLayer: %s, layer=%d, visible=%s" % [child.name, child.layer, child.visible])
+	
+	# Make sure card selection UI is fully hidden (immediate, no animation)
+	print("DEBUG: Hiding card selection UI...")
+	if card_selection_ui:
+		card_selection_ui.hide_immediate()
+		print("DEBUG: Card selection UI hidden. Visible=%s" % card_selection_ui.visible)
+	else:
+		print("DEBUG: card_selection_ui is NULL!")
+	
+	# Spawn troops based on selected decks (do this before the dice roll so they appear in background)
+	print("DEBUG: Spawning troops...")
+	_spawn_troops_from_decks()
+	print("DEBUG: Troops spawned")
+	
+	# Roll for turn order (calculate the results)
+	var roll_results = game_manager.player_manager.roll_for_turn_order()
+	var p1_roll = roll_results.get(0, randi_range(1, 20))
+	var p2_roll = roll_results.get(1, randi_range(1, 20))
+	
+	print("First move roll: Player 1 = %d, Player 2 = %d" % [p1_roll, p2_roll])
+	
+	# DEBUG: Set to true to skip the dice roll UI animation
+	var skip_dice_roll_ui := false # Fixed! The dice UI should work now
+	
+	# Show the first move dice roll UI  
+	if first_move_dice_ui and not skip_dice_roll_ui:
+		print("Showing first move dice UI...")
+		first_move_dice_ui.show_roll(p1_roll, p2_roll)
+	else:
+		# Skip UI - proceed directly
+		if skip_dice_roll_ui:
+			print("DEBUG: Skipping first move dice UI")
+		else:
+			push_warning("FirstMoveDiceUI not available, starting game directly")
+		print("DEBUG: Calling _on_first_move_roll_complete...")
+		_on_first_move_roll_complete(game_manager.player_manager.active_player_index)
+
+
+## Called when the first move dice roll animation completes
+func _on_first_move_roll_complete(first_player_id: int) -> void:
+	print("=== FIRST MOVE ROLL COMPLETE ===")
+	print("First move decided: Player %d goes first!" % (first_player_id + 1))
+	
+	# Set the turn order based on roll result
+	game_manager.player_manager.set_turn_order(first_player_id)
+	
+	# Now start the actual game
+	print("DEBUG: Calling _start_game_after_roll...")
+	_start_game_after_roll()
+
+
+## Actually start the game after the first move roll is complete
+func _start_game_after_roll() -> void:
+	print("=== START GAME AFTER ROLL ===")
+	
 	# Show game UI
 	if game_ui and game_ui.main_container:
+		print("DEBUG: Showing game UI main_container")
 		game_ui.main_container.visible = true
-	
-	# Spawn troops based on selected decks
-	_spawn_troops_from_decks()
+		print("DEBUG: game_ui.main_container.visible = %s" % game_ui.main_container.visible)
+	else:
+		print("ERROR: game_ui or main_container is NULL!")
 	
 	# Properly start the game (set phase to PLAYING and begin first turn)
+	print("DEBUG: Setting game state to PLAYING...")
 	game_manager.current_state = GameManager.GameState.PLAYING
 	game_manager.turn_manager.current_phase = TurnManager.Phase.PLAYER_TURN
 	game_manager.turn_manager._begin_new_turn()
 	
 	game_started = true
+	print("DEBUG: Updating UI...")
 	_update_ui()
 	
-	# Set up initial camera view - behind player 1's troops looking at the board
+	# DEBUG: Check all CanvasLayers again
+	print("DEBUG: Final CanvasLayer check:")
+	for child in get_children():
+		if child is CanvasLayer:
+			print("  - CanvasLayer: %s, layer=%d, visible=%s" % [child.name, child.layer, child.visible])
+	
+	# Set up initial camera view - behind the first player's troops looking at the board
 	# Defer this to ensure all node transforms are updated
+	print("DEBUG: Setting up initial camera view...")
 	call_deferred("_setup_initial_camera_view")
 	
-	print("Game started!")
+	print("=== Game started! ===")
 	print("Player 1 (Blue): %s" % str(player_decks[0]))
 	print("Player 2 (Red): %s" % str(player_decks[1]))
 
@@ -468,7 +577,15 @@ func _update_camera_transform() -> void:
 		camera_distance * cos(pitch_rad) * cos(yaw_rad)
 	)
 	
-	camera.global_position = focus_point + offset
+	var new_camera_pos = focus_point + offset
+	
+	# Prevent camera from going below the board level
+	# Board is at Y=0, so keep camera at least 0.5 units above it
+	const MIN_CAMERA_HEIGHT = 0.5
+	if new_camera_pos.y < MIN_CAMERA_HEIGHT:
+		new_camera_pos.y = MIN_CAMERA_HEIGHT
+	
+	camera.global_position = new_camera_pos
 	camera.look_at(focus_point, Vector3.UP)
 
 
@@ -663,6 +780,10 @@ func _select_troop_by_slot_for_current_player(slot: int) -> void:
 
 func _select_troop_by_slot(slot: int) -> void:
 	if not game_manager or not game_manager.turn_manager:
+		return
+	
+	# Block troop selection during combat
+	if game_manager.current_state == GameManager.GameState.ENHANCED_COMBAT:
 		return
 	
 	var current_player_id = game_manager.turn_manager.get_active_player_id()
@@ -1117,14 +1238,32 @@ func _close_pause_menu() -> void:
 
 
 func _open_settings_from_pause() -> void:
+	# Hide the pause menu while settings is open
+	if pause_menu:
+		pause_menu.visible = false
+	
 	var settings_menu = SettingsMenuScene.new()
 	settings_menu.process_mode = Node.PROCESS_MODE_ALWAYS
-	pause_menu.add_child(settings_menu)
+	# Add to scene root, not pause_menu, to avoid z-ordering issues
+	add_child(settings_menu)
+	
+	# When settings closes, show pause menu again
+	settings_menu.closed.connect(_on_settings_closed)
+
+
+func _on_settings_closed() -> void:
+	# Show pause menu again after settings is closed
+	if pause_menu:
+		pause_menu.visible = true
 
 
 func _return_to_main_menu() -> void:
 	_close_pause_menu()
-	get_tree().change_scene_to_file("res://scenes/ui/start_menu.tscn")
+	# Use SceneManager for smooth transition
+	if SceneManagerAutoload:
+		SceneManagerAutoload.change_scene("start_menu")
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/start_menu.tscn")
 
 
 # =============================================================================
@@ -1134,6 +1273,11 @@ func _return_to_main_menu() -> void:
 func _on_tile_selected(tile: HexTile) -> void:
 	# Block tile interaction during deck selection
 	if is_selecting_decks:
+		return
+	
+	# Block tile interaction during enhanced combat resolution
+	if game_manager and game_manager.current_state == GameManager.GameState.ENHANCED_COMBAT:
+		# During combat, only allow clicking on the combat UI - tile clicks are ignored
 		return
 	
 	print("Tile selected: %s (Biome: %s)" % [
@@ -1181,7 +1325,24 @@ func _on_tile_hovered(tile: HexTile) -> void:
 # ACTION HANDLERS
 # =============================================================================
 
+## Helper to check if player actions should be blocked
+func _is_action_blocked() -> bool:
+	# Block during deck selection
+	if is_selecting_decks:
+		return true
+	
+	# Block during enhanced combat resolution
+	if game_manager and game_manager.current_state == GameManager.GameState.ENHANCED_COMBAT:
+		game_ui.show_info("⚔️ Combat in progress!")
+		return true
+	
+	return false
+
+
 func _on_action_move() -> void:
+	if _is_action_blocked():
+		return
+	
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
 		return
@@ -1207,6 +1368,9 @@ func _on_action_move() -> void:
 
 
 func _on_action_attack() -> void:
+	if _is_action_blocked():
+		return
+	
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
 		return
@@ -1232,6 +1396,9 @@ func _on_action_attack() -> void:
 
 
 func _on_action_place_mine() -> void:
+	if _is_action_blocked():
+		return
+	
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
 		return
@@ -1247,6 +1414,9 @@ func _on_action_place_mine() -> void:
 
 
 func _on_action_upgrade() -> void:
+	if _is_action_blocked():
+		return
+	
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
 		return
@@ -1272,6 +1442,11 @@ func _on_action_upgrade() -> void:
 
 func _on_action_end_turn() -> void:
 	print("End turn pressed")
+	
+	# Block end turn during combat
+	if game_manager and game_manager.current_state == GameManager.GameState.ENHANCED_COMBAT:
+		game_ui.show_info("⚔️ Cannot end turn during combat!")
+		return
 	
 	if game_manager and game_manager.turn_manager:
 		game_manager.turn_manager.end_turn()
@@ -1335,7 +1510,14 @@ func _try_attack_at(tile: HexTile) -> void:
 	# Perform attack through GameManager
 	var result = game_manager.action_attack(attacker, defender)
 	if result["success"]:
-		# Show dice UI with combat results
+		# Check if this is enhanced combat (combat will resolve via signals, not here)
+		if game_manager.current_state == GameManager.GameState.ENHANCED_COMBAT:
+			# Enhanced combat started - don't show anything yet
+			# Results will be shown via _on_combat_resolved when combat completes
+			print("Enhanced combat initiated, waiting for move/stance selection...")
+			return
+		
+		# Legacy combat - show dice UI with combat results
 		if dice_ui:
 			var atk_roll = 0
 			var def_roll = 0
@@ -1427,6 +1609,145 @@ func _on_game_over(winner_id: int) -> void:
 	print("=== GAME OVER ===")
 	print("PLAYER %d WINS!" % (winner_id + 1))
 	game_ui.show_info("PLAYER %d WINS!" % (winner_id + 1))
+
+
+# =============================================================================
+# ENHANCED COMBAT HANDLERS
+# =============================================================================
+
+## Called when enhanced combat starts - show the selection UI
+func _on_combat_selection_started(attacker: Node, defender: Node) -> void:
+	print("=== ENHANCED COMBAT STARTED ===")
+	print("Attacker: %s vs Defender: %s" % [attacker.display_name, defender.display_name])
+	
+	if not combat_selection_ui:
+		push_error("CombatSelectionUI not found!")
+		return
+	
+	# Set combat mode on the UI (propagate from game settings)
+	var combat_mode = game_manager.get_combat_mode()
+	combat_selection_ui.set_combat_mode(combat_mode)
+	
+	# Determine which player is the local player (in local play, show attacker first)
+	var current_player_id = game_manager.turn_manager.get_active_player_id()
+	
+	if attacker.owner_player_id == current_player_id:
+		# Local player is attacking - show move selection
+		combat_selection_ui.show_attacker_selection(attacker, defender)
+		print("Showing move selection for attacker (Mode: %s)" % ("SIMPLE" if combat_mode == GameConfig.CombatMode.SIMPLE else "ENHANCED"))
+	else:
+		# Local player is defending - show stance selection
+		# In Simple Mode, this will auto-select Brace and skip the UI
+		combat_selection_ui.show_defender_selection(attacker, defender)
+		print("Showing stance selection for defender (Mode: %s)" % ("SIMPLE" if combat_mode == GameConfig.CombatMode.SIMPLE else "ENHANCED"))
+
+
+## Called when attacker selects a move
+func _on_enhanced_move_selected(move: MoveData.Move) -> void:
+	print("Move selected: %s" % move.move_name)
+	
+	# Check if combat is still active (could have been resolved by timeout)
+	if game_manager.current_state != GameManager.GameState.ENHANCED_COMBAT:
+		print("Combat already resolved, ignoring move selection")
+		return
+	
+	# Pass to game manager
+	game_manager.on_move_selected(move)
+	
+	# Check again - combat may have auto-resolved if defender was stunned or AI
+	if game_manager.current_state != GameManager.GameState.ENHANCED_COMBAT:
+		# Combat resolved immediately (e.g., defender couldn't respond)
+		if combat_selection_ui:
+			combat_selection_ui.hide_selection()
+		return
+	
+	# In local multiplayer, now show defender's turn
+	var attacker = game_manager.current_combat_attacker
+	var defender = game_manager.current_combat_defender
+	
+	if defender and combat_selection_ui:
+		# Give defender a chance to pick stance
+		combat_selection_ui.show_defender_selection(attacker, defender)
+
+
+## Called when defender selects a stance
+func _on_enhanced_stance_selected(stance: int) -> void:
+	var stance_name = DefensiveStances.get_stance_name(stance)
+	print("Stance selected: %s" % stance_name)
+	
+	# Check if combat is still active (could have been resolved by timeout)
+	if game_manager.current_state != GameManager.GameState.ENHANCED_COMBAT:
+		print("Combat already resolved, ignoring stance selection")
+		if combat_selection_ui:
+			combat_selection_ui.hide_selection()
+		return
+	
+	# Hide selection UI FIRST - before triggering resolution
+	if combat_selection_ui:
+		combat_selection_ui.hide_selection()
+	
+	# Pass to game manager - this will trigger combat resolution
+	game_manager.on_stance_selected(stance)
+
+
+## Called when the selection timer expires
+func _on_enhanced_combat_timeout() -> void:
+	print("Combat selection timed out - using defaults")
+	
+	# Check if combat is still active (may have already resolved)
+	if game_manager.current_state != GameManager.GameState.ENHANCED_COMBAT:
+		print("Combat already resolved, ignoring timeout")
+		if combat_selection_ui:
+			combat_selection_ui.hide_selection()
+		return
+	
+	# Hide the UI FIRST - prevents further input
+	if combat_selection_ui:
+		combat_selection_ui.hide_selection()
+	
+	# Force combat to resolve with default selections
+	if game_manager and game_manager.combat_manager:
+		game_manager.combat_manager.handle_selection_timeout()
+
+
+## Called when enhanced combat is resolved
+func _on_combat_resolved(result: Dictionary) -> void:
+	print("=== COMBAT RESOLVED ===")
+	print("Result: %s" % str(result))
+	
+	# Hide selection UI if still visible
+	if combat_selection_ui:
+		combat_selection_ui.hide_selection()
+	
+	# Show result with dice UI
+	if dice_ui:
+		var attacker = result.get("attacker")
+		var defender = result.get("defender")
+		var attacker_name = attacker.display_name if attacker else "Attacker"
+		var defender_name = defender.display_name if defender else "Defender"
+		
+		dice_ui.display_combat_sequence(
+			attacker_name,
+			defender_name,
+			result.get("attack_roll", 0),
+			result.get("defense_dc", 0),
+			result.get("attack_roll", 0),
+			result.get("defense_dc", 0),
+			result.get("hit", false),
+			result.get("damage", 0),
+			result.get("is_critical", false)
+		)
+	
+	# Handle kill
+	if result.get("defender_killed", false):
+		var defender = result.get("defender")
+		if defender:
+			troops.erase(defender)
+			print("%s was defeated!" % defender.display_name)
+	
+	# Cancel action mode and update UI
+	_cancel_action_mode()
+	_update_ui()
 
 
 ## Switch camera to view from behind the specified player's troops

@@ -464,6 +464,24 @@ func hide_selection() -> void:
 			root_control.visible = false
 
 
+## Hide the card selection UI immediately without animation
+func hide_immediate() -> void:
+	is_visible_ui = false
+	
+	if selection_timer:
+		selection_timer.stop()
+	
+	# Kill any existing tween first
+	if current_tween and current_tween.is_valid():
+		current_tween.kill()
+		current_tween = null
+	
+	# Immediately hide both the root control AND the CanvasLayer itself
+	if root_control:
+		root_control.visible = false
+	visible = false # CRITICAL: Hide the CanvasLayer itself!
+
+
 ## Get the currently selected deck
 func get_selected_deck() -> Array[String]:
 	var deck: Array[String] = []

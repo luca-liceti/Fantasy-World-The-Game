@@ -88,7 +88,17 @@ func _create_ui() -> void:
 	
 	# Main centered panel
 	main_panel = PanelContainer.new()
-	main_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	# Set anchors to center (0.5, 0.5) for all corners
+	main_panel.anchor_left = 0.5
+	main_panel.anchor_top = 0.5
+	main_panel.anchor_right = 0.5
+	main_panel.anchor_bottom = 0.5
+	# Set offsets to position the panel centered around the anchor point
+	# Panel size is 500x400, so offsets are -250 to +250 horizontally and -200 to +200 vertically
+	main_panel.offset_left = -250
+	main_panel.offset_top = -200
+	main_panel.offset_right = 250
+	main_panel.offset_bottom = 200
 	main_panel.custom_minimum_size = Vector2(500, 400)
 	main_panel.pivot_offset = Vector2(250, 200)
 	add_child(main_panel)

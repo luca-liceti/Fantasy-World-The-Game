@@ -61,12 +61,59 @@ fantasy-world-game/
     └── (imported from Documentation folder)
 ```
 
+## Development Tools
+
+### Godot MCP (Model Context Protocol) Server
+
+Throughout the development and debugging process, you can leverage the **godot-mcp** tool for enhanced productivity. This MCP server provides direct integration with Godot Engine, enabling:
+
+**Available Tools:**
+- `mcp_godot_create_scene` - Create new Godot scene files programmatically
+- `mcp_godot_add_node` - Add nodes to existing scenes with properties
+- `mcp_godot_load_sprite` - Load sprites into Sprite2D nodes
+- `mcp_godot_save_scene` - Save changes to scene files
+- `mcp_godot_run_project` - Run the Godot project and capture output
+- `mcp_godot_stop_project` - Stop the currently running project
+- `mcp_godot_launch_editor` - Launch Godot editor for the project
+- `mcp_godot_get_project_info` - Retrieve project metadata
+- `mcp_godot_get_godot_version` - Check installed Godot version
+- `mcp_godot_get_debug_output` - Get current debug output and errors
+- `mcp_godot_list_projects` - List Godot projects in a directory
+- `mcp_godot_export_mesh_library` - Export scenes as MeshLibrary resources
+- `mcp_godot_get_uid` - Get UIDs for files (Godot 4.4+)
+- `mcp_godot_update_project_uids` - Update UID references (Godot 4.4+)
+
+**Use Cases:**
+- **Scene Creation**: Quickly scaffold new scenes for hex tiles, troops, UI elements
+- **Node Management**: Add and configure nodes without manual editor work
+- **Testing & Debugging**: Run the project and capture console output for debugging
+- **Project Inspection**: Check project structure and metadata
+- **Rapid Prototyping**: Create test scenes and configurations programmatically
+
+**Integration Points:**
+- Use during Phase 1-3 for rapid scene prototyping (hex board, biomes, UI)
+- Leverage for automated testing during Phase 6 (combat system validation)
+- Utilize for debugging network synchronization in Phase 14
+- Apply for batch scene creation when setting up multiple similar entities (troops, NPCs)
+
+**Example Workflow:**
+```gdscript
+# Example: Using godot-mcp to create a new troop scene
+# 1. Create base scene with mcp_godot_create_scene
+# 2. Add CharacterBody3D node with mcp_godot_add_node
+# 3. Add MeshInstance3D child node
+# 4. Save scene with mcp_godot_save_scene
+# 5. Test with mcp_godot_run_project
+```
+
+**Note:** The godot-mcp tool is available throughout all implementation phases and can significantly speed up repetitive tasks and debugging workflows.
+
 ## Core Systems Implementation
 
 ### 1. Hexagonal Board System
 
 **Hex Board (`scripts/board/hex_board.gd`)**
-- Generate 169 hexagons in hexagonal pattern (8 hexagons per side)
+- Generate 397 hexagons in hexagonal pattern (12 hexagons per side)
 - Implement axial/cube coordinate system for hex math
 - Calculate neighbor relationships between hexes
 - Handle hex selection and highlighting
@@ -319,7 +366,7 @@ fantasy-world-game/
 ### Phase 1: Foundation (Critical)
 - Set up project structure
 - Implement hex coordinate system
-- Create basic hex board (169 hexagons, 8 hexagons per side, hexagonal pattern)
+- Create basic hex board (397 hexagons, 12 hexagons per side, hexagonal pattern)
 - Basic hex tile rendering
 
 ### Phase 2: Biome System (Critical)
@@ -479,7 +526,7 @@ From Documentation folder:
 - Turn timer duration: 60-120 seconds (1-2 minutes, configurable)
 - Gold generation rate: Turn-based (see Finalized Game Rules)
 - Maximum gold mines per player: 5
-- Board size: 169 hexagons (8 hexagons per side)
+- Board size: 397 hexagons (12 hexagons per side)
 - Dice type: d20 (1-20 range)
 - Starting gold: 150
 - Starting XP: 0
@@ -501,7 +548,69 @@ This section documents all finalized design decisions and game rules that must b
 
 ### Combat System
 
+**🆕 ENHANCED COMBAT SYSTEM (D&D × Pokémon Hybrid)**
+
+The combat system has been upgraded to feature simultaneous move/stance selection, type effectiveness, and status effects.
+
+**Combat Flow:**
+1. Attacker initiates combat by selecting a target
+2. **Simultaneous Selection Phase** (10 seconds):
+   - Attacker chooses a **Move** (4 unique moves per troop)
+   - Defender chooses a **Defensive Stance** (Brace, Dodge, Counter, Endure)
+3. Selections revealed simultaneously
+4. Dice rolled, modifiers applied, damage calculated
+
 **Dice System:**
+- Dice type: **d20** (1-20 range)
+- Attacker Roll = d20 + ATK stat + Move Accuracy + Position Bonuses
+- Defense DC = 10 + DEF stat + Stance Bonus + Position Bonuses
+- If attacker roll > Defense DC: Attack succeeds
+- If attacker roll ≤ Defense DC: Attack misses
+
+**Critical Hits/Misses:**
+- **Natural 18-20**: Critical Hit! Double damage!
+- **Natural 1**: Critical Miss! Automatic miss!
+
+**Damage Formula:**
+- If attack succeeds: Damage = (ATK × Power% × Type Effectiveness) - DEF/2
+- Damage is always at least 1
+- Critical hits deal 2× damage
+
+**Move Types (4 per troop):**
+- **Standard**: 100% power, +0 accuracy, no cooldown
+- **Power**: 150% power, -3 accuracy, 3-turn cooldown
+- **Precision**: 80% power, +5 accuracy, 2-turn cooldown
+- **Special**: 120% power, effect chance, 4-turn cooldown
+
+**Defensive Stances:**
+- **Brace**: +3 DEF, take 20% less damage
+- **Dodge**: +5 Evasion (adds to DC)
+- **Counter**: If missed, deal 50% ATK back to attacker
+- **Endure**: Survive at 1 HP (once per combat)
+
+**Type Effectiveness (6 damage types):**
+- Physical ⚔️, Fire 🔥, Ice ❄️, Dark 🌑, Holy ✨, Nature 🌿
+- Super Effective: 1.5× damage
+- Not Effective: 0.5× damage
+- Immune: 0× damage
+
+**Status Effects (8 types):**
+- Stunned, Burned, Poisoned, Slowed, Cursed, Terrified, Rooted, Stealth
+- Applied by Special moves with effect chance
+- Tick at turn start (DoT effects)
+
+**Positioning Bonuses:**
+- Flanking: +3 hit (ally adjacent to defender)
+- High Ground: +2 hit, +10% damage (from Hills/Peaks)
+- Cover: +3 DEF (defender on Forest/Ruins)
+- Surrounded: -2 DEF (3+ enemies adjacent)
+
+**See:** `Documentation/enhanced-combat-system.md` for full details
+**See:** `Documentation/combat_guide.md` for player guide
+
+---
+
+**Legacy Combat (Fallback):**
 - Dice type: **d20** (1-20 range)
 - Attacker Roll = d20 + ATK stat
 - Defender Roll = d20 + DEF stat
@@ -510,13 +619,8 @@ This section documents all finalized design decisions and game rules that must b
 - If rolls are equal: Re-roll (maximum 3 re-rolls)
 - If still equal after 3 re-rolls: Defender wins (defensive advantage)
 
-**Damage Formula:**
-- If attack succeeds: Damage = (ATK - DEF/2), minimum 1 damage
-- Damage is always at least 1, even if DEF is very high
-- **Rationale**: d20 provides good variance, stat modifiers keep stats relevant, minimum damage ensures progress
-
 **Combat Rules:**
-- Troops can only attack after moving (if they choose to move)
+- Each troop can perform ONE action per turn (Move OR Attack, not both)
 - Troops can only attack once per turn
 - Attack requires target to be in range
 - Line of sight required for ranged/magic attacks
@@ -700,7 +804,7 @@ This section documents all finalized design decisions and game rules that must b
 ### Board Generation
 
 **Board Specifications:**
-- Board size: **169 hexagons** (8 hexagons per side, hexagonal pattern)
+- Board size: **397 hexagons** (12 hexagons per side, hexagonal pattern)
 - Procedural generation for each game
 
 **Biome Distribution:**
@@ -717,7 +821,7 @@ This section documents all finalized design decisions and game rules that must b
 - 4 spawn hexes per player at opposing extreme edges (8 total)
 - Hexes are 4 straight across at each edge
 - Biomes placed with weighted random, ensuring each player has access to diverse terrain
-- **Rationale**: Procedural keeps games varied. 169 hexes (8 per side) provides focused gameplay. Weighted distribution ensures balance
+- **Rationale**: Procedural keeps games varied. 397 hexes (12 per side) provides epic-scale battles with strategic depth. Weighted distribution ensures balance
 
 ### Deck Selection
 

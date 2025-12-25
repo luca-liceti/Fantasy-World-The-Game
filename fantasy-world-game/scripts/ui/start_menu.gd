@@ -428,5 +428,10 @@ func _play_transition_out() -> void:
 
 
 func _switch_to_game() -> void:
-	# Switch to the main game scene
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	# Switch to the main game scene using SceneManager for smooth transition
+	if SceneManagerAutoload:
+		SceneManagerAutoload.change_scene("main", false) # No extra transition (we already faded)
+	else:
+		# Fallback if autoload not available
+		push_warning("SceneManagerAutoload not available, using direct scene change")
+		get_tree().change_scene_to_file("res://scenes/main.tscn")

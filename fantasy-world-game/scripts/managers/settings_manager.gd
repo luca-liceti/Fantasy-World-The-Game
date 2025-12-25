@@ -32,10 +32,19 @@ const DEFAULT_SETTINGS: Dictionary = {
 		"vsync": true,
 		"fps_limit": 0, # 0=Unlimited, 30, 60, 120, 144
 		"msaa": 2, # 0=Off, 1=2x, 2=4x, 3=8x
-		"shadow_quality": 2, # 0=Off, 1=Low, 2=Medium, 3=High
+		"shadow_quality": 2, # 0=Off, 1=Low, 2=Medium, 3=High, 4=Ultra
 		"ambient_occlusion": true,
 		"bloom": true,
-		"camera_shake": true
+		"bloom_intensity": 0.8, # 0.0 - 1.0
+		"camera_shake": true,
+		# Quality Settings System (for asset integration)
+		"quality_preset": -1, # -1=Auto, 0=Low, 1=Medium, 2=High, 3=Ultra
+		"texture_quality": 2, # 0=Low (512), 1=Medium (1024), 2=High (2048), 3=Ultra (4096)
+		"model_quality": 2, # 0=Low (LOD2), 1=Medium (LOD1), 2=High (LOD0), 3=Ultra (LOD0+)
+		"particle_quality": 2, # 0=Low (25%), 1=Medium (50%), 2=High (100%), 3=Ultra (100%+extras)
+		"terrain_height_variation": true, # Toggle hex height variation
+		"spell_effect_intensity": 1.0, # 0.0 - 1.0
+		"antialiasing_mode": 2, # 0=Off, 1=FXAA, 2=TAA, 3=MSAA 2x, 4=MSAA 4x, 5=MSAA 8x
 	},
 	"controls": {
 		"camera_sensitivity": 50,
@@ -80,6 +89,91 @@ const RESOLUTION_NAMES: Array[String] = [
 	"1366 x 768",
 	"1280 x 720 (HD)"
 ]
+
+# =============================================================================
+# QUALITY PRESET CONFIGURATIONS
+# =============================================================================
+# Based on asset_integration_master_plan.md specifications
+
+## Quality preset names for UI display
+const QUALITY_PRESET_NAMES: Array[String] = ["Low", "Medium", "High", "Ultra"]
+
+## Texture size limits per quality level
+const TEXTURE_SIZE_LIMITS: Array[int] = [512, 1024, 2048, 4096]
+
+## Shadow atlas resolution per quality level (0 = disabled)
+const SHADOW_ATLAS_SIZES: Array[int] = [0, 512, 2048, 4096]
+
+## Particle count multipliers per quality level
+const PARTICLE_MULTIPLIERS: Array[float] = [0.25, 0.5, 1.0, 1.0]
+
+## LOD bias per quality level (higher = more aggressive LOD switching)
+const LOD_BIASES: Array[float] = [2.0, 1.0, 0.5, 0.0]
+
+## Quality preset definitions
+## Each preset is a dictionary of graphics settings to apply
+const QUALITY_PRESETS: Dictionary = {
+	# LOW PRESET (Work Laptops, Integrated Graphics)
+	# Target: 30 FPS minimum
+	0: {
+		"texture_quality": 0,      # 512x512 textures
+		"model_quality": 0,        # LOD2 (30% polygons)
+		"shadow_quality": 0,       # Off
+		"particle_quality": 0,     # 25% particles
+		"terrain_height_variation": false,
+		"spell_effect_intensity": 0.5,
+		"antialiasing_mode": 0,    # Off
+		"ambient_occlusion": false,
+		"bloom": false,
+		"bloom_intensity": 0.0,
+		"vsync": true
+	},
+	# MEDIUM PRESET (Mid-Range Laptops, GTX 1050-1650)
+	# Target: 60 FPS
+	1: {
+		"texture_quality": 1,      # 1024x1024 textures
+		"model_quality": 1,        # LOD1 (60% polygons)
+		"shadow_quality": 1,       # Low (512x512)
+		"particle_quality": 1,     # 50% particles
+		"terrain_height_variation": false,
+		"spell_effect_intensity": 0.75,
+		"antialiasing_mode": 1,    # FXAA
+		"ambient_occlusion": false,
+		"bloom": true,
+		"bloom_intensity": 0.5,
+		"vsync": true
+	},
+	# HIGH PRESET (Gaming Laptops, RTX 2060-3060)
+	# Target: 60 FPS stable
+	2: {
+		"texture_quality": 2,      # 2048x2048 textures
+		"model_quality": 2,        # LOD0 (100% polygons)
+		"shadow_quality": 2,       # Medium (2048x2048, soft)
+		"particle_quality": 2,     # 100% particles
+		"terrain_height_variation": true,
+		"spell_effect_intensity": 1.0,
+		"antialiasing_mode": 2,    # TAA
+		"ambient_occlusion": true,
+		"bloom": true,
+		"bloom_intensity": 0.8,
+		"vsync": true
+	},
+	# ULTRA PRESET (Gaming Desktops, RTX 3070+)
+	# Target: 120+ FPS
+	3: {
+		"texture_quality": 3,      # 4096x4096 textures
+		"model_quality": 3,        # LOD0 (100% + best textures)
+		"shadow_quality": 3,       # High (4096x4096, PCF)
+		"particle_quality": 3,     # 100% + extra detail
+		"terrain_height_variation": true,
+		"spell_effect_intensity": 1.0,
+		"antialiasing_mode": 4,    # MSAA 4x
+		"ambient_occlusion": true,
+		"bloom": true,
+		"bloom_intensity": 1.0,
+		"vsync": false             # Allow unlocked FPS
+	}
+}
 
 # =============================================================================
 # CURRENT SETTINGS
@@ -325,3 +419,257 @@ func get_current_resolution() -> Vector2i:
 	if idx >= 0 and idx < RESOLUTIONS.size():
 		return RESOLUTIONS[idx]
 	return RESOLUTIONS[0]
+
+
+# =============================================================================
+# QUALITY SETTINGS SYSTEM
+# =============================================================================
+
+## Detect hardware capabilities and return recommended preset level
+## Returns: 0=Low, 1=Medium, 2=High, 3=Ultra
+func detect_hardware_preset() -> int:
+	# Get GPU information
+	var adapter_name = RenderingServer.get_video_adapter_name().to_lower()
+	
+	# Try to estimate VRAM (Godot 4 doesn't have direct VRAM access)
+	# We use heuristics based on GPU name
+	var estimated_vram_mb = _estimate_vram_from_gpu(adapter_name)
+	
+	print("Detected GPU: %s (estimated VRAM: %d MB)" % [adapter_name, estimated_vram_mb])
+	
+	# Determine preset based on estimated VRAM
+	if estimated_vram_mb < 2000:  # Less than 2GB VRAM
+		return 0  # Low preset
+	elif estimated_vram_mb < 4000:  # 2-4GB VRAM
+		return 1  # Medium preset
+	elif estimated_vram_mb < 8000:  # 4-8GB VRAM
+		return 2  # High preset
+	else:  # 8GB+ VRAM
+		return 3  # Ultra preset
+
+
+## Estimate VRAM based on GPU name patterns
+func _estimate_vram_from_gpu(gpu_name: String) -> int:
+	# Check for integrated graphics (typically low VRAM)
+	if "intel" in gpu_name and ("hd" in gpu_name or "uhd" in gpu_name or "iris" in gpu_name):
+		return 1024  # Integrated Intel
+	if "amd" in gpu_name and ("vega" in gpu_name or "radeon graphics" in gpu_name):
+		return 1024  # Integrated AMD
+	
+	# NVIDIA cards
+	if "rtx 4090" in gpu_name or "rtx 4080" in gpu_name:
+		return 16000
+	if "rtx 4070" in gpu_name or "rtx 3090" in gpu_name or "rtx 3080" in gpu_name:
+		return 12000
+	if "rtx 3070" in gpu_name or "rtx 4060" in gpu_name:
+		return 8000
+	if "rtx 3060" in gpu_name or "rtx 2080" in gpu_name:
+		return 8000
+	if "rtx 2070" in gpu_name or "rtx 2060" in gpu_name:
+		return 6000
+	if "gtx 1080" in gpu_name or "gtx 1070" in gpu_name:
+		return 8000
+	if "gtx 1660" in gpu_name or "gtx 1650" in gpu_name:
+		return 4000
+	if "gtx 1050" in gpu_name or "gtx 1060" in gpu_name:
+		return 4000
+	if "gtx 960" in gpu_name or "gtx 970" in gpu_name or "gtx 980" in gpu_name:
+		return 4000
+	
+	# AMD cards  
+	if "rx 7900" in gpu_name or "rx 6900" in gpu_name:
+		return 16000
+	if "rx 7800" in gpu_name or "rx 6800" in gpu_name:
+		return 16000
+	if "rx 7700" in gpu_name or "rx 6700" in gpu_name:
+		return 12000
+	if "rx 7600" in gpu_name or "rx 6600" in gpu_name:
+		return 8000
+	if "rx 580" in gpu_name or "rx 590" in gpu_name:
+		return 8000
+	if "rx 570" in gpu_name or "rx 560" in gpu_name:
+		return 4000
+	
+	# Default assumption for unknown GPUs
+	return 4000
+
+
+## Apply a quality preset by level (0=Low, 1=Medium, 2=High, 3=Ultra)
+func apply_quality_preset(level: int, auto_save: bool = true) -> void:
+	if level < 0 or level > 3:
+		push_warning("Invalid quality preset level: %d, using Medium" % level)
+		level = 1
+	
+	var preset = QUALITY_PRESETS[level]
+	
+	print("Applying %s quality preset..." % QUALITY_PRESET_NAMES[level])
+	
+	# Apply all settings from preset
+	for key in preset.keys():
+		var path = "graphics/" + key
+		set_setting(path, preset[key], false)  # Don't auto-save each one
+	
+	# Update the preset setting itself
+	settings["graphics"]["quality_preset"] = level
+	
+	# Apply all graphics settings
+	for key in settings["graphics"].keys():
+		_apply_graphics_setting(key, settings["graphics"][key])
+	
+	if auto_save:
+		save_settings()
+	
+	settings_changed.emit("graphics", "quality_preset", level)
+	print("Quality preset applied: %s" % QUALITY_PRESET_NAMES[level])
+
+
+## Set texture quality (0=Low/512, 1=Medium/1024, 2=High/2048, 3=Ultra/4096)
+func set_texture_quality(level: int) -> void:
+	level = clampi(level, 0, 3)
+	var size_limit = TEXTURE_SIZE_LIMITS[level]
+	
+	# Update rendering settings for texture quality
+	var viewport = get_viewport()
+	if viewport:
+		# Note: Texture size limiting is typically done at import time
+		# Runtime changes affect how textures are sampled
+		match level:
+			0:  # Low - use nearest filtering, reduce anisotropy
+				ProjectSettings.set_setting("rendering/textures/default_filters/anisotropic_filtering_level", 2)
+			1:  # Medium
+				ProjectSettings.set_setting("rendering/textures/default_filters/anisotropic_filtering_level", 4)
+			2:  # High
+				ProjectSettings.set_setting("rendering/textures/default_filters/anisotropic_filtering_level", 8)
+			3:  # Ultra
+				ProjectSettings.set_setting("rendering/textures/default_filters/anisotropic_filtering_level", 16)
+	
+	set_setting("graphics/texture_quality", level)
+	print("Texture quality set to: %s (%dx%d max)" % [QUALITY_PRESET_NAMES[level], size_limit, size_limit])
+
+
+## Set model quality (LOD bias) (0=Low/LOD2, 1=Medium/LOD1, 2=High/LOD0, 3=Ultra/LOD0+)
+func set_model_quality(level: int) -> void:
+	level = clampi(level, 0, 3)
+	var lod_bias = LOD_BIASES[level]
+	
+	# Apply LOD bias to all mesh instances in scene
+	var viewport = get_viewport()
+	if viewport:
+		viewport.mesh_lod_threshold = lod_bias * 2.0  # Scale for Godot's threshold system
+	
+	set_setting("graphics/model_quality", level)
+	print("Model quality set to: %s (LOD bias: %.1f)" % [QUALITY_PRESET_NAMES[level], lod_bias])
+
+
+## Set shadow quality (0=Off, 1=Low/512, 2=Medium/2048, 3=High/4096)
+func set_shadow_quality(level: int) -> void:
+	level = clampi(level, 0, 3)
+	var atlas_size = SHADOW_ATLAS_SIZES[level]
+	
+	# Set directional shadow atlas size
+	if atlas_size == 0:
+		RenderingServer.directional_shadow_atlas_set_size(256, false)
+	else:
+		RenderingServer.directional_shadow_atlas_set_size(atlas_size, level >= 2)
+	
+	# Configure shadow settings
+	match level:
+		0:  # Off
+			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_HARD)
+		1:  # Low
+			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+		2:  # Medium
+			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+		3:  # High
+			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
+	
+	set_setting("graphics/shadow_quality", level)
+	print("Shadow quality set to: %s (%dx%d atlas)" % [QUALITY_PRESET_NAMES[level] if level > 0 else "Off", atlas_size, atlas_size])
+
+
+## Set particle quality (0=Low/25%, 1=Medium/50%, 2=High/100%, 3=Ultra/100%+)
+func set_particle_quality(level: int) -> void:
+	level = clampi(level, 0, 3)
+	var multiplier = PARTICLE_MULTIPLIERS[level]
+	
+	# Store for use by particle systems
+	set_setting("graphics/particle_quality", level)
+	
+	# Particle systems should query this setting and adjust their amount property
+	print("Particle quality set to: %s (%.0f%% particles)" % [QUALITY_PRESET_NAMES[level], multiplier * 100])
+
+
+## Get current particle multiplier (for use by particle systems)
+func get_particle_multiplier() -> float:
+	var level = get_setting("graphics/particle_quality")
+	if level >= 0 and level < PARTICLE_MULTIPLIERS.size():
+		return PARTICLE_MULTIPLIERS[level]
+	return 1.0
+
+
+## Set anti-aliasing mode (0=Off, 1=FXAA, 2=TAA, 3=MSAA 2x, 4=MSAA 4x, 5=MSAA 8x)
+func set_antialiasing_mode(mode: int) -> void:
+	mode = clampi(mode, 0, 5)
+	var viewport = get_viewport()
+	
+	if viewport:
+		# Reset all AA first
+		viewport.msaa_3d = Viewport.MSAA_DISABLED
+		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+		viewport.use_taa = false
+		
+		match mode:
+			0:  # Off
+				pass
+			1:  # FXAA
+				viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+			2:  # TAA
+				viewport.use_taa = true
+			3:  # MSAA 2x
+				viewport.msaa_3d = Viewport.MSAA_2X
+			4:  # MSAA 4x
+				viewport.msaa_3d = Viewport.MSAA_4X
+			5:  # MSAA 8x
+				viewport.msaa_3d = Viewport.MSAA_8X
+	
+	set_setting("graphics/antialiasing_mode", mode)
+	var mode_names = ["Off", "FXAA", "TAA", "MSAA 2x", "MSAA 4x", "MSAA 8x"]
+	print("Anti-aliasing set to: %s" % mode_names[mode])
+
+
+## Set ambient occlusion enabled
+func set_ambient_occlusion(enabled: bool) -> void:
+	# This needs to be applied to the WorldEnvironment
+	# Stored in settings, applied when environment is loaded
+	set_setting("graphics/ambient_occlusion", enabled)
+	print("Ambient Occlusion: %s" % ("Enabled" if enabled else "Disabled"))
+
+
+## Set bloom enabled with optional intensity
+func set_bloom(enabled: bool, intensity: float = 0.8) -> void:
+	set_setting("graphics/bloom", enabled, false)
+	set_setting("graphics/bloom_intensity", intensity, true)
+	print("Bloom: %s (intensity: %.1f)" % ["Enabled" if enabled else "Disabled", intensity])
+
+
+## Auto-detect and apply appropriate quality preset on first run
+func auto_detect_and_apply_quality() -> void:
+	var current_preset = get_setting("graphics/quality_preset")
+	
+	if current_preset == -1:  # -1 means auto-detect
+		var detected_level = detect_hardware_preset()
+		print("Auto-detected hardware capability: %s preset recommended" % QUALITY_PRESET_NAMES[detected_level])
+		apply_quality_preset(detected_level)
+	else:
+		print("Using saved quality preset: %s" % QUALITY_PRESET_NAMES[current_preset])
+
+
+## Get quality preset names for UI display
+func get_quality_preset_names() -> Array[String]:
+	return QUALITY_PRESET_NAMES.duplicate()
+
+
+## Get current quality preset level
+func get_current_quality_preset() -> int:
+	return get_setting("graphics/quality_preset")
+

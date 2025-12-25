@@ -23,8 +23,8 @@ var team_color: Color = Color.WHITE
 
 # Team colors for visual distinction
 const TEAM_COLORS: Array[Color] = [
-	Color(0.2, 0.4, 0.9),   # Player 1: Blue
-	Color(0.9, 0.2, 0.2)    # Player 2: Red
+	Color(0.2, 0.4, 0.9), # Player 1: Blue
+	Color(0.9, 0.2, 0.2) # Player 2: Red
 ]
 
 # =============================================================================
@@ -296,7 +296,9 @@ func get_gold_per_turn() -> int:
 ## Collect gold from all mines (called at start of turn)
 func collect_mine_gold() -> int:
 	var collected = get_gold_per_turn()
-	add_gold(collected)
+	if collected > 0:
+		add_gold(collected)
+		print("Player %d collected %d gold from %d mines (Total gold: %d)" % [player_id + 1, collected, gold_mines.size(), gold])
 	return collected
 
 

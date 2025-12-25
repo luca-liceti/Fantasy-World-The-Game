@@ -1,5 +1,6 @@
 ## Game Manager
 ## Main game coordinator - manages all systems and game state
+## Enhanced with D&D × Pokémon hybrid combat system
 ## Designed with networking in mind - can sync state via RPCs
 class_name GameManager
 extends Node
@@ -17,6 +18,10 @@ signal npc_spawned(npc: NPC, hex: Node)
 signal troop_spawned(troop: Troop, hex: Node)
 signal mine_placed(mine: GoldMine, hex: Node)
 
+# Enhanced Combat Signals
+signal combat_selection_started(attacker: Node, defender: Node)
+signal combat_resolution_started(result: Dictionary)
+
 # =============================================================================
 # ENUMS
 # =============================================================================
@@ -26,6 +31,7 @@ enum GameState {
 	DECK_SELECTION, # Players choosing decks
 	INITIALIZING, # Setting up board and spawning troops
 	PLAYING, # Active gameplay
+	ENHANCED_COMBAT, # In enhanced combat selection/resolution
 	PAUSED, # Game paused
 	GAME_OVER # Game ended
 }
@@ -46,6 +52,11 @@ var player_manager: PlayerManager
 var turn_manager: TurnManager
 var combat_manager: CombatManager
 
+# Enhanced Combat UI references
+var combat_selection_ui: CombatSelectionUI
+var combat_resolution_ui: CombatResolutionUI
+var move_tooltip_ui: MoveTooltipUI
+
 # =============================================================================
 # GAME STATE
 # =============================================================================
@@ -60,10 +71,17 @@ var game_seed: int = 0
 ## All active NPCs
 var active_npcs: Array[NPC] = []
 
+## Current enhanced combat data
+var current_combat_attacker: Node = null
+var current_combat_defender: Node = null
+
 ## Game settings
 var settings: Dictionary = {
 	"turn_timer": GameConfig.DEFAULT_TURN_TIMER,
-	"player_names": ["Player 1", "Player 2"]
+	"player_names": ["Player 1", "Player 2"],
+	"use_enhanced_combat": true,  # Enhanced combat system with move/stance selection
+	"combat_mode": GameConfig.DEFAULT_COMBAT_MODE,  # SIMPLE or ENHANCED
+	"ai_difficulty": CombatBalanceConfig.AIDifficulty.NORMAL  # AI difficulty level
 }
 
 
@@ -101,6 +119,29 @@ func _connect_manager_signals() -> void:
 	# Turn manager signals
 	turn_manager.action_performed.connect(_on_action_performed)
 	turn_manager.phase_changed.connect(_on_turn_phase_changed)
+	turn_manager.status_effects_ticked.connect(_on_status_effects_ticked)
+	
+	# Combat manager signals (enhanced combat)
+	combat_manager.combat_resolved.connect(_on_enhanced_combat_resolved)
+	combat_manager.status_effect_applied.connect(_on_status_effect_applied)
+	combat_manager.counter_attack_triggered.connect(_on_counter_attack_triggered)
+
+
+## Handle status effects tick at turn start
+func _on_status_effects_ticked(player_id: int, damages: Dictionary) -> void:
+	# UI feedback for DoT damage
+	for troop_id in damages:
+		print("Player %d's %s took %d DoT damage" % [player_id + 1, troop_id, damages[troop_id]])
+
+
+## Handle status effect applied during combat
+func _on_status_effect_applied(target: Node, effect_id: String) -> void:
+	print("Status effect '%s' applied to %s" % [effect_id, target.display_name if target else "unknown"])
+
+
+## Handle counter attack triggered
+func _on_counter_attack_triggered(defender: Node, damage: int) -> void:
+	print("%s counter-attacked for %d damage!" % [defender.display_name if defender else "Defender", damage])
 
 
 # =============================================================================
@@ -140,6 +181,30 @@ func initialize_game(game_settings: Dictionary = {}) -> void:
 	
 	current_state = GameState.LOBBY
 	game_initialized.emit()
+
+
+## Set the combat mode (SIMPLE or ENHANCED)
+## This affects UI complexity, timer length, and defender auto-stance
+func set_combat_mode(mode: int) -> void:
+	settings["combat_mode"] = mode
+	print("Combat mode set to: %s" % ("SIMPLE" if mode == GameConfig.CombatMode.SIMPLE else "ENHANCED"))
+
+
+## Set the AI difficulty level
+func set_ai_difficulty(difficulty: int) -> void:
+	settings["ai_difficulty"] = difficulty
+	var diff_names = ["EASY", "NORMAL", "HARD"]
+	print("AI difficulty set to: %s" % diff_names[difficulty])
+
+
+## Get the current combat mode
+func get_combat_mode() -> int:
+	return settings.get("combat_mode", GameConfig.CombatMode.ENHANCED)
+
+
+## Get the current AI difficulty
+func get_ai_difficulty() -> int:
+	return settings.get("ai_difficulty", CombatBalanceConfig.AIDifficulty.NORMAL)
 
 
 ## Create and generate the hex board
@@ -262,7 +327,11 @@ func action_attack(attacker: Troop, defender: Node) -> Dictionary:
 	if current_state != GameState.PLAYING:
 		return {"success": false, "error": "Game not in playing state"}
 	
-	# Validate through turn manager
+	# Use enhanced combat if enabled
+	if settings.get("use_enhanced_combat", true):
+		return action_enhanced_attack(attacker, defender)
+	
+	# Legacy combat path
 	var turn_result = turn_manager.perform_attack(attacker, defender)
 	
 	if not turn_result["success"]:
@@ -272,35 +341,106 @@ func action_attack(attacker: Troop, defender: Node) -> Dictionary:
 	var combat_result = combat_manager.execute_combat(attacker, defender)
 	
 	# Handle kill rewards
-	if combat_result["defender_killed"]:
-		var defender_player_id = defender.owner_player_id if "owner_player_id" in defender else -1
-		
-		if defender_player_id >= 0:
-			# Player troop killed
-			var killer_player = player_manager.get_player(attacker.owner_player_id)
-			var victim_player = player_manager.get_player(defender_player_id)
-			
-			if killer_player and victim_player:
-				player_manager.process_kill(killer_player, victim_player, defender)
-				victim_player.remove_troop(defender)
-		else:
-			# NPC killed
-			if defender is NPC:
-				var loot = defender.get_loot()
-				var killer_player = player_manager.get_player(attacker.owner_player_id)
-				if killer_player:
-					killer_player.add_gold(loot["gold"])
-					killer_player.add_xp(loot["xp"])
-					if not loot["item"].is_empty():
-						killer_player.add_item(loot["item"])
-				
-				active_npcs.erase(defender)
-				defender.remove()
+	_process_combat_kill(combat_result, attacker, defender)
 	
 	# Combat resolution complete
 	turn_manager.on_combat_complete()
 	
 	return combat_result
+
+
+## Enhanced attack with move/stance selection
+func action_enhanced_attack(attacker: Troop, defender: Node) -> Dictionary:
+	if current_state != GameState.PLAYING:
+		return {"success": false, "error": "Game not in playing state"}
+	
+	# Store current combatants
+	current_combat_attacker = attacker
+	current_combat_defender = defender
+	
+	# Validate through turn manager
+	var turn_result = turn_manager.perform_enhanced_attack(attacker, defender)
+	
+	if not turn_result["success"]:
+		return turn_result
+	
+	# Change to enhanced combat state
+	current_state = GameState.ENHANCED_COMBAT
+	
+	# Emit signal for UI
+	combat_selection_started.emit(attacker, defender)
+	
+	# Start enhanced combat flow in combat manager
+	combat_manager.start_enhanced_combat(attacker, defender)
+	
+	return turn_result
+
+
+## Called when attacker selects a move (from UI)
+func on_move_selected(move: MoveData.Move) -> void:
+	if current_state != GameState.ENHANCED_COMBAT:
+		return
+	
+	combat_manager.set_attacker_move(move)
+
+
+## Called when defender selects a stance (from UI)
+func on_stance_selected(stance: int) -> void:
+	if current_state != GameState.ENHANCED_COMBAT:
+		return
+	
+	combat_manager.set_defender_stance(stance)
+
+
+## Called when enhanced combat is resolved
+func _on_enhanced_combat_resolved(result: Dictionary) -> void:
+	# Handle kill rewards
+	var attacker = result.get("attacker")
+	var defender = result.get("defender")
+	
+	if result.get("defender_killed", false):
+		_process_combat_kill(result, attacker, defender)
+	
+	# Show resolution UI
+	combat_resolution_started.emit(result)
+	
+	# Clear combat state
+	current_combat_attacker = null
+	current_combat_defender = null
+	
+	# Resume normal state
+	current_state = GameState.PLAYING
+	turn_manager.on_enhanced_combat_complete(result)
+
+
+## Process kill rewards (shared between legacy and enhanced combat)
+func _process_combat_kill(combat_result: Dictionary, attacker: Node, defender: Node) -> void:
+	if not combat_result.get("defender_killed", false):
+		return
+	
+	var defender_player_id = defender.owner_player_id if "owner_player_id" in defender else -1
+	
+	if defender_player_id >= 0:
+		# Player troop killed
+		var killer_player = player_manager.get_player(attacker.owner_player_id)
+		var victim_player = player_manager.get_player(defender_player_id)
+		
+		if killer_player and victim_player:
+			player_manager.process_kill(killer_player, victim_player, defender)
+			victim_player.remove_troop(defender)
+	else:
+		# NPC killed
+		if defender is NPC:
+			var loot = defender.get_loot()
+			var killer_player = player_manager.get_player(attacker.owner_player_id)
+			if killer_player:
+				killer_player.add_gold(loot["gold"])
+				killer_player.add_xp(loot["xp"])
+				if not loot["item"].is_empty():
+					killer_player.add_item(loot["item"])
+			
+			active_npcs.erase(defender)
+			defender.remove()
 
 
 ## Place a gold mine
@@ -336,6 +476,9 @@ func action_place_mine(troop: Troop, target_hex: HexTile) -> Dictionary:
 	add_child(mine)
 	mine.initialize(player.player_id, target_hex)
 	mine.set_team_color(player.team_color)
+	
+	# Connect destruction signal to remove from player's list
+	mine.mine_destroyed.connect(_on_mine_destroyed)
 	
 	# Add to player
 	player.add_gold_mine(mine)
@@ -478,6 +621,9 @@ func process_npc_actions() -> void:
 # =============================================================================
 
 func _on_player_turn_started(player: Player) -> void:
+	# NOTE: Gold collection is handled by PlayerManager._start_player_turn()
+	# Do NOT collect gold here - it would result in double collection!
+	
 	# Tick buffs for player's troops
 	for troop in player.troops:
 		troop.tick_buffs()
@@ -505,6 +651,14 @@ func _on_game_over(winner: Player) -> void:
 func _on_game_draw() -> void:
 	current_state = GameState.GAME_OVER
 	game_draw.emit()
+
+
+## Handle mine destruction - remove from player's list to prevent crash
+func _on_mine_destroyed(mine: GoldMine) -> void:
+	var player = player_manager.get_player(mine.owner_player_id)
+	if player:
+		player.remove_gold_mine(mine)
+		print("Mine destroyed and removed from Player %d's list" % [player.player_id + 1])
 
 
 # =============================================================================
