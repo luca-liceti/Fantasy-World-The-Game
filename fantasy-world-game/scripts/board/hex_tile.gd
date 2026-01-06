@@ -37,6 +37,7 @@ var collision_shape: CollisionShape3D
 var border_mesh: MeshInstance3D  # Border outline
 var selection_mesh: MeshInstance3D  # Full tile overlay for selection
 var area: Area3D
+var particle_emitter: BiomeParticleEmitter  # Ambient particle effects
 
 # Materials
 var base_material: StandardMaterial3D
@@ -88,6 +89,9 @@ func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
 	
 	# Update visual for biome
 	_update_visual()
+	
+	# Setup ambient particles for atmospheric biomes
+	_setup_particles()
 
 
 # =============================================================================
@@ -251,13 +255,39 @@ func _create_collision() -> void:
 
 
 # =============================================================================
+# PARTICLES
+# =============================================================================
+
+## Setup ambient particle effects for this biome
+func _setup_particles() -> void:
+	# Only create particles for atmospheric biomes (to avoid 397 particle systems)
+	# Focus on visually impactful biomes
+	var atmospheric_biomes := [
+		Biomes.Type.ASHLANDS,
+		Biomes.Type.PEAKS,
+		Biomes.Type.FOREST,
+		Biomes.Type.SWAMP
+	]
+	
+	if biome_type in atmospheric_biomes:
+		# Clean up existing emitter if present
+		if particle_emitter:
+			particle_emitter.queue_free()
+		
+		# Create new particle emitter
+		particle_emitter = BiomeParticleEmitter.create_for_biome(biome_type)
+		particle_emitter.position = Vector3(0, 0.1, 0)  # Slightly above tile
+		add_child(particle_emitter)
+		particle_emitter.enable_particles()
+
+
+# =============================================================================
 # MATERIALS
 # =============================================================================
 
 func _setup_materials() -> void:
-	# Base material (will be colored by biome)
-	base_material = StandardMaterial3D.new()
-	base_material.albedo_color = Biomes.get_biome_color(biome_type)
+	# Base material from BiomeMaterialManager (enhanced PBR materials)
+	base_material = BiomeMaterialManager.get_material_copy(biome_type)
 	mesh_instance.material_override = base_material
 	
 	# Selection material (golden yellow, semi-transparent)
@@ -298,8 +328,11 @@ func _setup_materials() -> void:
 
 
 func _update_visual() -> void:
-	if base_material:
-		base_material.albedo_color = Biomes.get_biome_color(biome_type)
+	# Update base material from BiomeMaterialManager if biome changed
+	if base_material and mesh_instance:
+		var new_material = BiomeMaterialManager.get_material_copy(biome_type)
+		base_material = new_material
+		mesh_instance.material_override = base_material
 	
 	# Reset meshes
 	selection_mesh.visible = false

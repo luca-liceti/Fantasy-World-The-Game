@@ -4,10 +4,11 @@
 [ext_resource type="PackedScene" uid="uid://c1xk5l8nvt2qr" path="res://scenes/board/hex_board.tscn" id="2_hex_board"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
-sky_top_color = Color(0.2, 0.3, 0.5, 1)
-sky_horizon_color = Color(0.4, 0.5, 0.6, 1)
-ground_bottom_color = Color(0.1, 0.1, 0.1, 1)
-ground_horizon_color = Color(0.3, 0.3, 0.3, 1)
+sky_top_color = Color(0.35, 0.5, 0.75, 1)
+sky_horizon_color = Color(0.65, 0.7, 0.8, 1)
+ground_bottom_color = Color(0.15, 0.12, 0.1, 1)
+ground_horizon_color = Color(0.35, 0.3, 0.28, 1)
+sun_angle_max = 45.0
 
 [sub_resource type="Sky" id="Sky_main"]
 sky_material = SubResource("ProceduralSkyMaterial_sky")
@@ -16,8 +17,21 @@ sky_material = SubResource("ProceduralSkyMaterial_sky")
 background_mode = 2
 sky = SubResource("Sky_main")
 ambient_light_source = 2
-ambient_light_color = Color(0.4, 0.4, 0.5, 1)
+ambient_light_color = Color(0.5, 0.52, 0.55, 1)
 ambient_light_energy = 0.5
+tonemap_mode = 3
+tonemap_exposure = 1.05
+tonemap_white = 1.2
+ssao_enabled = true
+ssao_radius = 1.0
+ssao_intensity = 2.0
+ssao_power = 1.5
+ssao_detail = 0.5
+glow_enabled = true
+glow_intensity = 0.8
+glow_strength = 1.0
+glow_bloom = 0.1
+glow_blend_mode = 0
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -28,9 +42,15 @@ environment = SubResource("Environment_main")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 10, 15, 10)
 light_color = Color(1, 0.95, 0.9, 1)
-light_energy = 1.2
+light_energy = 1.1
 shadow_enabled = true
+shadow_bias = 0.05
+shadow_normal_bias = 2.0
+shadow_blur = 1.0
+directional_shadow_mode = 2
+directional_shadow_max_distance = 100.0
 
 [node name="HexBoard" parent="." instance=ExtResource("2_hex_board")]
 
 [node name="GameUI" type="CanvasLayer" parent="."]
+

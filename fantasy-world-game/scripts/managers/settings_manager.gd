@@ -672,4 +672,3 @@ func get_quality_preset_names() -> Array[String]:
 ## Get current quality preset level
 func get_current_quality_preset() -> int:
 	return get_setting("graphics/quality_preset")
-

@@ -579,12 +579,6 @@ func _update_camera_transform() -> void:
 	
 	var new_camera_pos = focus_point + offset
 	
-	# Prevent camera from going below the board level
-	# Board is at Y=0, so keep camera at least 0.5 units above it
-	const MIN_CAMERA_HEIGHT = 0.5
-	if new_camera_pos.y < MIN_CAMERA_HEIGHT:
-		new_camera_pos.y = MIN_CAMERA_HEIGHT
-	
 	camera.global_position = new_camera_pos
 	camera.look_at(focus_point, Vector3.UP)
 
@@ -624,6 +618,11 @@ func _pan_camera(direction: Vector3, delta: float) -> void:
 	# Apply speed modifier if Shift is held
 	var speed = PAN_SPEED_SHIFT if Input.is_key_pressed(KEY_SHIFT) else PAN_SPEED
 	focus_point += movement * speed * delta
+	
+	# Prevent focus point from going below the board level
+	# Board is at Y=0, so keep focus point at least 0.5 units above it
+	const MIN_FOCUS_HEIGHT = 0.5
+	focus_point.y = max(focus_point.y, MIN_FOCUS_HEIGHT)
 	
 	_update_camera_transform()
 
@@ -716,6 +715,11 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		
 		focus_point -= right * event.relative.x * pan_sensitivity
 		focus_point += up * event.relative.y * pan_sensitivity
+		
+		# Prevent focus point from going below the board level
+		const MIN_FOCUS_HEIGHT = 0.5
+		focus_point.y = max(focus_point.y, MIN_FOCUS_HEIGHT)
+		
 		_update_camera_transform()
 
 

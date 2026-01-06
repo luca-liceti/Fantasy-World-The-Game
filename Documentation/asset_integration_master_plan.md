@@ -118,56 +118,96 @@ Create 3 hex variants with subtle displacement:
 Toggle in Settings → Graphics → "Terrain Height Variation"
 
 
-### Biome Textures (Poly Haven)
+### Biome Textures (Poly Haven + AmbientCG)
 
-> All textures: 4K resolution, PBR workflow (Albedo, Normal, Roughness, AO)
-#### 1. Enchanted Forest
+> ✅ **DOWNLOAD STATUS:** All biome textures downloaded (Dec 2024)
+> All textures: 4K resolution, PNG format, PBR workflow (Diffuse, Normal, Roughness, AO, Displacement)
+> Local path: `res://assets/textures/biomes/`
 
-- **Primary:** https://polyhaven.com/a/forest_leaves_02
-- **Secondary:** https://polyhaven.com/a/mossy_ground
-- **Props:** https://polyhaven.com/a/tree_bark_05
+#### 1. Enchanted Forest ✅
+
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `forest_leaves_02` | Poly Haven | `enchanted_forest_primary_*` |
+| Secondary | `brown_mud_leaves_01` | Poly Haven | `enchanted_forest_secondary_*` |
+| Prop 1 | `bark_brown_01` | Poly Haven | `enchanted_forest_prop1_*` |
+| Prop 2 | `bark_willow` | Poly Haven | `enchanted_forest_prop2_*` |
+| Prop 3 | `coast_sand_rocks_02` | Poly Haven | `enchanted_forest_prop3_*` |
+
 - **Color Grading:** Deep greens (#2D5016), brown earth (#3E2A1C)
 
-#### 2. Frozen Peaks
+#### 2. Frozen Peaks ✅
 
-- **Primary:** https://polyhaven.com/a/snow_02
-- **Secondary:** https://polyhaven.com/a/rock_face_01
-- **Props:** https://polyhaven.com/a/ice_02
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `snow_02` | Poly Haven | `frozen_peaks_primary_*` |
+| Secondary | `aerial_rocks_02` | Poly Haven | `frozen_peaks_secondary_*` |
+| Prop 1 | `cliff_side` | Poly Haven | `frozen_peaks_prop1_*` |
+| Prop 3 | `asphalt_snow` | Poly Haven | `frozen_peaks_prop3_*` |
+
 - **Color Grading:** Blue-white (#D4E4F7), gray stone (#6B7A8F)
+- ⚠️ **Note:** `snow_field` is an HDRI, not a texture - excluded from download.
 
-#### 3. Desolate Wastes
+#### 3. Desolate Wastes ✅
 
-- **Primary:** https://polyhaven.com/a/desert_sand_02
-- **Secondary:** https://polyhaven.com/a/cracked_ground
-- **Props:** https://polyhaven.com/a/rock_06
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `aerial_beach_01` | Poly Haven | `desolate_wastes_primary_*` |
+| Secondary | `dry_ground_01` | Poly Haven | `desolate_wastes_secondary_*` |
+| Prop 1 | `dry_ground_rocks` | Poly Haven | `desolate_wastes_prop1_*` |
+| Prop 2 | `cracked_red_ground` | Poly Haven | `desolate_wastes_prop2_*` |
+| Prop 3 | `coast_sand_05` | Poly Haven | `desolate_wastes_prop3_*` |
+
 - **Color Grading:** Tan (#C9A66B), dry brown (#8B6F47)
 
-#### 4. Golden Plains
+#### 4. Golden Plains ✅
 
-- **Primary:** https://polyhaven.com/a/grass_field_001
-- **Secondary:** https://polyhaven.com/a/dry_grass
-- **Props:** https://polyhaven.com/a/field_grass
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `grass_path_2` | Poly Haven | `golden_plains_primary_*` |
+| Secondary | `rocky_terrain_02` | Poly Haven | `golden_plains_secondary_*` |
+| Alt Primary | `Grass004` | AmbientCG | `golden_plains_alt_primary_*` |
+| Prop 1 | `forrest_ground_01` | Poly Haven | `golden_plains_prop1_*` |
+| Prop 2 | `Ground037` | AmbientCG | `golden_plains_prop2_*` |
+
 - **Color Grading:** Golden yellow (#D4AF37), green (#6B8E23)
+- ℹ️ **Note:** Original assets `grass_meadow`, `grass_path_1`, `ground_grass_gen_01` do not exist on Poly Haven. Replaced with equivalent alternatives that match the Manor Lords aesthetic.
 
-#### 5. Ashlands
+#### 5. Ashlands ✅
 
-- **Primary:** https://polyhaven.com/a/volcanic_rock
-- **Secondary:** https://polyhaven.com/a/lava_rock_02
-- **Props:** https://polyhaven.com/a/charred_ground
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `burned_ground_01` | Poly Haven | `ashlands_primary_*` |
+| Secondary | `aerial_rocks_04` | Poly Haven | `ashlands_secondary_*` |
+| Prop 1 | `cracked_concrete` | Poly Haven | `ashlands_prop1_*` |
+| Prop 2 | `bitumen` | Poly Haven | `ashlands_prop2_*` |
+| Prop 3 | `rock_boulder_dry` | Poly Haven | `ashlands_prop3_*` |
+
 - **Color Grading:** Charcoal (#2B2B2B), ember red (#8B2323)
 
-#### 6. Highlands (Rolling Hills)
+#### 6. Highlands (Rolling Hills) ✅
 
-- **Primary:** https://polyhaven.com/a/hill_grass
-- **Secondary:** https://polyhaven.com/a/moss_001
-- **Props:** https://polyhaven.com/a/rock_02
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `grass_meadow` | *(Uses Golden Plains)* | `highlands_primary_*` |
+| Secondary | `coast_sand_rocks_02` | *(Uses Enchanted Forest)* | `highlands_secondary_*` |
+| Prop 1 | `aerial_grass_rock` | Poly Haven | `highlands_prop1_*` |
+| Prop 2 | `aerial_rocks_01` | Poly Haven | `highlands_prop2_*` |
+| Prop 3 | `brown_mud_rocks_01` | Poly Haven | `highlands_prop3_*` |
+
 - **Color Grading:** Sage green (#7A9D7E), brown (#654321)
+- ℹ️ **Note:** Highlands shares some textures with other biomes (Golden Plains primary, Enchanted Forest prop3).
 
-#### 7. Swamplands
+#### 7. Swamplands ✅
 
-- **Primary:** https://polyhaven.com/a/mud_cracked_dry_03
-- **Secondary:** https://polyhaven.com/a/swamp_moss
-- **Props:** https://polyhaven.com/a/water_caustics
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `brown_mud_02` | Poly Haven | `swamplands_primary_*` |
+| Secondary | `brown_mud_03` | Poly Haven | `swamplands_secondary_*` |
+| Prop 1 | `concrete_moss` | Poly Haven | `swamplands_prop1_*` |
+| Prop 2 | `aerial_mud_1` | Poly Haven | `swamplands_prop2_*` |
+| Prop 3 | `cobblestone_floor_04` | Poly Haven | `swamplands_prop3_*` |
+
 - **Color Grading:** Murky green (#4A5D23), brown mud (#5C4033)
 
 ### Godot Import Settings (All Textures)
@@ -185,30 +225,45 @@ sRGB: Enabled for Albedo, Disabled for Normal/Roughness/AO
 ### Material Setup (StandardMaterial3D)
 
 ```gdscript
-# Example: Enchanted Forest material
+# Example: Enchanted Forest material (using actual downloaded file names)
 var forest_material = StandardMaterial3D.new()
-forest_material.albedo_texture = load("res://assets/textures/biomes/forest_leaves_02_albedo.png")
-forest_material.normal_texture = load("res://assets/textures/biomes/forest_leaves_02_normal.png")
-forest_material.roughness_texture = load("res://assets/textures/biomes/forest_leaves_02_roughness.png")
-forest_material.ao_texture = load("res://assets/textures/biomes/forest_leaves_02_ao.png")
+forest_material.albedo_texture = load("res://assets/textures/biomes/enchanted_forest_primary_diffuse.png")
+forest_material.normal_texture = load("res://assets/textures/biomes/enchanted_forest_primary_normal.png")
+forest_material.roughness_texture = load("res://assets/textures/biomes/enchanted_forest_primary_roughness.png")
+forest_material.ao_texture = load("res://assets/textures/biomes/enchanted_forest_primary_ao.png")
 forest_material.metallic = 0.0
 forest_material.roughness = 0.8
 ```
 
 ---
 
-### **Board Frame & Table**
+### **Board Frame & Table** ✅
+
+> ✅ **DOWNLOAD STATUS:** All board textures downloaded (Dec 2024)
+> Local path: `res://assets/textures/board/`
 
 **Wooden Table Surface:**
-- **Texture:** https://polyhaven.com/a/wood_table_001
-- **Alternative:** https://polyhaven.com/a/dark_wood_planks
+
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Primary | `dark_wood` | Poly Haven | `table_wood_*` |
+| Alt 1 | `brown_planks_03` | Poly Haven | `table_wood_alt1_*` |
+| Alt 2 | `dark_wooden_planks` | Poly Haven | `table_wood_alt2_*` |
+
 - **Material:** Dark oak/mahogany appearance
 - Dimensions: Large enough to fit 397 hex board + card zones
-- Model: Create in Blender or use https://polyhaven.com/a/wooden_table_02
+- Model: Create in Blender (no suitable Poly Haven 3D table model available)
 
 **Board Frame (Stone/Iron):**
-- **Stone Texture:** https://polyhaven.com/a/castle_brick_07
-- **Metal Accents:** https://polyhaven.com/a/rusty_metal_02
+
+| Role | Asset Name | Source | Local File Prefix |
+|------|------------|--------|-------------------|
+| Stone | `castle_brick_01` | Poly Haven | `frame_stone_*` |
+| Alt Stone 1 | `castle_wall_slates` | Poly Haven | `frame_stone_alt1_*` |
+| Alt Stone 2 | `defense_wall` | Poly Haven | `frame_stone_alt2_*` |
+| Metal | `corrugated_iron` | Poly Haven | `frame_metal_*` |
+| Alt Metal | `blue_metal_plate` | Poly Haven | `frame_metal_alt_*` |
+
 - Frame around hex grid perimeter
 - Medieval fortress aesthetic
 
@@ -767,8 +822,8 @@ Manor Lords aesthetic, gray-green moss tones, epic fantasy portrait,
 - Team-colored accent border (blue or red trim)
 
 **Option B: Poly Haven Composite Frame**
-- Use stone texture: https://polyhaven.com/a/castle_brick_07
-- Use metal trim: https://polyhaven.com/a/rusty_metal_02
+- Use stone texture: https://polyhaven.com/a/castle_brick_01
+- Use metal trim: https://polyhaven.com/a/corrugated_iron
 - Composite in image editor
 - Add text overlays for stats
 
@@ -853,9 +908,9 @@ Platform: Meshy.ai
 Polygon Target: 3,000-5,000 tris (simple building)
 Alternative: Poly Haven Assets
 
-Base structure: https://polyhaven.com/a/wooden_shed_01
-Stone foundation: https://polyhaven.com/a/stone_wall_02
-Props: https://polyhaven.com/a/mining_cart (if available, else use AI generation)
+Base structure: Use AI generation (no suitable Poly Haven model)
+Stone foundation: https://polyhaven.com/a/castle_wall_slates
+Props: Use AI generation for mining cart/pickaxes
 
 **Mine Level Visual Progression:**
 - **Level 1:** Basic wooden shack, crude entrance
@@ -955,12 +1010,12 @@ func detect_top_face() -> int:
 ### **UI Background Textures**
 
 **Main UI Panel:**
-- **Stone Base:** https://polyhaven.com/a/castle_brick_07
-- **Wood Trim:** https://polyhaven.com/a/wood_planks_03
-- **Metal Accents:** https://polyhaven.com/a/rusty_metal_02
+- **Stone Base:** https://polyhaven.com/a/castle_brick_01
+- **Wood Trim:** https://polyhaven.com/a/brown_planks_03
+- **Metal Accents:** https://polyhaven.com/a/corrugated_iron
 
 **Button Textures:**
-- **Normal State:** https://polyhaven.com/a/wood_table_001 (lighter wood)
+- **Normal State:** https://polyhaven.com/a/dark_wood (lighter wood)
 - **Hover State:** Same texture with brightness +10%
 - **Pressed State:** Same texture with brightness -10%
 - **Disabled State:** Grayscale version with 50% opacity
@@ -1427,26 +1482,60 @@ assets/
 │   │   └── gold_mine_lv5.glb
 │   └── props/
 │       └── dice_d20.glb
-├── textures/
-│   ├── biomes/
-│   │   ├── forest_leaves_02_[albedo/normal/roughness/ao].png
-│   │   ├── snow_02_[albedo/normal/roughness/ao].png
-│   │   ├── desert_sand_02_[albedo/normal/roughness/ao].png
-│   │   ├── grass_field_001_[albedo/normal/roughness/ao].png
-│   │   ├── volcanic_rock_[albedo/normal/roughness/ao].png
-│   │   ├── hill_grass_[albedo/normal/roughness/ao].png
-│   │   └── mud_cracked_dry_03_[albedo/normal/roughness/ao].png
-│   ├── board/
-│   │   ├── wood_table_001_[albedo/normal/roughness/ao].png
-│   │   ├── castle_brick_07_[albedo/normal/roughness/ao].png
-│   │   └── rusty_metal_02_[albedo/normal/roughness/ao].png
-│   ├── ui/
-│   │   ├── button_normal.png
-│   │   ├── button_hover.png
-│   │   ├── button_pressed.png
-│   │   ├── button_disabled.png
-│   │   ├── panel_stone.png
-│   │   ├── panel_wood.png
+├── textures/                    # ✅ DOWNLOADED (Dec 2024) - ~8.6 GB total
+│   ├── biomes/                  # ✅ 150+ files, ~6.1 GB
+│   │   ├── # Enchanted Forest (5 texture sets)
+│   │   ├── enchanted_forest_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── enchanted_forest_secondary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── enchanted_forest_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── enchanted_forest_prop2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── enchanted_forest_prop3_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── # Frozen Peaks (4 texture sets)
+│   │   ├── frozen_peaks_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frozen_peaks_secondary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frozen_peaks_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frozen_peaks_prop3_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── # Desolate Wastes (5 texture sets)
+│   │   ├── desolate_wastes_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── desolate_wastes_secondary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── desolate_wastes_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── desolate_wastes_prop2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── desolate_wastes_prop3_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── # Golden Plains (5 texture sets - Poly Haven + AmbientCG)
+│   │   ├── golden_plains_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── golden_plains_secondary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── golden_plains_alt_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── golden_plains_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── golden_plains_prop2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── # Ashlands (5 texture sets)
+│   │   ├── ashlands_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── ashlands_secondary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── ashlands_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── ashlands_prop2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── ashlands_prop3_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── # Highlands (5 texture sets)
+│   │   ├── highlands_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── highlands_prop2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── highlands_prop3_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── # Swamplands (5 texture sets)
+│   │   ├── swamplands_primary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── swamplands_secondary_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── swamplands_prop1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── swamplands_prop2_[diffuse/normal/roughness/ao/displacement].png
+│   │   └── swamplands_prop3_[diffuse/normal/roughness/ao/displacement].png
+│   ├── board/                   # ✅ 40 files, ~1.7 GB
+│   │   ├── table_wood_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── table_wood_alt1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── table_wood_alt2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frame_stone_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frame_stone_alt1_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frame_stone_alt2_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── frame_metal_[diffuse/normal/roughness/ao/displacement].png
+│   │   └── frame_metal_alt_[diffuse/normal/roughness/ao/displacement].png
+│   ├── ui/                      # ✅ 15 files, ~760 MB
+│   │   ├── ui_wood_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── ui_stone_[diffuse/normal/roughness/ao/displacement].png
+│   │   ├── ui_metal_[diffuse/normal/roughness/ao/displacement].png
 │   │   └── icons/
 │   │       ├── move_icon.svg
 │   │       ├── attack_icon.svg
@@ -1454,7 +1543,7 @@ assets/
 │   │       ├── upgrade_icon.svg
 │   │       ├── item_icon.svg
 │   │       └── end_turn_icon.svg
-│   └── cards/
+│   └── cards/                   # ⏳ PENDING (AI-generated)
 │       ├── knight_card.png
 │       ├── stone_giant_card.png
 │       ├── hydra_card.png
@@ -2626,22 +2715,23 @@ This section provides a comprehensive, actionable implementation plan with numbe
 | Team color shader | ✅ Complete | `assets/shaders/team_color_shader.gdshader` |
 | Quality settings system | ✅ Complete | Added to `settings_manager.gd` with all functions |
 | Troop name verification | ✅ Complete | All names match between code and plan |
-| 3D vs 2D design decision | ✅ Complete | Keep 2D dice/cards, use 3D for troops/board |
+| 3D vs 2D design decision | ✅ Complete | Use 3D dice with physics rolling, 2D cards, 3D troops/board |
+| **Texture Downloads** | ✅ Complete | Dec 28-29, 2024 - All biome, board, UI textures (~8.6 GB) |
 
 ## Phase 1: NOW - Core Assets
 
 | Section | Tasks | Completed |
 |---------|-------|-----------|
-| 1. Asset Acquisition | 60 tasks | 1/60 |
+| 1. Asset Acquisition | 60 tasks | 35/60 ✅ (All textures downloaded) |
 | 2. Godot Import | 24 tasks | 0/24 |
 | 3. Materials & Shaders | 22 tasks | 1/22 |
 | 4. Board & Environment | 18 tasks | 0/18 |
 | 5. UI System | 23 tasks | 0/23 |
 | 6. Particle Effects | 16 tasks | 0/16 |
 | 7. Quality Settings | 18 tasks | 18/18 ✅ |
-| 8. Dice System | 14 tasks | SKIPPED (Keep 2D) |
+| 8. Dice System | 14 tasks | 0/14 |
 | 9. Testing & Polish | 20 tasks | 0/20 |
-| **Phase 1 Total** | **201 tasks** | **20/201** |
+| **Phase 1 Total** | **215 tasks** | **20/215** |
 
 ## Phase 2: LATER - Polish
 
@@ -2658,48 +2748,61 @@ This section provides a comprehensive, actionable implementation plan with numbe
 
 ---
 
-**Grand Total: 314 tasks** (reduced from 328 - 3D dice marked as optional)
+**Grand Total: 328 tasks**
 
 ---
 
-# 🎯 **Quick Reference: Asset URLs**
+# 🎯 **Quick Reference: Downloaded Assets**
 
-## Poly Haven - Biomes
+> ✅ **All terrain textures downloaded on December 28-29, 2024**
+> Total: ~220 texture files (~8.6 GB)
+> Format: 4K PNG with 5 PBR maps (Diffuse, Normal, Roughness, AO, Displacement)
 
-1. **Enchanted Forest:** 
-   - https://polyhaven.com/a/forest_leaves_02
-   - https://polyhaven.com/a/mossy_ground
-   
-2. **Frozen Peaks:**
-   - https://polyhaven.com/a/snow_02
-   - https://polyhaven.com/a/rock_face_01
-   
-3. **Desolate Wastes:**
-   - https://polyhaven.com/a/desert_sand_02
-   - https://polyhaven.com/a/cracked_ground
-   
-4. **Golden Plains:**
-   - https://polyhaven.com/a/grass_field_001
-   - https://polyhaven.com/a/dry_grass
-   
-5. **Ashlands:**
-   - https://polyhaven.com/a/volcanic_rock
-   - https://polyhaven.com/a/lava_rock_02
-   
-6. **Highlands:**
-   - https://polyhaven.com/a/hill_grass
-   - https://polyhaven.com/a/moss_001
-   
-7. **Swamplands:**
-   - https://polyhaven.com/a/mud_cracked_dry_03
-   - https://polyhaven.com/a/swamp_moss
+## Biome Textures ✅ COMPLETE
 
-## Poly Haven - Board & UI
+| Biome | Primary Source | Secondary Source | Props Source |
+|-------|----------------|------------------|--------------|
+| Enchanted Forest | `forest_leaves_02` | `brown_mud_leaves_01` | `bark_brown_01`, `bark_willow`, `coast_sand_rocks_02` |
+| Frozen Peaks | `snow_02` | `aerial_rocks_02` | `cliff_side`, `asphalt_snow` |
+| Desolate Wastes | `aerial_beach_01` | `dry_ground_01` | `dry_ground_rocks`, `cracked_red_ground`, `coast_sand_05` |
+| Golden Plains | `grass_path_2` | `rocky_terrain_02` | `forrest_ground_01`, `Grass004` (ACG), `Ground037` (ACG) |
+| Ashlands | `burned_ground_01` | `aerial_rocks_04` | `cracked_concrete`, `bitumen`, `rock_boulder_dry` |
+| Highlands | *(shares GP)* | *(shares EF)* | `aerial_grass_rock`, `aerial_rocks_01`, `brown_mud_rocks_01` |
+| Swamplands | `brown_mud_02` | `brown_mud_03` | `concrete_moss`, `aerial_mud_1`, `cobblestone_floor_04` |
 
-- **Wooden Table:** https://polyhaven.com/a/wood_table_001
-- **Stone Texture:** https://polyhaven.com/a/castle_brick_07
-- **Metal Texture:** https://polyhaven.com/a/rusty_metal_02
-- **HDRI:** https://polyhaven.com/a/evening_road_01
+## Board & UI Textures ✅ COMPLETE
+
+| Purpose | Asset Name | Source | Local Prefix |
+|---------|------------|--------|--------------|
+| Table Wood | `dark_wood` | Poly Haven | `table_wood_*` |
+| Table Wood Alt | `brown_planks_03`, `dark_wooden_planks` | Poly Haven | `table_wood_alt1_*`, `table_wood_alt2_*` |
+| Frame Stone | `castle_brick_01` | Poly Haven | `frame_stone_*` |
+| Frame Stone Alt | `castle_wall_slates`, `defense_wall` | Poly Haven | `frame_stone_alt1_*`, `frame_stone_alt2_*` |
+| Frame Metal | `corrugated_iron` | Poly Haven | `frame_metal_*` |
+| Frame Metal Alt | `blue_metal_plate` | Poly Haven | `frame_metal_alt_*` |
+| UI Wood | `dark_wood` | Poly Haven | `ui_wood_*` |
+| UI Stone | `castle_brick_01` | Poly Haven | `ui_stone_*` |
+| UI Metal | `corrugated_iron` | Poly Haven | `ui_metal_*` |
+
+## HDRI Environment ✅ COMPLETE
+
+- **File:** `evening_road_01_4k.exr`
+- **Source:** Poly Haven
+- **Location:** `res://assets/hdri/`
+
+## Asset Sources
+
+| Source | License | Textures Downloaded |
+|--------|---------|---------------------|
+| [Poly Haven](https://polyhaven.com) | CC0 | ~200 files |
+| [AmbientCG](https://ambientcg.com) | CC0 | ~20 files (Golden Plains) |
+
+## Still Needed (Optional Enhancements)
+
+For specialized effects, consider sourcing from AmbientCG or Quixel Megascans:
+- ❄️ Ice textures (Frozen Peaks - currently using snow alternatives)
+- 🌋 Volcanic/lava rock (Ashlands - use shader effects for glow)
+- 🌊 Water caustics (Swamplands - use shader-based effects)
 
 ---
 
@@ -2714,12 +2817,17 @@ This plan provides **complete, actionable steps** for integrating high-quality a
 - ✅ Hardware-adaptive performance
 - ✅ Detailed Godot import instructions
 - ✅ Specific AI generation prompts
-- ✅ Exact Poly Haven asset links
+- ✅ **All terrain textures downloaded and ready**
+
+**Completed:**
+- ✅ Poly Haven texture downloads (all biomes, board, UI)
+- ✅ AmbientCG grass textures for Golden Plains
+- ✅ HDRI environment lighting
 
 **Next Steps:**
-1. Start with Poly Haven texture downloads
+1. ~~Download Poly Haven textures~~ ✅ COMPLETE
 2. Generate troop models via AI platforms
 3. Generate card art illustrations
 4. Import assets to Godot following specifications
-5. Implement quality settings system
+5. Create materials using downloaded textures
 6. Test on target hardware
