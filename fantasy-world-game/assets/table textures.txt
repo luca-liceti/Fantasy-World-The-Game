@@ -1,0 +1,21 @@
+Table Textures (can be switched between all in settings)
+
+https://polyhaven.com/a/wood_shutter
+https://polyhaven.com/a/wood_planks
+https://polyhaven.com/a/dark_wooden_planks
+https://polyhaven.com/a/wood_cabinet_worn_long
+https://polyhaven.com/a/weathered_planks
+
+Entire Board Material
+
+https://polyhaven.com/a/old_stone_wall
+
+Swamplands, Forest, Ashlands new textures
+
+https://ambientcg.com/view?id=Ground025
+https://ambientcg.com/view?id=Ground037
+https://polyhaven.com/a/burned_ground_01
+
+Description of Lighting Wanted
+
+Project Brief: "Manor Lords" Aesthetic LightingObjective: To achieve a photorealistic, grounded, medieval European look. The goal is "Atmospheric Naturalism"—avoiding high-fantasy saturation in favor of a muted, overcast, and "damp" atmosphere.1. Global Lighting Profile (The "Overcast" Look)Primary Source: Large, diffuse light (High Overcast).Shadows: Soft-box effect. Shadows should have soft penumbras (blurred edges) and should never be pitch black.Color Temp: Neutral to Cool ($5500K - 6500K$). Avoid the "Golden Hour" orange tint; aim for a "Slate Grey" or "Damp Morning" sky.Atmosphere: Implement a slight blue-grey distance fog (Atmospheric Perspective). This is crucial for scale.2. Biome-Specific RequirementsForest Floor: * Light Behavior: Absorptive. Use high Roughness values (0.7+) to simulate organic decay and moss.Micro-Detail: Heavy Ambient Occlusion (AO) in the crevices of the 2K textures to define debris, sticks, and pine needles.Swamplands:Light Behavior: Reflective/Viscous. Contrast high-roughness mud with low-roughness "wet" patches (0.1 - 0.3).Key Detail: We need sharp Specular Highlights on the water surfaces to create that "glint" of standing water against the dull mud.Ashlands:Light Behavior: Flat and Desaturated. The ground should look "dead."Contrast: Low global contrast. Reduce the light bounce (Global Illumination) to make the environment feel heavy and soot-covered.3. Technical Specs for 2K AssetsNormal Maps: Slightly over-driven (1.2x - 1.5x) to ensure texture depth is visible from a top-down board game camera angle.Color Palette: Muted. Reduce global saturation by ~15%. Focus on "Earth Tones": Umber, Sage, Slate, and Charcoal.PBR Workflow: Ensure Roughness and AO maps are the priority. The "Manor Lords" look relies more on how light interacts with surface texture than the actual Base Color.4. Reference Style KeywordsPhotogrammetry, Upper Franconian Climate, Muted Medieval, Diffuse Daylight, High Ambient Occlusion, Volumetric Haze.

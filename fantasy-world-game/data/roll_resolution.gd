@@ -89,10 +89,10 @@ static func check_advantage_sources(attacker: Node, defender: Node, hex_board: N
 static func check_disadvantage_sources(attacker: Node, defender: Node, hex_board: Node = null, attack_range: int = 1, max_range: int = 1) -> Dictionary:
 	var sources: Array[String] = []
 	
-	# 4.4.1 Cover: Target on Forest/Ruins hex
+	# 4.4.1 Cover: Target on Forest/Swamp hex
 	if defender.current_hex and "biome_type" in defender.current_hex:
 		var biome = defender.current_hex.biome_type
-		if biome == Biomes.Type.FOREST or biome == Biomes.Type.RUINS:
+		if biome == Biomes.Type.FOREST or biome == Biomes.Type.SWAMP:
 			sources.append("Cover")
 	
 	# 4.4.2 Attacker Slowed: Attacker has Slowed status
@@ -349,10 +349,10 @@ static func resolve_attack(attacker: Node, defender: Node, move: MoveData.Move, 
 	var positioning = {
 		"positioning_def_bonus": 0
 	}
-	# Add cover bonus if defender in forest/ruins (already checked in disadvantage)
+	# Add cover bonus if defender in forest/swamp (already checked in disadvantage)
 	if defender.current_hex and "biome_type" in defender.current_hex:
 		var biome = defender.current_hex.biome_type
-		if biome == Biomes.Type.FOREST or biome == Biomes.Type.RUINS:
+		if biome == Biomes.Type.FOREST or biome == Biomes.Type.SWAMP:
 			positioning["positioning_def_bonus"] = CombatBalanceConfig.COVER_DEF_BONUS
 	
 	# Step 3: Roll attack

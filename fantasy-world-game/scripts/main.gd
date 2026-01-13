@@ -193,6 +193,13 @@ func _generate_board() -> void:
 	hex_board.tile_selected.connect(_on_tile_selected)
 	hex_board.tile_hovered.connect(_on_tile_hovered)
 	
+	# Create realistic board environment (wooden table, stone frame)
+	var board_radius = GameConfig.BOARD_SIZE - 1
+	var board_environment = BoardEnvironment.create_for_board(board_radius, hex_board.hex_size)
+	add_child(board_environment)
+	# Move it behind the hex board in the scene tree but keep it at same position
+	move_child(board_environment, 0)
+	
 	print("Board generated successfully!")
 
 
@@ -704,8 +711,8 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	if is_rotating:
-		# Rotate camera with right-click drag
-		_rotate_camera_view(-event.relative.x, -event.relative.y)
+		# Rotate camera with right-click drag (Y inverted)
+		_rotate_camera_view(-event.relative.x, event.relative.y)
 	
 	elif is_panning_mouse:
 		# Pan with middle-click drag

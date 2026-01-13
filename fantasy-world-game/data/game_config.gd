@@ -8,6 +8,32 @@ extends RefCounted
 # =============================================================================
 const BOARD_SIZE: int = 12 # Hexagons per side (creates 397 total hexes)
 const TOTAL_HEXES: int = 397 # 12-hex-per-side hexagonal board
+const BOARD_LIFT: float = 0.4 # Height of hex tiles above table (raised platform)
+
+# =============================================================================
+# WORLD SCALE (1:1 REALISTIC)
+# =============================================================================
+# The game uses realistic scale for immersive troop-to-environment proportions.
+# All assets should be created following these guidelines:
+#
+# UNIT SCALE:
+#   - 1 Godot unit = 1 meter (real world)
+#
+# HEX TILE SCALE:
+#   - hex_size = 1.0 (center to corner distance in units)
+#   - Hex width = ~1.73 units (~1.73 meters)
+#   - Each hex represents a tactical "space" for one combatant
+#
+# TROOP MODEL SCALE:
+#   - Human-sized troops (knight, archer, cleric): 1.8 - 2.0 units tall
+#   - Large troops (stone giant): 4.0 - 5.0 units tall
+#   - Massive troops (hydra, dragon): 8.0 - 15.0 units tall
+#   - Small creatures: 0.5 - 1.0 units tall
+#
+# TEXTURE SCALE:
+#   - Biome textures use world-space UV at 0.03 scale
+#   - This makes terrain features (rocks, leaves) visible at realistic size
+#   - A rock in the texture appears ~0.5-2m in diameter
 
 # =============================================================================
 # PLAYER CONFIGURATION

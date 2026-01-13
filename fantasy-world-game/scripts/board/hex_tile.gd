@@ -84,8 +84,9 @@ func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
 	biome_type = biome
 	
 	# Position the tile based on hex coordinates
+	# Y = BOARD_LIFT from GameConfig (hex tiles sit on raised platform)
 	var pixel_pos = coords.to_pixel(hex_size)
-	position = Vector3(pixel_pos.x, 0, pixel_pos.y)
+	position = Vector3(pixel_pos.x, GameConfig.BOARD_LIFT, pixel_pos.y)
 	
 	# Update visual for biome
 	_update_visual()
@@ -255,30 +256,14 @@ func _create_collision() -> void:
 
 
 # =============================================================================
-# PARTICLES
+# PARTICLES (DISABLED)
 # =============================================================================
 
-## Setup ambient particle effects for this biome
+## Setup ambient particle effects for this biome (disabled for realism)
 func _setup_particles() -> void:
-	# Only create particles for atmospheric biomes (to avoid 397 particle systems)
-	# Focus on visually impactful biomes
-	var atmospheric_biomes := [
-		Biomes.Type.ASHLANDS,
-		Biomes.Type.PEAKS,
-		Biomes.Type.FOREST,
-		Biomes.Type.SWAMP
-	]
-	
-	if biome_type in atmospheric_biomes:
-		# Clean up existing emitter if present
-		if particle_emitter:
-			particle_emitter.queue_free()
-		
-		# Create new particle emitter
-		particle_emitter = BiomeParticleEmitter.create_for_biome(biome_type)
-		particle_emitter.position = Vector3(0, 0.1, 0)  # Slightly above tile
-		add_child(particle_emitter)
-		particle_emitter.enable_particles()
+	# Particles disabled for cleaner, more realistic appearance
+	# The biome textures provide enough visual interest
+	pass
 
 
 # =============================================================================

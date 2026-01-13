@@ -685,9 +685,9 @@ func move_to_hex(new_hex: Node) -> void:
 	if new_hex and new_hex.has_method("set_occupant"):
 		new_hex.set_occupant(self)
 	
-	# Update position
+	# Update position - troop stands on top of hex tile (which is on raised platform)
 	if new_hex:
-		position = new_hex.position + Vector3(0, 0.1, 0)  # Slightly above hex
+		position = new_hex.position + Vector3(0, 0.1, 0)  # Slightly above hex surface
 	
 	has_moved_this_turn = true
 	troop_moved.emit(old_hex, new_hex)
@@ -698,47 +698,49 @@ func move_to_hex(new_hex: Node) -> void:
 # =============================================================================
 
 ## Create placeholder visual (will be replaced with actual model)
+## Uses 1:1 scale: 1 unit = 1 meter, human troops ~1.8-2.0m tall
 func _create_placeholder_visual() -> void:
 	mesh_instance = MeshInstance3D.new()
 	add_child(mesh_instance)
 	
 	# Create different shapes based on role for easy identification
+	# Scale follows 1:1 world scale (1 unit = 1 meter)
 	var mesh: Mesh
 	match role:
 		CardData.Role.GROUND_TANK:
-			# Box for tanks - sturdy looking
+			# Box for tanks - sturdy knight ~2m tall, broad shoulders
 			var box = BoxMesh.new()
-			box.size = Vector3(0.6, 0.8, 0.6)
+			box.size = Vector3(0.8, 2.0, 0.6)  # Wide, tall, not too deep
 			mesh = box
-			mesh_instance.position.y = 0.4
+			mesh_instance.position.y = 1.0  # Center at half height
 		CardData.Role.AIR_HYBRID:
-			# Cone (pointing up) for air units - represents flight
+			# Cone (pointing up) for air units - winged creature ~3m wingspan
 			var prism = PrismMesh.new()
-			prism.size = Vector3(0.5, 0.9, 0.5)
+			prism.size = Vector3(1.2, 1.8, 1.2)  # Wider, slightly shorter
 			mesh = prism
-			mesh_instance.position.y = 0.45
+			mesh_instance.position.y = 0.9
 		CardData.Role.RANGED_MAGIC:
-			# Cylinder for ranged - like a tower/staff
+			# Cylinder for ranged - like a mage/archer ~1.9m tall
 			var cylinder = CylinderMesh.new()
-			cylinder.top_radius = 0.25
-			cylinder.bottom_radius = 0.25
-			cylinder.height = 1.0
+			cylinder.top_radius = 0.35
+			cylinder.bottom_radius = 0.4
+			cylinder.height = 1.9
 			mesh = cylinder
-			mesh_instance.position.y = 0.5
+			mesh_instance.position.y = 0.95
 		CardData.Role.FLEX_SUPPORT:
-			# Sphere for flex/support - versatile
+			# Sphere for flex/support - cleric/support ~1.6m 
 			var sphere = SphereMesh.new()
-			sphere.radius = 0.35
-			sphere.height = 0.7
+			sphere.radius = 0.5
+			sphere.height = 1.6
 			mesh = sphere
-			mesh_instance.position.y = 0.35
+			mesh_instance.position.y = 0.8
 		_:
-			# Default capsule
+			# Default capsule - generic humanoid ~1.8m
 			var capsule = CapsuleMesh.new()
-			capsule.radius = 0.3
-			capsule.height = 1.0
+			capsule.radius = 0.4
+			capsule.height = 1.8
 			mesh = capsule
-			mesh_instance.position.y = 0.5
+			mesh_instance.position.y = 0.9
 	
 	mesh_instance.mesh = mesh
 	
@@ -761,15 +763,15 @@ func _create_name_label() -> void:
 	var abbrev = _get_abbreviated_name()
 	name_label.text = abbrev
 	
-	# Position above the troop
-	name_label.position.y = 1.3
+	# Position above the troop (troops are now ~2m tall)
+	name_label.position.y = 2.5
 	
 	# Billboard mode - always face camera
 	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	
 	# Styling
-	name_label.font_size = 48
-	name_label.outline_size = 8
+	name_label.font_size = 64
+	name_label.outline_size = 10
 	name_label.modulate = team_color
 	name_label.outline_modulate = Color.BLACK
 
