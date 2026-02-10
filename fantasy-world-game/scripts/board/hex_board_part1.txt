@@ -1,0 +1,176 @@
+﻿## Hex Board
+## Manages the hexagonal game board
+## Handles board generation, tile access, and coordinate lookups
+class_name HexBoard
+extends Node3D
+
+# =============================================================================
+# SIGNALS
+# =============================================================================
+signal tile_selected(tile: HexTile)
+signal tile_hovered(tile: HexTile)
+
+# =============================================================================
+# PROPERTIES - BOARD SIZE
+# =============================================================================
+## Board radius (GameConfig.BOARD_SIZE - 1, e.g., 12 hexes per side = radius 11)
+var board_radius: int:
+	get:
+		return GameConfig.BOARD_SIZE - 1
+
+# =============================================================================
+# EXPORTS
+# =============================================================================
+@export var hex_size: float = 1.0 # Size of each hex
+@export var hex_tile_scene: PackedScene # Reference to hex_tile.tscn
+
+# =============================================================================
+# PROPERTIES
+# =============================================================================
+# Dictionary mapping coordinate key to HexTile
+var tiles: Dictionary = {}
+# Array of all hex coordinates
+var all_coordinates: Array[HexCoordinates] = []
+# Height map for all tiles (coordinate key -> height value)
+var height_map: Dictionary = {}
+# Vertex map for vertex-based displacement (vertex_key -> height value)
+var vertex_map: Dictionary = {}
+# Biome map (coordinate key -> Biome.Type)
+var biome_map: Dictionary = {}
+# Spawn positions for each player (player_id -> Array[HexCoordinates])
+var spawn_positions: Dictionary = {}
+# Currently selected tile
+var selected_tile: HexTile = null
+# Currently highlighted tiles for movement/attack
+var highlighted_tiles: Array[HexTile] = []
+
+
+# =============================================================================
+# INITIALIZATION
+# =============================================================================
+
+func _ready() -> void:
+	pass # Board is generated via generate_board()
+
+
+## Generate the complete hex board with procedural biomes and terrain height
+func generate_board() -> void:
+	_clear_board()
+	
+	# Generate all hex coordinates for the board
+	all_coordinates = HexCoordinates.generate_hexagonal_board(board_radius)
+	
+	print("Generating board with %d hexes" % all_coordinates.size())
+	
+	# Generate biomes and heights for the board
+	var biome_generator = BiomeGenerator.new()
+	var generation_data = biome_generator.generate_biomes(all_coordinates)
+	
+	# Extract biome and height maps (store biome_map as instance variable)
+	biome_map = generation_data.get("biomes", {})
+	height_map = generation_data.get("heights", {})
+	
+	# Quantize height map to 0.25 unit steps to prevent micro-clipping
+	for key in height_map:
+		height_map[key] = snappedf(height_map[key], 0.25)
+	
+	# Print debug info
+	biome_generator.print_distribution(biome_map)
+	biome_generator.print_adjacency_violations(all_coordinates, biome_map)
+	
+	# Create hex tiles with initial setup
+	for coord in all_coordinates:
+		var key = coord._to_key()
+		var biome = biome_map.get(key, Biomes.Type.PLAINS)
+		var height = height_map.get(key, 0.0)
+		_create_tile(coord, biome, height)
+	
+	# VERTEX-BASED DISPLACEMENT SYSTEM
+	# Generate vertex heights based on biome interpolation
+	_generate_vertex_heights()
+	
+	# Second pass: update tile meshes with vertex heights
+	_update_tile_meshes_with_vertex_heights()
+	
+	# Note: Junction fills disabled - vertex-based system creates seamless terrain
+	# _create_junction_fills()
+	
+	# Set up spawn positions
+	_setup_spawn_positions()
+	
+	print("Board generation complete!")
+
+
+## Clear existing board
+func _clear_board() -> void:
+	for key in tiles:
+		tiles[key].queue_free()
+	tiles.clear()
+	all_coordinates.clear()
+	height_map.clear()
+	vertex_map.clear()
+	biome_map.clear()
+	spawn_positions.clear()
+
+
+# =============================================================================
+# TILE CREATION
+# =============================================================================
+
+func _create_tile(coord: HexCoordinates, biome: Biomes.Type, height: float) -> HexTile:
+	var tile: HexTile
+	
+	if hex_tile_scene:
+		tile = hex_tile_scene.instantiate() as HexTile
+	else:
+		# Create tile programmatically if no scene assigned
+		tile = HexTile.new()
+	
+	tile.hex_size = hex_size
+	tile.tile_height = height
+	add_child(tile)
+	tile.setup(coord, biome)
+	
+	# STRICT TRANSFORM ENFORCEMENT
+	# 1. Calculate precise pixel position (Pointy Top)
+	var pixel_pos = coord.to_pixel(hex_size)
+	
+	# 2. Add Z-fighting offset (0.02) to base height
+	var base_y = GameConfig.BOARD_LIFT + 0.02
+	
+	# 3. Apply Transform (Pivot at center, Upright)
+	tile.position = Vector3(pixel_pos.x, base_y, pixel_pos.y)
+	tile.basis = Basis.IDENTITY
+	
+	# Connect signals
+	tile.tile_clicked.connect(_on_tile_clicked)
+	tile.tile_hovered.connect(_on_tile_hovered)
+	
+	# Store in dictionary
+	var key = coord._to_key()
+	tiles[key] = tile
+	
+	return tile
+
+
+## Update all tile meshes with neighbor height information for smooth ramps
+func _update_tile_meshes_with_neighbors() -> void:
+	for key in tiles:
+		var tile: HexTile = tiles[key]
+		var coord: HexCoordinates = tile.coordinates
+		
+		# Get neighbor heights (6 neighbors for hex)
+		var neighbor_heights: Array[float] = []
+		for neighbor in coord.get_all_neighbors():
+			var nkey = neighbor._to_key()
+			if nkey in height_map:
+				# Use quantized height directly
+				neighbor_heights.append(height_map[nkey])
+			else:
+				# Edge of board - use special sentinel value to mark as edge
+				# This makes edge tiles ramp to meet the stone frame at BOARD_LIFT
+				neighbor_heights.append(-999.0)
+		
+		# Update mesh with neighbor heights for ramped edges
+		tile.update_mesh_with_neighbors(neighbor_heights)
+

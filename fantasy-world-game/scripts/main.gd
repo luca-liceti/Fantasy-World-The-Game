@@ -107,6 +107,13 @@ const PLAYER1_COLOR = Color(0.2, 0.5, 1.0) # Blue
 const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 
 # =============================================================================
+# DEBUG FLAGS - Set these to skip game phases during development
+# =============================================================================
+const DEBUG_SKIP_DECK_SELECTION := true # Skip deck selection and use default decks
+const DEBUG_SKIP_FIRST_MOVE_DICE := true # Skip the first move dice roll animation
+const DEBUG_DEFAULT_DECK: Array[String] = ["knight", "archer", "cleric", "stone_giant"] # Default deck when skipping
+
+# =============================================================================
 # INITIALIZATION
 # =============================================================================
 
@@ -120,6 +127,8 @@ func _ready() -> void:
 	# Find hex board
 	hex_board = get_node_or_null("HexBoard")
 	if hex_board:
+		# Ensure board is at origin so BOARD_LIFT (1.0) is accurate world height
+		hex_board.position.y = 0.0
 		_generate_board()
 	else:
 		push_error("HexBoard node not found!")
@@ -193,14 +202,46 @@ func _generate_board() -> void:
 	hex_board.tile_selected.connect(_on_tile_selected)
 	hex_board.tile_hovered.connect(_on_tile_hovered)
 	
-	# Create realistic board environment (wooden table, stone frame)
-	var board_radius = GameConfig.BOARD_SIZE - 1
-	var board_environment = BoardEnvironment.create_for_board(board_radius, hex_board.hex_size)
-	add_child(board_environment)
-	# Move it behind the hex board in the scene tree but keep it at same position
-	move_child(board_environment, 0)
+	# Check if we're using the medieval room (which provides its own table)
+	var medieval_room = get_node_or_null("MedievalRoom")
+	if medieval_room:
+		# Medieval room provides the table and environment
+		print("Using MedievalRoom environment - skipping BoardEnvironment")
+	else:
+		# Create standalone board environment (wooden table, stone frame)
+		# Only used when NOT in a medieval room scene
+		var board_radius = GameConfig.BOARD_SIZE - 1
+		# Get jagged perimeter points for form-fitted border
+		var perimeter = hex_board.get_perimeter_points()
+		var board_environment = BoardEnvironment.create_for_board(board_radius, hex_board.hex_size, perimeter)
+		add_child(board_environment)
+		# Move it behind the hex board in the scene tree but keep it at same position
+		move_child(board_environment, 0)
+		
+		# Add lighting for standalone board setup
+		_setup_board_lighting()
 	
 	print("Board generated successfully!")
+
+
+func _setup_board_lighting() -> void:
+	# Create main directional light for the board
+	var main_light = LightingManager.create_directional_light()
+	add_child(main_light)
+	
+	# Create a secondary fill light for softer shadows
+	var fill_light = LightingManager.create_fill_light()
+	add_child(fill_light)
+	
+	# Set up world environment for atmospheric lighting
+	var world_env = WorldEnvironment.new()
+	var environment = LightingManager.create_environment()
+	
+	# Apply to world
+	world_env.environment = environment
+	add_child(world_env)
+	
+	print("Board lighting setup complete!")
 
 
 func _setup_game_ui() -> void:
@@ -241,7 +282,7 @@ func _setup_game_ui() -> void:
 		
 		# Create Enhanced Combat Selection UI
 		combat_selection_ui = CombatSelectionUIScene.new()
-		combat_selection_ui.layer = 120  # Above most UI
+		combat_selection_ui.layer = 120 # Above most UI
 		add_child(combat_selection_ui)
 		combat_selection_ui.move_selected.connect(_on_enhanced_move_selected)
 		combat_selection_ui.stance_selected.connect(_on_enhanced_stance_selected)
@@ -284,6 +325,16 @@ func _start_test_game() -> void:
 	# Hide game UI during deck selection
 	if game_ui and game_ui.main_container:
 		game_ui.main_container.visible = false
+	
+	# DEBUG: Skip deck selection for faster testing
+	if DEBUG_SKIP_DECK_SELECTION:
+		print("DEBUG: Skipping deck selection - using default decks")
+		player_decks[0] = DEBUG_DEFAULT_DECK.duplicate()
+		player_decks[1] = DEBUG_DEFAULT_DECK.duplicate()
+		game_manager.set_player_deck(0, player_decks[0])
+		game_manager.set_player_deck(1, player_decks[1])
+		_finalize_game_start()
+		return
 	
 	# Start deck selection for Player 1
 	_start_deck_selection(0)
@@ -382,8 +433,8 @@ func _finalize_game_start() -> void:
 	
 	print("First move roll: Player 1 = %d, Player 2 = %d" % [p1_roll, p2_roll])
 	
-	# DEBUG: Set to true to skip the dice roll UI animation
-	var skip_dice_roll_ui := false # Fixed! The dice UI should work now
+	# DEBUG: Use constant to skip the dice roll UI animation
+	var skip_dice_roll_ui := DEBUG_SKIP_FIRST_MOVE_DICE
 	
 	# Show the first move dice roll UI  
 	if first_move_dice_ui and not skip_dice_roll_ui:

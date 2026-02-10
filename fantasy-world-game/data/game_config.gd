@@ -8,7 +8,44 @@ extends RefCounted
 # =============================================================================
 const BOARD_SIZE: int = 12 # Hexagons per side (creates 397 total hexes)
 const TOTAL_HEXES: int = 397 # 12-hex-per-side hexagonal board
-const BOARD_LIFT: float = 0.4 # Height of hex tiles above table (raised platform)
+const BOARD_LIFT: float = 1.0 # Height of hex tiles above table (matches border height)
+const BORDER_HEIGHT: float = 1.0 # Fixed height of the board border rim (edge tiles connect here)
+const TERRAIN_HEIGHT_MULTIPLIER: float = 1 # Global multiplier for terrain height exaggeration (2.0 = smooth slopes, 4.0+ = dramatic cliffs)
+
+# =============================================================================
+# GRAPHICS SETTINGS
+# =============================================================================
+## Grass quality levels: 0=Off, 1=Low, 2=Medium, 3=High
+enum GrassQuality {
+	OFF = 0,
+	LOW = 1,
+	MEDIUM = 2,
+	HIGH = 3
+}
+
+## Default grass quality
+const DEFAULT_GRASS_QUALITY: int = GrassQuality.MEDIUM
+
+## Runtime grass settings (can be changed in-game)
+static var grass_enabled: bool = true
+static var grass_quality: int = DEFAULT_GRASS_QUALITY
+
+## Apply grass settings to the GrassSystem
+static func apply_grass_settings() -> void:
+	if Engine.has_singleton("GrassSystem") or ClassDB.class_exists("GrassSystem"):
+		GrassSystem.set_grass_enabled(grass_enabled)
+		GrassSystem.set_grass_quality(grass_quality)
+
+## Toggle grass on/off
+static func set_grass_enabled(enabled: bool) -> void:
+	grass_enabled = enabled
+	GrassSystem.set_grass_enabled(enabled)
+
+## Set grass quality level
+static func set_grass_quality_level(quality: int) -> void:
+	grass_quality = clampi(quality, 0, 3)
+	GrassSystem.set_grass_quality(grass_quality)
+
 
 # =============================================================================
 # WORLD SCALE (1:1 REALISTIC)
@@ -63,8 +100,8 @@ const MIN_DAMAGE: int = 1 # Minimum damage dealt (even if DEF is high)
 # =============================================================================
 ## Combat mode determines complexity level
 enum CombatMode {
-	SIMPLE,    # Reduced complexity for new players
-	ENHANCED   # Full D&D × Pokémon hybrid system
+	SIMPLE, # Reduced complexity for new players
+	ENHANCED # Full D&D × Pokémon hybrid system
 }
 
 ## Default combat mode for new games
@@ -72,26 +109,26 @@ const DEFAULT_COMBAT_MODE: int = CombatMode.ENHANCED
 
 ## Simple Mode Configuration
 const SIMPLE_MODE_CONFIG: Dictionary = {
-	"moves_visible": 2,              # Only show 2 moves (Standard + 1 Special)
-	"auto_defender_stance": true,    # Auto-select Brace for defender
-	"timer_seconds": 15.0,           # Extended timer (15 seconds)
-	"show_damage_types": false,      # Hide damage type complexity
-	"show_advantage_disadvantage": false,  # Hide adv/disadv
-	"show_hit_chance": true,         # Show simple hit % 
-	"show_positioning": false,       # Hide positioning modifiers
-	"hint_recommended_move": true,   # Highlight best move
+	"moves_visible": 2, # Only show 2 moves (Standard + 1 Special)
+	"auto_defender_stance": true, # Auto-select Brace for defender
+	"timer_seconds": 15.0, # Extended timer (15 seconds)
+	"show_damage_types": false, # Hide damage type complexity
+	"show_advantage_disadvantage": false, # Hide adv/disadv
+	"show_hit_chance": true, # Show simple hit %
+	"show_positioning": false, # Hide positioning modifiers
+	"hint_recommended_move": true, # Highlight best move
 }
 
 ## Enhanced Mode Configuration (full complexity)
 const ENHANCED_MODE_CONFIG: Dictionary = {
-	"moves_visible": 4,              # Show all 4 moves
-	"auto_defender_stance": false,   # Player chooses stance
-	"timer_seconds": 10.0,           # Standard timer
-	"show_damage_types": true,       # Show all damage types
+	"moves_visible": 4, # Show all 4 moves
+	"auto_defender_stance": false, # Player chooses stance
+	"timer_seconds": 10.0, # Standard timer
+	"show_damage_types": true, # Show all damage types
 	"show_advantage_disadvantage": true,
 	"show_hit_chance": true,
 	"show_positioning": true,
-	"hint_recommended_move": false,  # No hand-holding
+	"hint_recommended_move": false, # No hand-holding
 }
 
 ## Get combat config for a given mode

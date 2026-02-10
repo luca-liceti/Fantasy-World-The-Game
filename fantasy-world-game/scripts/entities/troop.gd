@@ -134,7 +134,7 @@ var immunities: Array = []
 # VISUAL COMPONENTS
 # =============================================================================
 var mesh_instance: MeshInstance3D
-var health_bar: Node  # Reference to health bar UI (set externally)
+var health_bar: Node # Reference to health bar UI (set externally)
 
 # Team color tint
 var team_color: Color = Color.WHITE
@@ -263,7 +263,7 @@ func get_effective_def(biome_type: Biomes.Type) -> int:
 func get_biome_defense_modifier(biome_type: Biomes.Type) -> float:
 	var modifier = Biomes.get_troop_modifier(troop_id, biome_type)
 	if modifier == "D":
-		return Biomes.get_modifier_value(modifier)  # -15% incoming damage
+		return Biomes.get_modifier_value(modifier) # -15% incoming damage
 	return 0.0
 
 
@@ -306,7 +306,7 @@ func get_upgrade_cost() -> Dictionary:
 
 ## Take damage (after all modifiers applied externally)
 func take_damage(amount: int) -> int:
-	var actual_damage = max(1, amount)  # Minimum 1 damage
+	var actual_damage = max(1, amount) # Minimum 1 damage
 	current_hp -= actual_damage
 	return actual_damage
 
@@ -315,7 +315,7 @@ func take_damage(amount: int) -> int:
 func heal(amount: int) -> int:
 	var old_hp = current_hp
 	current_hp = min(current_hp + amount, max_hp)
-	return current_hp - old_hp  # Return actual amount healed
+	return current_hp - old_hp # Return actual amount healed
 
 
 ## Check if this troop can attack a target
@@ -673,6 +673,7 @@ func _on_death() -> void:
 # =============================================================================
 
 ## Move to a new hex
+## Uses vertex averaging for Y position (no raycasting needed)
 func move_to_hex(new_hex: Node) -> void:
 	var old_hex = current_hex
 	
@@ -685,9 +686,20 @@ func move_to_hex(new_hex: Node) -> void:
 	if new_hex and new_hex.has_method("set_occupant"):
 		new_hex.set_occupant(self)
 	
-	# Update position - troop stands on top of hex tile (which is on raised platform)
+	# Update position using vertex averaging method
+	# This calculates Y from the average of the 6 vertex heights + buffer
+	# Much faster than raycasting, calculated once per spawn/move
 	if new_hex:
-		position = new_hex.position + Vector3(0, 0.1, 0)  # Slightly above hex surface
+		var surface_height: float = 0.0
+		
+		# Use vertex-averaged surface height if available
+		if new_hex.has_method("get_surface_height"):
+			surface_height = new_hex.get_surface_height()
+		elif "tile_height" in new_hex:
+			# Fallback to tile_height + buffer
+			surface_height = new_hex.tile_height + 0.1
+		
+		position = new_hex.position + Vector3(0, surface_height, 0)
 	
 	has_moved_this_turn = true
 	troop_moved.emit(old_hex, new_hex)
@@ -710,13 +722,13 @@ func _create_placeholder_visual() -> void:
 		CardData.Role.GROUND_TANK:
 			# Box for tanks - sturdy knight ~2m tall, broad shoulders
 			var box = BoxMesh.new()
-			box.size = Vector3(0.8, 2.0, 0.6)  # Wide, tall, not too deep
+			box.size = Vector3(0.8, 2.0, 0.6) # Wide, tall, not too deep
 			mesh = box
-			mesh_instance.position.y = 1.0  # Center at half height
+			mesh_instance.position.y = 1.0 # Center at half height
 		CardData.Role.AIR_HYBRID:
 			# Cone (pointing up) for air units - winged creature ~3m wingspan
 			var prism = PrismMesh.new()
-			prism.size = Vector3(1.2, 1.8, 1.2)  # Wider, slightly shorter
+			prism.size = Vector3(1.2, 1.8, 1.2) # Wider, slightly shorter
 			mesh = prism
 			mesh_instance.position.y = 0.9
 		CardData.Role.RANGED_MAGIC:

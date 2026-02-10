@@ -1,0 +1,154 @@
+# =============================================================================
+# VERTEX-BASED DISPLACEMENT SYSTEM
+# =============================================================================
+
+## Generate vertex heights using biome-based interpolation
+## Each vertex (hex corner) height is determined by the biomes of tiles sharing that vertex
+## Border vertices are clamped to 0 (BORDER_HEIGHT)
+func _generate_vertex_heights() -> void:
+	vertex_map.clear()
+	
+	# Track which tiles share each vertex
+	# vertex_key -> Array of {coord: HexCoordinates, biome: Biomes.Type, height: float}
+	var vertex_tiles: Dictionary = {}
+	
+	# First pass: Identify all vertices and which tiles share them
+	for coord in all_coordinates:
+		var key = coord._to_key()
+		var biome = biome_map.get(key, Biomes.Type.PLAINS)
+		var tile_height = height_map.get(key, 0.0)
+		
+		# For each of the 6 corners of this hex
+		for i in range(6):
+			var vertex_pos = _get_vertex_world_position(coord, i)
+			var vertex_key = _vertex_position_to_key(vertex_pos)
+			
+			if vertex_key not in vertex_tiles:
+				vertex_tiles[vertex_key] = []
+			
+			vertex_tiles[vertex_key].append({
+				"coord": coord,
+				"biome": biome,
+				"height": tile_height,
+				"is_edge": _is_tile_on_edge(coord)
+			})
+	
+	# Second pass: Calculate height for each vertex based on adjacent tiles
+	for vertex_key in vertex_tiles:
+		var adjacent_tiles = vertex_tiles[vertex_key]
+		
+		# Check if this vertex is on the board perimeter
+		var is_border_vertex = false
+		for tile_data in adjacent_tiles:
+			if tile_data["is_edge"]:
+				# Check if this specific corner is on the outer edge
+				var coord: HexCoordinates = tile_data["coord"]
+				var vertex_pos = _key_to_vertex_position(vertex_key)
+				if _is_vertex_on_perimeter(coord, vertex_pos):
+					is_border_vertex = true
+					break
+		
+		# Border vertices are clamped to 0
+		if is_border_vertex:
+			vertex_map[vertex_key] = 0.0
+		else:
+			# Interior vertex: calculate height based on biome interpolation
+			var total_height = 0.0
+			var count = adjacent_tiles.size()
+			
+			# Average the heights of all tiles sharing this vertex
+			for tile_data in adjacent_tiles:
+				total_height += tile_data["height"]
+			
+			vertex_map[vertex_key] = total_height / count if count > 0 else 0.0
+	
+	print("Generated %d unique vertices for vertex-based terrain" % vertex_map.size())
+
+
+## Update all tile meshes using vertex heights
+func _update_tile_meshes_with_vertex_heights() -> void:
+	for key in tiles:
+		var tile: HexTile = tiles[key]
+		var coord: HexCoordinates = tile.coordinates
+		
+		# Get vertex heights for this tile's 6 corners
+		var vertex_heights: Array[float] = []
+		for i in range(6):
+			var vertex_pos = _get_vertex_world_position(coord, i)
+			var vertex_key = _vertex_position_to_key(vertex_pos)
+			var vertex_height = vertex_map.get(vertex_key, 0.0)
+			vertex_heights.append(vertex_height)
+		
+		# Update the tile mesh with these vertex heights
+		tile.update_mesh_with_vertex_heights(vertex_heights)
+
+
+## Get world position of a hex vertex (corner)
+## hex_index: 0-5, the corner index
+func _get_vertex_world_position(coord: HexCoordinates, corner_index: int) -> Vector3:
+	var pixel_pos = coord.to_pixel(hex_size)
+	var angle = deg_to_rad(60 * corner_index - 30)
+	
+	return Vector3(
+		pixel_pos.x + hex_size * cos(angle),
+		0.0, # Y doesn't matter for keying
+		pixel_pos.y + hex_size * sin(angle)
+	)
+
+
+## Convert vertex position to a unique key string
+## Rounds to avoid floating point precision issues
+func _vertex_position_to_key(pos: Vector3) -> String:
+	var precision = 1000.0 # 3 decimal places
+	var x = round(pos.x * precision)
+	var z = round(pos.z * precision)
+	return "%d,%d" % [x, z]
+
+
+## Convert vertex key back to position (for perimeter checking)
+func _key_to_vertex_position(vertex_key: String) -> Vector3:
+	var parts = vertex_key.split(",")
+	var precision = 1000.0
+	return Vector3(
+		float(parts[0]) / precision,
+		0.0,
+		float(parts[1]) / precision
+	)
+
+
+## Check if a tile is on the edge of the board
+func _is_tile_on_edge(coord: HexCoordinates) -> bool:
+	var neighbors = coord.get_all_neighbors()
+	for neighbor in neighbors:
+		if neighbor._to_key() not in tiles:
+			return true
+	return false
+
+
+## Check if a specific vertex is on the perimeter of the board
+## Returns true if this vertex doesn't have a full set of tiles around it
+func _is_vertex_on_perimeter(coord: HexCoordinates, vertex_pos: Vector3) -> bool:
+	# A vertex is shared by up to 3 tiles
+	# If any of those tiles are missing, it's a perimeter vertex
+	
+	# Find all corners of this tile that match this vertex position
+	for i in range(6):
+		var corner_pos = _get_vertex_world_position(coord, i)
+		if corner_pos.distance_to(vertex_pos) < 0.001:
+			# This is corner i of the tile
+			# Check the two neighbors that share this corner
+			var prev_neighbor_idx = (i + 5) % 6
+			var curr_neighbor_idx = i
+			
+			var neighbors = coord.get_all_neighbors()
+			var prev_neighbor = neighbors[prev_neighbor_idx]
+			var curr_neighbor = neighbors[curr_neighbor_idx]
+			
+			# If either neighbor is missing, this vertex is on the perimeter
+			if prev_neighbor._to_key() not in tiles or curr_neighbor._to_key() not in tiles:
+				return true
+			break
+	
+	return false
+
+

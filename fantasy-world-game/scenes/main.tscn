@@ -1,56 +1,157 @@
-[gd_scene load_steps=4 format=3 uid="uid://dqj4fy6t7m8xh"]
+[gd_scene load_steps=5 format=3 uid="uid://physical_medieval_room"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://c1xk5l8nvt2qr" path="res://scenes/board/hex_board.tscn" id="2_hex_board"]
+[ext_resource type="Script" path="res://scripts/environment/physical_room_builder.gd" id="3_room_builder"]
+[ext_resource type="Script" path="res://scripts/environment/medieval_room.gd" id="4_room_controller"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
-sky_top_color = Color(0.35, 0.5, 0.75, 1)
-sky_horizon_color = Color(0.65, 0.7, 0.8, 1)
-ground_bottom_color = Color(0.15, 0.12, 0.1, 1)
-ground_horizon_color = Color(0.35, 0.3, 0.28, 1)
-sun_angle_max = 45.0
+; =============================================================================
+; FANTASY WORLD - PHYSICAL MEDIEVAL ROOM VERSION
+; Main game scene with fully modeled 3D medieval room environment
+; NO HDRI - Uses physical room geometry with Poly Haven assets
+; =============================================================================
 
-[sub_resource type="Sky" id="Sky_main"]
-sky_material = SubResource("ProceduralSkyMaterial_sky")
+; -----------------------------------------------------------------------------
+; ENVIRONMENT - Indoor candlelit medieval atmosphere
+; Optimized for physical room with warm interior lighting
+; -----------------------------------------------------------------------------
+[sub_resource type="Environment" id="Environment_physical"]
+; No sky/background - physical room geometry provides the environment
+background_mode = 1
+background_color = Color(0.008, 0.006, 0.004, 1)
 
-[sub_resource type="Environment" id="Environment_main"]
-background_mode = 2
-sky = SubResource("Sky_main")
-ambient_light_source = 2
-ambient_light_color = Color(0.5, 0.52, 0.55, 1)
-ambient_light_energy = 0.5
+; Ambient Light - Very dark, room lights provide illumination
+ambient_light_source = 1
+ambient_light_color = Color(0.06, 0.05, 0.04, 1)
+ambient_light_energy = 0.1
+
+; Reflected Light - From scene geometry
+reflected_light_source = 1
+
+; Tonemap - ACES Filmic for cinematic candlelit look
 tonemap_mode = 3
-tonemap_exposure = 1.05
-tonemap_white = 1.2
+tonemap_exposure = 1.2
+tonemap_white = 1.15
+
+; Color Adjustments - Muted medieval palette (Manor Lords style)
+adjustment_enabled = true
+adjustment_brightness = 1.0
+adjustment_contrast = 1.02
+adjustment_saturation = 0.75
+
+; SSAO - Deep shadows for rustic medieval atmosphere
+; Critical for Manor Lords aesthetic
 ssao_enabled = true
-ssao_radius = 1.0
-ssao_intensity = 2.0
-ssao_power = 1.5
-ssao_detail = 0.5
+ssao_radius = 1.6
+ssao_intensity = 4.0
+ssao_power = 2.0
+ssao_detail = 0.7
+ssao_horizon = 0.14
+ssao_sharpness = 0.98
+ssao_light_affect = 0.7
+
+; SSIL - Screen Space Indirect Lighting
+; Helps candlelight bounce naturally off stone walls and wood
+ssil_enabled = true
+ssil_radius = 6.0
+ssil_intensity = 1.2
+ssil_sharpness = 0.98
+ssil_normal_rejection = 1.0
+
+; Fog - Indoor dust/smoke atmosphere from fireplace
+fog_enabled = true
+fog_light_color = Color(0.22, 0.18, 0.12, 1)
+fog_light_energy = 0.08
+fog_sun_scatter = 0.0
+fog_density = 0.005
+fog_aerial_perspective = 0.06
+fog_sky_affect = 0.0
+
+; Volumetric Fog - Visible dust in candlelight beams and fireplace
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.035
+volumetric_fog_albedo = Color(0.92, 0.88, 0.78, 1)
+volumetric_fog_emission = Color(0.05, 0.03, 0.01, 1)
+volumetric_fog_emission_energy = 0.5
+volumetric_fog_gi_inject = 0.6
+volumetric_fog_anisotropy = 0.55
+volumetric_fog_length = 24.0
+volumetric_fog_detail_spread = 2.5
+volumetric_fog_ambient_inject = 0.0
+
+; Glow - Candlelight and fireplace bloom for warm atmosphere
 glow_enabled = true
-glow_intensity = 0.8
-glow_strength = 1.0
-glow_bloom = 0.1
-glow_blend_mode = 0
+glow_normalized = true
+glow_intensity = 0.7
+glow_strength = 1.1
+glow_mix = 0.12
+glow_bloom = 0.15
+glow_hdr_threshold = 0.65
+glow_hdr_scale = 2.2
+glow_hdr_luminance_cap = 14.0
+glow_blend_mode = 2
+
+; SSR - Reflections on polished wood, brass and glass
+ssr_enabled = true
+ssr_max_steps = 80
+ssr_fade_in = 0.25
+ssr_fade_out = 1.8
+ssr_depth_tolerance = 0.18
+
+; SDFGI - Can be enabled for better GI, but expensive
+sdfgi_enabled = false
+
+; =============================================================================
+; SCENE TREE
+; =============================================================================
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
 
+; World Environment with indoor settings
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_main")
+environment = SubResource("Environment_physical")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 10, 15, 10)
-light_color = Color(1, 0.95, 0.9, 1)
-light_energy = 1.1
-shadow_enabled = true
-shadow_bias = 0.05
-shadow_normal_bias = 2.0
-shadow_blur = 1.0
-directional_shadow_mode = 2
-directional_shadow_max_distance = 100.0
+; =============================================================================
+; PHYSICAL MEDIEVAL ROOM
+; Builds the room from 3D models and procedural geometry
+; Creates: Stone walls, wood floor, beamed ceiling
+;          Fireplace, window, door
+;          Medieval furniture and decorations
+;          Atmospheric lighting
+; =============================================================================
+[node name="PhysicalRoom" type="Node3D" parent="."]
+script = ExtResource("3_room_builder")
+room_width = 14.0
+room_depth = 14.0
+room_height = 8.0
+wall_thickness = 0.6
+floor_level = -0.5
+enable_shadows = true
+enhanced_ao = true
+table_height = 0.85
 
+; =============================================================================
+; ROOM EFFECTS CONTROLLER
+; Manages candle flicker, fireplace effects, dust particles
+; =============================================================================
+[node name="RoomEffects" type="Node3D" parent="."]
+script = ExtResource("4_room_controller")
+enable_candle_flicker = true
+flicker_intensity = 0.18
+flicker_speed = 3.5
+enable_fireplace_flicker = true
+fireplace_flicker_intensity = 0.35
+enable_dust_particles = true
+
+; =============================================================================
+; HEX BOARD - Game board on the table
+; Positioned at table surface height
+; =============================================================================
 [node name="HexBoard" parent="." instance=ExtResource("2_hex_board")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 
+; =============================================================================
+; GAME UI - 2D interface overlay
+; =============================================================================
 [node name="GameUI" type="CanvasLayer" parent="."]
-

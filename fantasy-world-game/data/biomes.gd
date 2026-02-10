@@ -82,6 +82,21 @@ const DATA: Dictionary = {
 const SPECIAL_BIOME_WEIGHT: float = 0.06
 
 # =============================================================================
+# BIOME BASE HEIGHTS (for vertex-based terrain)
+# =============================================================================
+# Base height values for each biome (before height multiplier)
+# These are averaged at shared vertices to create smooth transitions
+const BASE_HEIGHTS: Dictionary = {
+	Type.SWAMP: 0.1,      # Lowest - near water level
+	Type.PLAINS: 0.3,     # Low flatlands
+	Type.FOREST: 0.5,     # Mid-elevation forests
+	Type.WASTES: 0.6,     # Desert plateaus
+	Type.HILLS: 0.8,      # Rolling highlands
+	Type.ASHLANDS: 1.0,   # Volcanic high ground
+	Type.PEAKS: 1.5       # Highest - mountain peaks
+}
+
+# =============================================================================
 # TROOP BIOME MODIFIERS
 # =============================================================================
 # Modifier types: "A" = Advantage (+25%), "S" = Strength (+15%), 
@@ -181,3 +196,9 @@ static func get_modifier_value(modifier_type) -> float:
 		"D": return GameConfig.DEFENSE_MODIFIER     # -15% incoming
 		"W": return GameConfig.WEAKNESS_MODIFIER    # -25%
 		_: return 0.0
+
+
+## Get base height for a biome type (for vertex-based terrain)
+static func get_base_height(biome_type: Type) -> float:
+	return BASE_HEIGHTS.get(biome_type, 0.5)
+

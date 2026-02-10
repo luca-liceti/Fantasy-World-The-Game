@@ -14,16 +14,20 @@ signal tile_unhovered(hex_tile: HexTile)
 # =============================================================================
 # EXPORTS
 # =============================================================================
-@export var hex_size: float = 1.0  # Distance from center to corner
+@export var hex_size: float = 1.0 # Distance from center to corner
 
 # =============================================================================
 # PROPERTIES
 # =============================================================================
 var coordinates: HexCoordinates
 var biome_type: Biomes.Type = Biomes.Type.PLAINS
-var occupant: Node = null  # Troop, NPC, or Gold Mine
+var tile_height: float = 0.0 # Height offset for terrain variation
+var occupant: Node = null # Troop, NPC, or Gold Mine
 var is_spawn_hex: bool = false
-var spawn_player_id: int = -1  # Which player this spawn belongs to (-1 = none)
+var spawn_player_id: int = -1 # Which player this spawn belongs to (-1 = none)
+
+# Neighbor heights for ramped edges (6 values, one per direction)
+var neighbor_heights: Array[float] = []
 
 # Highlight states
 var is_selected: bool = false
@@ -34,13 +38,14 @@ var is_hover: bool = false
 # Node references
 var mesh_instance: MeshInstance3D
 var collision_shape: CollisionShape3D
-var border_mesh: MeshInstance3D  # Border outline
-var selection_mesh: MeshInstance3D  # Full tile overlay for selection
+var border_mesh: MeshInstance3D # Border outline
+var selection_mesh: MeshInstance3D # Full tile overlay for selection
 var area: Area3D
-var particle_emitter: BiomeParticleEmitter  # Ambient particle effects
+var particle_emitter: BiomeParticleEmitter # Ambient particle effects
+var grass_instance: MultiMeshInstance3D # Witcher 3-style grass
 
 # Materials
-var base_material: StandardMaterial3D
+var base_material: StandardMaterial3D # Enhanced biome material with strong normals/AO
 var border_material: StandardMaterial3D
 var selection_material: StandardMaterial3D
 var movement_material: StandardMaterial3D
@@ -69,7 +74,7 @@ func _process(delta: float) -> void:
 	# Animate selection pulse
 	if is_selected:
 		selection_pulse_time += delta * PULSE_SPEED
-		var pulse = (sin(selection_pulse_time) + 1.0) * 0.5  # 0 to 1
+		var pulse = (sin(selection_pulse_time) + 1.0) * 0.5 # 0 to 1
 		var alpha = lerp(0.3, 0.6, pulse)
 		if selection_material:
 			selection_material.albedo_color.a = alpha
@@ -84,7 +89,7 @@ func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
 	biome_type = biome
 	
 	# Position the tile based on hex coordinates
-	# Y = BOARD_LIFT from GameConfig (hex tiles sit on raised platform)
+	# All tiles at same base Y = BOARD_LIFT (terrain variation is in mesh vertices)
 	var pixel_pos = coords.to_pixel(hex_size)
 	position = Vector3(pixel_pos.x, GameConfig.BOARD_LIFT, pixel_pos.y)
 	
@@ -93,6 +98,9 @@ func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
 	
 	# Setup ambient particles for atmospheric biomes
 	_setup_particles()
+	
+	# Setup Witcher 3-style grass for appropriate biomes
+	_setup_grass()
 
 
 # =============================================================================
@@ -103,40 +111,370 @@ func _create_hex_mesh() -> void:
 	mesh_instance = MeshInstance3D.new()
 	add_child(mesh_instance)
 	
-	# Create hexagon mesh (pointy-top orientation)
+	# Create initial flat hex mesh - will be updated with neighbor heights later
+	_rebuild_hex_mesh()
+
+
+## Rebuild the hex mesh with sloped edges
+## Center stays flat, corner vertices blend to average of neighboring tile heights
+## This creates smooth ramps between tiles with no gaps
+func _rebuild_hex_mesh() -> void:
+	_rebuild_hex_mesh_with_slopes()
+
+
+## Build hex mesh with sloped edges and skirts to eliminate gaps
+func _rebuild_hex_mesh_with_slopes() -> void:
+	# =========================================================================
+	# GEOMETRY CALCULATION
+	# =========================================================================
 	var vertices = PackedVector3Array()
+	var normals = PackedVector3Array()
+	var uvs = PackedVector2Array()
 	var indices = PackedInt32Array()
 	
-	# Center vertex
-	vertices.append(Vector3.ZERO)
+	var corner_positions: Array[Vector3] = []
+	var corner_normals: Array[Vector3] = []
+	var corner_heights: Array[float] = []
 	
-	# 6 corner vertices
+	# Pre-calculate data for 6 corners
 	for i in range(6):
-		var angle = deg_to_rad(60 * i - 30)  # Pointy-top: start at -30 degrees
-		var x = hex_size * cos(angle)
-		var z = hex_size * sin(angle)
-		vertices.append(Vector3(x, 0, z))
+		var angle_deg = 60 * i - 30
+		var angle = deg_to_rad(angle_deg)
+		var cx = hex_size * cos(angle)
+		var cz = hex_size * sin(angle)
+		
+		# Identify neighbors
+		var prev_idx = (i + 5) % 6
+		var curr_idx = i
+		
+		var h_self = tile_height
+		var h_prev = h_self
+		var h_curr = h_self
+		
+		var prev_is_edge = false
+		var curr_is_edge = false
+		
+		if neighbor_heights.size() == 6:
+			h_prev = neighbor_heights[prev_idx]
+			h_curr = neighbor_heights[curr_idx]
+			if h_prev < -900.0: prev_is_edge = true
+			if h_curr < -900.0: curr_is_edge = true
+		
+		# --- HEIGHT CALCULATION ---
+		var cy: float
+		
+		if prev_is_edge or curr_is_edge:
+			# If EITHER neighbor is missing, this corner is on the board perimeter.
+			# Pin it STRICTLY to 0.0 to match the stone border height.
+			cy = 0.0
+			h_prev = 0.0 if prev_is_edge else h_prev # For normal calc
+			h_curr = 0.0 if curr_is_edge else h_curr # For normal calc
+		else:
+			# Interior corner: average of 3 meeting tiles
+			cy = (h_self + h_prev + h_curr) / 3.0
+			
+		corner_positions.append(Vector3(cx, cy, cz))
+		corner_heights.append(cy)
+		
+		# --- SMOOTH NORMAL CALCULATION (Plane of Centers) ---
+		# Normal of the plane passing through the 3 tile centers
+		var dist = hex_size * 1.73205
+		var ang_curr = deg_to_rad(60 * i)
+		var ang_prev = deg_to_rad(60 * (i - 1))
+		
+		var p_center = Vector3(0, h_self, 0)
+		var p_curr = Vector3(dist * cos(ang_curr), h_curr, dist * sin(ang_curr))
+		var p_prev = Vector3(dist * cos(ang_prev), h_prev, dist * sin(ang_prev))
+		
+		var v1 = p_curr - p_center
+		var v2 = p_prev - p_center
+		
+		# Wind order: Center -> Curr -> Prev ?? No, let's check direction.
+		# A normal pointing UP should result from Cross product.
+		# v_prev is "left/CCW" relative to v_curr?
+		# 60*i (Curr) vs 60*(i-1) (Prev).
+		# Prev is -60 deg from Curr. Clockwise.
+		# So v_curr is CCW from v_prev.
+		# (v_curr) x (v_prev) would point DOWN?
+		# (v_prev) x (v_curr) should point UP.
+		var n = v2.cross(v1).normalized()
+		if n.y < 0: n = -n
+		
+		corner_normals.append(n)
+
+	# --- CENTER VERTEX ---
+	var center_pos = Vector3(0, tile_height, 0)
+	var center_uv = Vector2(0.5, 0.5)
 	
-	# Create triangles (6 triangles from center to each edge)
+	# Average center normal
+	var center_normal = Vector3.ZERO
+	for n in corner_normals:
+		center_normal += n
+	center_normal = center_normal.normalized()
+	if center_normal.length() < 0.001: center_normal = Vector3.UP
+
+	# =========================================================================
+	# BUILD MESH DATA
+	# =========================================================================
+	
+	# 0: Center
+	vertices.append(center_pos)
+	normals.append(center_normal)
+	uvs.append(center_uv)
+	
+	# 1-6: Corners
 	for i in range(6):
-		indices.append(0)  # Center
+		var angle = deg_to_rad(60 * i - 30)
+		var u = 0.5 + cos(angle) * 0.5
+		var v = 0.5 + sin(angle) * 0.5
+		vertices.append(corner_positions[i])
+		normals.append(corner_normals[i])
+		uvs.append(Vector2(u, v))
+		
+	# Top Indices
+	for i in range(6):
+		indices.append(0)
 		indices.append(i + 1)
 		indices.append(((i + 1) % 6) + 1)
+
+	# =========================================================================
+	# SKIRTS (Deep & Clean)
+	# =========================================================================
+	var skirt_y = -3.0
 	
-	var mesh = ArrayMesh.new()
-	var arrays = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_INDEX] = indices
+	for i in range(6):
+		var next_i = (i + 1) % 6
+		var p1 = corner_positions[i]
+		var p2 = corner_positions[next_i]
+		
+		# Identify if this is a "wall" skirt (interior gap fill) or "edge" skirt (border)
+		# If both heights are 0.0 (pinned), it's a border skirt.
+		# Actually, just make them all uniform structure.
+		
+		var b1 = Vector3(p1.x, skirt_y, p1.z)
+		var b2 = Vector3(p2.x, skirt_y, p2.z)
+		
+		var idx = vertices.size()
+		vertices.append(p1)
+		vertices.append(p2)
+		vertices.append(b1)
+		vertices.append(b2)
+		
+		# Flat normals for skirt "walls"
+		var edge_vec = p2 - p1
+		var skirt_n = edge_vec.cross(Vector3.UP).normalized()
+		for k in range(4): normals.append(skirt_n)
+		
+		# Stretched UVs
+		uvs.append(Vector2(0, 0))
+		uvs.append(Vector2(1, 0))
+		uvs.append(Vector2(0, 1))
+		uvs.append(Vector2(1, 1))
+		
+		# Triangles
+		indices.append(idx); indices.append(idx + 1); indices.append(idx + 2) # p1-p2-b1
+		indices.append(idx + 1); indices.append(idx + 3); indices.append(idx + 2) # p2-b2-b1
 	
-	# Calculate normals (all pointing up)
+	# =========================================================================
+	# COMMIT VIA SURFACETOOL (Auto Tangents)
+	# =========================================================================
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	
+	for i in range(vertices.size()):
+		st.set_normal(normals[i])
+		st.set_uv(uvs[i])
+		st.add_vertex(vertices[i])
+		
+	for idx in indices:
+		st.add_index(idx)
+		
+	st.generate_tangents()
+	st.index() # Optimize
+	mesh_instance.mesh = st.commit()
+
+
+## Update mesh with neighbor heights for smooth slope transitions
+func update_mesh_with_neighbors(heights: Array[float]) -> void:
+	neighbor_heights = heights
+	# Rebuild mesh with sloped edges based on neighbor heights
+	_rebuild_hex_mesh_with_slopes()
+	
+	# Re-apply material
+	if base_material and mesh_instance:
+		mesh_instance.material_override = base_material
+
+
+# Stored vertex heights for surface height calculation (troop placement)
+var stored_vertex_heights: Array[float] = []
+
+## Buffer height for troop placement (ensures they sit above surface)
+const SURFACE_HEIGHT_BUFFER: float = 0.1
+
+
+## Update mesh with vertex heights from vertex-based displacement system
+## This creates a seamless terrain using pre-calculated vertex heights
+func update_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
+	if vertex_heights.size() != 6:
+		push_error("update_mesh_with_vertex_heights requires exactly 6 vertex heights")
+		return
+	
+	# Store vertex heights for surface height calculation
+	stored_vertex_heights = vertex_heights.duplicate()
+	
+	# Build mesh using provided vertex heights
+	_rebuild_hex_mesh_with_vertex_heights(vertex_heights)
+	
+	# Re-apply material
+	if base_material and mesh_instance:
+		mesh_instance.material_override = base_material
+
+
+## Get the average surface height for this tile (used for troop placement)
+## Uses vertex averaging - much faster than raycasting
+## Returns the average Y height of all 6 vertices + a small buffer
+func get_surface_height() -> float:
+	if stored_vertex_heights.size() != 6:
+		# Fallback to tile_height if vertex heights not set
+		return tile_height + SURFACE_HEIGHT_BUFFER
+	
+	var total_height: float = 0.0
+	for h in stored_vertex_heights:
+		total_height += h
+	
+	return (total_height / 6.0) + SURFACE_HEIGHT_BUFFER
+
+
+## Build hex mesh using pre-calculated vertex heights
+func _rebuild_hex_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
+	# =========================================================================
+	# GEOMETRY CALCULATION
+	# =========================================================================
+	var vertices = PackedVector3Array()
 	var normals = PackedVector3Array()
-	for _i in range(vertices.size()):
-		normals.append(Vector3.UP)
-	arrays[Mesh.ARRAY_NORMAL] = normals
+	var uvs = PackedVector2Array()
+	var indices = PackedInt32Array()
 	
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh_instance.mesh = mesh
+	var corner_positions: Array[Vector3] = []
+	var corner_normals: Array[Vector3] = []
+	
+	# Pre-calculate corner positions using provided vertex heights
+	for i in range(6):
+		var angle_deg = 60 * i - 30
+		var angle = deg_to_rad(angle_deg)
+		var cx = hex_size * cos(angle)
+		var cz = hex_size * sin(angle)
+		var cy = vertex_heights[i] # Use the provided vertex height directly
+		
+		corner_positions.append(Vector3(cx, cy, cz))
+	
+	# Calculate normals for each corner
+	for i in range(6):
+		var prev_idx = (i + 5) % 6
+		var next_idx = (i + 1) % 6
+		
+		# Calculate normal using cross product of edge vectors
+		var edge1 = corner_positions[next_idx] - corner_positions[i]
+		var edge2 = corner_positions[prev_idx] - corner_positions[i]
+		
+		var n = edge2.cross(edge1).normalized()
+		if n.y < 0: n = -n
+		
+		corner_normals.append(n)
+	
+	# --- CENTER VERTEX ---
+	# Center height is average of all corner heights
+	var center_height = 0.0
+	for h in vertex_heights:
+		center_height += h
+	center_height /= 6.0
+	
+	var center_pos = Vector3(0, center_height, 0)
+	var center_uv = Vector2(0.5, 0.5)
+	
+	# Average center normal
+	var center_normal = Vector3.ZERO
+	for n in corner_normals:
+		center_normal += n
+	center_normal = center_normal.normalized()
+	if center_normal.length() < 0.001: center_normal = Vector3.UP
+
+	# =========================================================================
+	# BUILD MESH DATA
+	# =========================================================================
+	
+	# 0: Center
+	vertices.append(center_pos)
+	normals.append(center_normal)
+	uvs.append(center_uv)
+	
+	# 1-6: Corners
+	for i in range(6):
+		var angle = deg_to_rad(60 * i - 30)
+		var u = 0.5 + cos(angle) * 0.5
+		var v = 0.5 + sin(angle) * 0.5
+		vertices.append(corner_positions[i])
+		normals.append(corner_normals[i])
+		uvs.append(Vector2(u, v))
+		
+	# Top Indices
+	for i in range(6):
+		indices.append(0)
+		indices.append(i + 1)
+		indices.append(((i + 1) % 6) + 1)
+
+	# =========================================================================
+	# SKIRTS (Deep & Clean)
+	# =========================================================================
+	var skirt_y = -3.0
+	
+	for i in range(6):
+		var next_i = (i + 1) % 6
+		var p1 = corner_positions[i]
+		var p2 = corner_positions[next_i]
+		
+		var b1 = Vector3(p1.x, skirt_y, p1.z)
+		var b2 = Vector3(p2.x, skirt_y, p2.z)
+		
+		var idx = vertices.size()
+		vertices.append(p1)
+		vertices.append(p2)
+		vertices.append(b1)
+		vertices.append(b2)
+		
+		# Flat normals for skirt "walls"
+		var edge_vec = p2 - p1
+		var skirt_n = edge_vec.cross(Vector3.UP).normalized()
+		for k in range(4): normals.append(skirt_n)
+		
+		# Stretched UVs
+		uvs.append(Vector2(0, 0))
+		uvs.append(Vector2(1, 0))
+		uvs.append(Vector2(0, 1))
+		uvs.append(Vector2(1, 1))
+		
+		# Triangles
+		indices.append(idx); indices.append(idx + 1); indices.append(idx + 2) # p1-p2-b1
+		indices.append(idx + 1); indices.append(idx + 3); indices.append(idx + 2) # p2-b2-b1
+	
+	# =========================================================================
+	# COMMIT VIA SURFACETOOL (Auto Tangents)
+	# =========================================================================
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	
+	for i in range(vertices.size()):
+		st.set_normal(normals[i])
+		st.set_uv(uvs[i])
+		st.add_vertex(vertices[i])
+		
+	for idx in indices:
+		st.add_index(idx)
+		
+	st.generate_tangents()
+	st.index() # Optimize
+	mesh_instance.mesh = st.commit()
+
 
 
 func _create_selection_overlay() -> void:
@@ -190,7 +528,7 @@ func _create_border_mesh() -> void:
 	
 	var outer_scale = 1.0
 	var inner_scale = 0.88
-	var height = 0.05  # Raised border
+	var height = 0.05 # Raised border
 	
 	# Create outer and inner rings at height
 	for i in range(6):
@@ -254,7 +592,6 @@ func _create_collision() -> void:
 	area.mouse_exited.connect(_on_mouse_exited)
 	area.input_event.connect(_on_input_event)
 
-
 # =============================================================================
 # PARTICLES (DISABLED)
 # =============================================================================
@@ -267,11 +604,39 @@ func _setup_particles() -> void:
 
 
 # =============================================================================
+# GRASS SYSTEM (WITCHER 3 STYLE)
+# =============================================================================
+
+## Setup procedural grass for appropriate biomes
+func _setup_grass() -> void:
+	# Remove existing grass if any
+	if grass_instance and is_instance_valid(grass_instance):
+		grass_instance.queue_free()
+		grass_instance = null
+	
+	# Check if we're in the scene tree (grass needs to be added as child)
+	if not is_inside_tree():
+		# Defer until we're in the tree
+		call_deferred("_setup_grass")
+		return
+	
+	# Create grass for this biome if applicable
+	grass_instance = GrassSystem.create_grass_for_hex(biome_type, hex_size)
+	
+	if grass_instance:
+		# Add as child, slightly above the hex surface
+		grass_instance.position.y = 0.02 # Just above hex surface
+		add_child(grass_instance)
+		print("[HexTile] Grass added for biome: %s" % Biomes.get_biome_name(biome_type))
+
+
+# =============================================================================
 # MATERIALS
 # =============================================================================
 
+
 func _setup_materials() -> void:
-	# Base material from BiomeMaterialManager (enhanced PBR materials)
+	# Base material from BiomeMaterialManager (enhanced PBR materials with strong normals/AO)
 	base_material = BiomeMaterialManager.get_material_copy(biome_type)
 	mesh_instance.material_override = base_material
 	
@@ -330,7 +695,7 @@ func _update_visual() -> void:
 		selection_mesh.material_override = selection_material
 		border_mesh.visible = true
 		border_mesh.material_override = border_material
-		set_process(true)  # Enable pulse animation
+		set_process(true) # Enable pulse animation
 	# Attack highlight
 	elif is_attack_highlight:
 		selection_mesh.visible = true
@@ -360,6 +725,7 @@ func _update_visual() -> void:
 func set_biome(biome: Biomes.Type) -> void:
 	biome_type = biome
 	_update_visual()
+	_setup_grass() # Regenerate grass for new biome
 
 
 ## Set as spawn hex for a player

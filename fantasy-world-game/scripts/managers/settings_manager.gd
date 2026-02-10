@@ -37,6 +37,8 @@ const DEFAULT_SETTINGS: Dictionary = {
 		"bloom": true,
 		"bloom_intensity": 0.8, # 0.0 - 1.0
 		"camera_shake": true,
+		"grass_quality": 2, # 0=Off, 1=Low, 2=Medium, 3=High (Witcher 3 style grass)
+		"groove_textures": true, # Carved groove effects on table, stone border, biome tiles
 		# Quality Settings System (for asset integration)
 		"quality_preset": -1, # -1=Auto, 0=Low, 1=Medium, 2=High, 3=Ultra
 		"texture_quality": 2, # 0=Low (512), 1=Medium (1024), 2=High (2048), 3=Ultra (4096)
@@ -120,6 +122,8 @@ const QUALITY_PRESETS: Dictionary = {
 		"model_quality": 0,        # LOD2 (30% polygons)
 		"shadow_quality": 0,       # Off
 		"particle_quality": 0,     # 25% particles
+		"grass_quality": 0,        # Off (performance)
+		"groove_textures": false,  # Off (performance)
 		"terrain_height_variation": false,
 		"spell_effect_intensity": 0.5,
 		"antialiasing_mode": 0,    # Off
@@ -135,6 +139,8 @@ const QUALITY_PRESETS: Dictionary = {
 		"model_quality": 1,        # LOD1 (60% polygons)
 		"shadow_quality": 1,       # Low (512x512)
 		"particle_quality": 1,     # 50% particles
+		"grass_quality": 1,        # Low density
+		"groove_textures": true,   # Enabled (minimal performance cost)
 		"terrain_height_variation": false,
 		"spell_effect_intensity": 0.75,
 		"antialiasing_mode": 1,    # FXAA
@@ -150,6 +156,8 @@ const QUALITY_PRESETS: Dictionary = {
 		"model_quality": 2,        # LOD0 (100% polygons)
 		"shadow_quality": 2,       # Medium (2048x2048, soft)
 		"particle_quality": 2,     # 100% particles
+		"grass_quality": 2,        # Medium density
+		"groove_textures": true,   # Enabled
 		"terrain_height_variation": true,
 		"spell_effect_intensity": 1.0,
 		"antialiasing_mode": 2,    # TAA
@@ -165,6 +173,8 @@ const QUALITY_PRESETS: Dictionary = {
 		"model_quality": 3,        # LOD0 (100% + best textures)
 		"shadow_quality": 3,       # High (4096x4096, PCF)
 		"particle_quality": 3,     # 100% + extra detail
+		"grass_quality": 3,        # High density (Witcher 3 style)
+		"groove_textures": true,   # Enabled
 		"terrain_height_variation": true,
 		"spell_effect_intensity": 1.0,
 		"antialiasing_mode": 4,    # MSAA 4x
@@ -389,6 +399,19 @@ func _apply_graphics_setting(key: String, value: Variant) -> void:
 					1: viewport.msaa_3d = Viewport.MSAA_2X
 					2: viewport.msaa_3d = Viewport.MSAA_4X
 					3: viewport.msaa_3d = Viewport.MSAA_8X
+		"grass_quality":
+			# Apply grass quality to the GrassSystem
+			var quality = clampi(value, 0, 3)
+			if quality == 0:
+				GrassSystem.set_grass_enabled(false)
+			else:
+				GrassSystem.set_grass_enabled(true)
+				GrassSystem.set_grass_quality(quality)
+			print("[SettingsManager] Grass quality set to: %d" % quality)
+		"groove_textures":
+			# Groove textures setting is read by BiomeMaterialManager and BoardEnvironment
+			# Changes require scene reload to take full effect
+			print("[SettingsManager] Groove textures: %s" % ("Enabled" if value else "Disabled"))
 
 
 func _apply_controls_setting(key: String, _value: Variant) -> void:

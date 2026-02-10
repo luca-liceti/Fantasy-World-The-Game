@@ -370,7 +370,8 @@ func _create_graphics_settings() -> void:
 	_add_toggle("graphics/ambient_occlusion", "Ambient Occlusion")
 	_add_toggle("graphics/bloom", "Bloom Effects")
 	
-	_add_section_header("Effects")
+	_add_section_header("Environment")
+	_add_dropdown("graphics/grass_quality", "Grass Quality", ["Off", "Low", "Medium", "High"])
 	_add_toggle("graphics/camera_shake", "Camera Shake")
 
 

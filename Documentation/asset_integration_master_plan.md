@@ -14,6 +14,7 @@
 
 ### Phase 1: NOW (Core Gameplay Assets)
 1. [Board & Hex System](#1️⃣-board--hex-system)
+   - [Procedural Grass System (Witcher 3 Style)](#procedural-grass-system-witcher-3-style-)
 2. [Character Models (12 Troops + 3 NPCs)](#2️⃣-character-models-12-troops--3-npcs)
 3. [NOW Animations (Attack, Damage, Death)](#3️⃣-now-animations-attack-damage-death)
 4. [Card System (2D Art + 3D Planes)](#4️⃣-card-system-2d-art--3d-planes)
@@ -39,53 +40,6 @@
 - [Implementation Checklist - Phase 2](#📝-implementation-checklist---phase-2-later)
 - [Quick Reference: Asset URLs](#🎯-quick-reference-asset-urls)
 - [Asset Folder Structure](#📊-asset-folder-structure-final)
-
----
-
-## 🛠️ Development Tools
-
-### Godot MCP (Model Context Protocol) Server
-
-Throughout the asset integration and implementation process, you can leverage the **godot-mcp** tool for enhanced productivity and debugging. This MCP server provides direct integration with Godot Engine.
-
-**Available Tools:**
-- `mcp_godot_create_scene` - Create new scene files for assets
-- `mcp_godot_add_node` - Add nodes to scenes (MeshInstance3D, Sprite2D, etc.)
-- `mcp_godot_load_sprite` - Load sprite textures into Sprite2D nodes
-- `mcp_godot_save_scene` - Save scene modifications
-- `mcp_godot_run_project` - Run project and capture output for testing
-- `mcp_godot_stop_project` - Stop running project
-- `mcp_godot_launch_editor` - Launch Godot editor
-- `mcp_godot_get_project_info` - Retrieve project metadata
-- `mcp_godot_get_debug_output` - Get debug output and errors
-- `mcp_godot_export_mesh_library` - Export scenes as MeshLibrary resources
-
-**Asset Integration Use Cases:**
-- **Model Import Testing**: Quickly test imported 3D models by creating test scenes
-- **Material Setup**: Programmatically configure materials with PBR textures
-- **Batch Scene Creation**: Create multiple similar scenes (15 troop scenes, 7 biome variants)
-- **Animation Testing**: Run project to verify animation imports and playback
-- **Texture Validation**: Test texture imports and material assignments
-- **Performance Testing**: Run project with different quality settings to test LODs
-- **Debug Asset Issues**: Capture console output when assets fail to load
-
-**Recommended Workflow:**
-1. Import assets (models, textures) manually or via script
-2. Use `mcp_godot_create_scene` to create container scenes
-3. Use `mcp_godot_add_node` to add MeshInstance3D/Sprite2D nodes
-4. Configure materials and properties programmatically
-5. Use `mcp_godot_run_project` to test in-game appearance
-6. Use `mcp_godot_get_debug_output` to catch import/loading errors
-7. Iterate quickly without constant manual editor work
-
-**Integration Points in This Plan:**
-- **Phase 1.2 (Character Models)**: Batch create 15 troop scenes + 3 NPC scenes
-- **Phase 1.3 (Animations)**: Test animation imports and playback
-- **Phase 1.4 (Card System)**: Create 3D card plane scenes programmatically
-- **Phase 1.7 (UI System)**: Rapid prototyping of UI scenes
-- **Phase 1.10 (Quality Settings)**: Automated testing of different quality presets
-
-**Note:** The godot-mcp tool is particularly valuable for repetitive asset integration tasks and can significantly reduce manual work in the Godot editor.
 
 ---
 
@@ -276,7 +230,59 @@ Import Settings: Same as hex_base.glb
 
 ---
 
+### **Procedural Grass System (Witcher 3 Style)** ✅
+
+> ✅ **STATUS:** Implemented (Jan 2025)
+> Location: `res://scripts/effects/grass_system.gd`
+> Shader: `res://assets/shaders/grass_shader.gdshader`
+
+**Inspiration:** The Witcher 3: Wild Hunt grass rendering
+- GPU instancing via `MultiMeshInstance3D` for performance
+- Wind animation with natural swaying motion
+- Biome-specific grass types and colors
+- LOD system with distance fade
+
+**Biome Grass Configuration:**
+
+| Biome | Grass Type | Density | Colors | Notes |
+|-------|-----------|---------|--------|-------|
+| **Plains** | Wheat | High (1.5x) | Golden yellow | Tall wind-swept wheat fields |
+| **Hills** | Meadow | Medium (1.2x) | Sage green | Rolling meadow grass |
+| **Forest** | Forest Floor | Low (0.6x) | Dark mossy green | Short ferns/undergrowth |
+| **Swamp** | Reeds | Low (0.5x) | Murky brown-green | Tall reeds/cattails |
+| **Peaks** | None | — | — | Snow/ice terrain |
+| **Wastes** | None | — | — | Barren desert |
+| **Ashlands** | None | — | — | Volcanic/burned |
+
+**Shader Features:**
+- Height-based vertex animation (base stays fixed)
+- Dual sine wave wind for natural movement
+- Color gradient from base to tip
+- Subsurface scattering for backlit grass
+- Per-instance random variation
+- Distance-based LOD fade
+
+**Performance:**
+- ~150 grass blades per hex (base density)
+- GPU instanced (single draw call per hex)
+- Distance culling starts at 20 units
+- Complete fade at 35 units
+
+**Usage in Code:**
+```gdscript
+# Grass is automatically created in HexTile._setup_grass()
+# To manually create grass:
+var grass = GrassSystem.create_grass_for_hex(biome_type, hex_size)
+add_child(grass)
+
+# Update global wind (optional):
+GrassSystem.set_global_wind(Vector2(1, 0.5), 0.6, 1.2)
+```
+
+---
+
 ## 2️⃣ **Character Models (12 Troops + 3 NPCs)**
+
 
 ### **AI Model Generation Strategy**
 
