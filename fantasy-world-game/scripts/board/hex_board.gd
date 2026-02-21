@@ -182,21 +182,16 @@ func _update_tile_meshes_with_neighbors() -> void:
 
 
 ## Generate vertex heights using biome-based interpolation with proper averaging
-## CORRECTED LOGIC: Collects heights for each vertex, then averages, then applies multiplier
-## Uses dual-method border detection for perfect edge seal
+## PERIMETER SEAL: Vertices shared by fewer than 3 tiles are pinned to 0.0
+## In a hex grid, interior vertices are always shared by exactly 3 tiles.
+## Perimeter vertices (shared by 1 or 2 tiles) are on the board edge and must
+## match the stone border frame height (0.0 in local tile space).
 func _generate_vertex_heights() -> void:
 	vertex_map.clear()
-	
-	# Calculate board radius in world space (for distance-based border detection)
-	# For pointy-top hex: outer radius = hex_size, horizontal spacing = hex_size * sqrt(3)
-	# Maximum distance = (board_radius) * horizontal_spacing + outer_radius
-	var horizontal_spacing = hex_size * 1.732  # sqrt(3)
-	var max_board_distance = (board_radius * horizontal_spacing) + hex_size
 	
 	# Dictionary: vertex_position_key -> Array of base_heights from all touching tiles
 	# This prevents additive height spikes by collecting heights first
 	var vertex_height_collections: Dictionary = {}
-	var vertex_tile_counts: Dictionary = {}  # Track how many tiles touch each vertex
 	
 	# FIRST PASS: Collect heights for each vertex
 	# Don't calculate final heights yet - just collect the data
@@ -213,33 +208,22 @@ func _generate_vertex_heights() -> void:
 			# Initialize array if this is the first tile touching this vertex
 			if vertex_key not in vertex_height_collections:
 				vertex_height_collections[vertex_key] = []
-				vertex_tile_counts[vertex_key] = 0
 			
 			# Add this tile's base height to the vertex's collection
 			vertex_height_collections[vertex_key].append(base_height)
-			vertex_tile_counts[vertex_key] += 1
 	
-	# SECOND PASS: Average heights and apply multiplier
-	# Only after all tiles have contributed their heights
+	# SECOND PASS: Calculate final heights with PERIMETER SEAL
 	for vertex_key in vertex_height_collections:
 		var height_array = vertex_height_collections[vertex_key]
-		var vertex_pos = _key_to_vertex_position(vertex_key)
-		var tile_count = vertex_tile_counts[vertex_key]
 		
-		# DUAL-METHOD BORDER DETECTION:
-		# Method 1: Distance-based (vertex is far from center)
-		var distance_from_center = Vector2(vertex_pos.x, vertex_pos.z).length()
-		var is_far_from_center = distance_from_center >= (max_board_distance - 0.5)
+		# PERIMETER SEAL: In a hex grid, interior vertices are shared by exactly 3 tiles.
+		# If fewer than 3 tiles touch this vertex, it's on the board perimeter.
+		# Pin it to 0.0 so it sits flush with the stone border frame.
+		var is_perimeter_vertex = height_array.size() < 3
 		
-		# Method 2: Tile-count based (interior vertices are touched by 3 tiles)
-		# Perimeter vertices are only touched by 1 or 2 tiles
-		var is_perimeter_by_count = tile_count < 3
-		
-		# If EITHER method detects a border vertex, clamp to 0
-		var is_border_vertex = is_far_from_center or is_perimeter_by_count
-		
-		if is_border_vertex:
-			# STRICT BORDER RULE: Force border vertices to exactly 0
+		if is_perimeter_vertex:
+			# HARD CLAMP: Force all perimeter vertices to exactly 0.0
+			# This ensures edge tile corners meet the stone border seamlessly
 			vertex_map[vertex_key] = 0.0
 		else:
 			# Interior vertex: Calculate average of all collected heights
@@ -249,7 +233,7 @@ func _generate_vertex_heights() -> void:
 			
 			var averaged_height = total_height / height_array.size()
 			
-			# ONLY NOW apply the multiplier (after averaging, not before)
+			# Apply the height multiplier (after averaging, not before)
 			var final_height = averaged_height * GameConfig.TERRAIN_HEIGHT_MULTIPLIER
 			
 			vertex_map[vertex_key] = final_height
@@ -262,14 +246,14 @@ func _generate_vertex_heights() -> void:
 		else:
 			interior_count += 1
 	
-	print("Generated %d unique vertices (border: %d, interior: %d, multiplier: %.1fx, radius: %.2f)" % 
-		[vertex_map.size(), border_count, interior_count, GameConfig.TERRAIN_HEIGHT_MULTIPLIER, max_board_distance])
+	print("Generated %d unique vertices (perimeter sealed: %d, interior: %d)" % 
+		[vertex_map.size(), border_count, interior_count])
 
 
 ## Get the surface height for a tile using vertex averaging
 ## Used for troop placement - much faster than raycasting
-## Returns the average Y height of the 6 vertices + a small buffer
-const TROOP_HEIGHT_BUFFER: float = 0.1  # Small offset so troops sit above surface
+## Returns the average Y height of the 6 vertices + 0.2 buffer
+const TROOP_HEIGHT_BUFFER: float = 0.2  # Troop Y = average of 6 vertices + 0.2
 
 func get_tile_surface_height(coord: HexCoordinates) -> float:
 	var total_height: float = 0.0

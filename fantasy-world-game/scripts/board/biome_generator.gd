@@ -1,15 +1,14 @@
-## Biome Generator - Noise-Based Climate System
+## Biome Generator - Unified Noise System
 ## ============================================================================
 ## 
-## Generates coherent biome regions using dual-layer Perlin noise for
-## temperature and elevation, creating natural climate zones with smooth
-## transitions and balanced distribution.
+## Generates coherent biome regions using a SINGLE noise source for
+## large, contiguous blob-shaped biome regions with perfect distribution.
 ##
 ## FEATURES:
-## - Climate-based biome mapping (temperature + elevation → biome type)
-## - Height variation for terrain depth
-## - Distribution balancing to prevent over/underrepresentation
-## - Forbidden neighbor enforcement via cleanup passes
+## - Single master noise value per tile → large organic blobs
+## - Strict percentile-based biome assignment → exact 14% per biome
+## - Height variation based on biome type
+## - Forbidden neighbor cleanup for climate logic
 ##
 class_name BiomeGenerator
 extends RefCounted
@@ -25,7 +24,7 @@ const NUM_BIOMES: int = 7
 ## Total tiles on the board (hexagonal board with radius 11 = 397 tiles)
 const TOTAL_TILES: int = 397
 
-## Base tiles per biome (397 / 7 ≈ 56)
+## Base tiles per biome (397 / 7 ≈ 56, or ~14%)
 const BASE_TILES_PER_BIOME: int = 56
 
 ## Random variance applied to each biome's target size (±8 tiles)
@@ -48,12 +47,16 @@ const SMOOTHING_PASSES: int = 3 # Less smoothing to preserve terrain variation
 ## Number of cleanup passes to remove isolated tiles
 const CLEANUP_PASSES: int = 5
 
-## Noise configuration - very low frequency = large organic blobs
-const NOISE_FREQUENCY: float = 0.01 # Very low for large natural blobs
-const NOISE_OCTAVES: int = 4 # Higher octaves for crinkly natural edges
+## ==========================================================================
+## UNIFIED NOISE CONFIGURATION
+## ==========================================================================
+## Single FastNoiseLite instance with low frequency for LARGE contiguous blobs
+const MASTER_NOISE_FREQUENCY: float = 0.012  # Slightly higher for more varied regions
+const MASTER_NOISE_OCTAVES: int = 4  # Higher octaves for natural crinkly edges
 
-## Biome smoothing passes (neighbor influence) - only 1 pass at the end
-const BIOME_SMOOTHING_PASSES: int = 1 # Single cleanup pass to preserve blob shapes
+## Domain warp strength - how much the sample coordinates are displaced
+## Higher = more organic/twisted biome shapes, lower = smoother blobs
+const DOMAIN_WARP_STRENGTH: float = 8.0
 
 
 # =============================================================================
@@ -74,11 +77,15 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _coord_lookup: Dictionary = {} # "q,r" -> HexCoordinates for O(1) lookup
 var _valid_adjacencies: Dictionary = {} # BiomeType -> [allowed neighbor types]
 
-# Noise generators
-var _elevation_noise: FastNoiseLite
-var _temperature_noise: FastNoiseLite
-var _moisture_noise: FastNoiseLite
-var _terrain_detail_noise: FastNoiseLite # For micro-terrain variation
+## Single unified noise generator for biome assignment
+var _master_noise: FastNoiseLite
+
+## Domain warp noise - displaces sample coordinates for organic biome shapes
+## This breaks up the straight contour-line banding into irregular blobs
+var _domain_warp_noise: FastNoiseLite
+
+## Terrain detail noise for micro-variation within biomes
+var _terrain_detail_noise: FastNoiseLite
 
 # Board dimensions (calculated during generation)
 var _board_radius: float = 11.0
@@ -103,25 +110,32 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	_board_radius = _calculate_board_radius(coordinates)
 	
 	# ==========================================================================
-	# STEP 1: Generate raw noise values for all tiles
-	# Use SINGLE noise source for biome assignment = true blob shapes
-	# (Combining multiple noise layers creates stringy intersection patterns)
+	# STEP 1: Generate SINGLE Master Value per tile using unified noise source
+	# This is the key to creating large, contiguous biome blobs
 	# ==========================================================================
-	var noise_values: Array[float] = []
-	var tile_noise_map: Dictionary = {} # key -> single noise value for biome
+	var master_values: Array[float] = []
+	var tile_master_map: Dictionary = {} # key -> master noise value
 	var height_map: Dictionary = {}
 	
 	for coord in coordinates:
 		var key: String = coord._to_key()
 		var pixel = coord.to_pixel(1.0)
 		
-		# Use SINGLE noise value for biome assignment (creates coherent blobs)
-		var biome_noise = (_elevation_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-		tile_noise_map[key] = biome_noise
-		noise_values.append(biome_noise)
+		# DOMAIN WARPING: Displace the sample coordinates using a second noise source
+		# This twists and warps the biome boundaries from straight contour lines
+		# into organic, irregular blob shapes - like real terrain biomes
+		var warp_x = _domain_warp_noise.get_noise_2d(pixel.x, pixel.y) * DOMAIN_WARP_STRENGTH
+		var warp_y = _domain_warp_noise.get_noise_2d(pixel.x + 31.7, pixel.y + 17.3) * DOMAIN_WARP_STRENGTH
+		var warped_x = pixel.x + warp_x
+		var warped_y = pixel.y + warp_y
 		
-		# Height from elevation noise + detail noise for micro-variation
-		var base_height = biome_noise  # Use same noise as biome for consistent terrain
+		# UNIFIED NOISE: Sample at warped coordinates for organic blob shapes
+		var master_value = (_master_noise.get_noise_2d(warped_x, warped_y) + 1.0) * 0.5
+		tile_master_map[key] = master_value
+		master_values.append(master_value)
+		
+		# Height derived from master noise + detail noise for micro-variation
+		var base_height = master_value  # Use same noise for consistent terrain
 		var detail = (_terrain_detail_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
 		var combined_height = base_height * 0.8 + detail * 0.2
 		
@@ -130,46 +144,42 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 		height_map[key] = combined_height
 	
 	# ==========================================================================
-	# STEP 2: Calculate percentile thresholds ("Rising Tide" Method)
-	# Sort all noise values and find the 14th, 28th, 42nd... percentile boundaries
-	# This guarantees perfect ~14% distribution while keeping blob shapes intact
+	# STEP 2: STRICT PERCENTILE MAPPING
+	# Sort all master values and calculate thresholds for each 14% band
+	# This guarantees PERFECT distribution while keeping organic blob shapes
 	# ==========================================================================
-	noise_values.sort()
-	var total_tiles = noise_values.size()
+	master_values.sort()
+	var total_tiles = master_values.size()
 	var tiles_per_biome = total_tiles / NUM_BIOMES  # ~56 for 397 tiles / 7 biomes
 	
-	# Find the threshold values at each percentile boundary
+	# Calculate the exact threshold values at each percentile boundary
+	# Bottom 14% gets biome 0, next 14% gets biome 1, etc.
 	var thresholds: Array[float] = []
 	for i in range(1, NUM_BIOMES):
 		var percentile_index = min(i * tiles_per_biome, total_tiles - 1)
-		thresholds.append(noise_values[percentile_index])
+		thresholds.append(master_values[percentile_index])
 	
-	print("Biome thresholds (percentile boundaries): ", thresholds)
+	print("Biome thresholds (14%% boundaries): ", thresholds)
 	
 	# ==========================================================================
-	# STEP 3: Assign biomes using percentile thresholds
-	# Each tile gets a biome based on where its noise value falls
+	# STEP 3: Assign biomes using strict percentile thresholds
+	# Each tile's biome is determined by where its master value falls
 	# ==========================================================================
 	var biome_map: Dictionary = {}
 	
-	for key in tile_noise_map:
-		var noise_val = tile_noise_map[key]
-		biome_map[key] = _noise_to_biome_percentile(noise_val, thresholds)
+	for key in tile_master_map:
+		var master_val = tile_master_map[key]
+		biome_map[key] = _master_value_to_biome(master_val, thresholds)
 	
 	# DEBUG: Print distribution after percentile assignment
-	print("Distribution after percentile assignment:")
+	print("Distribution after strict percentile mapping:")
 	_print_biome_distribution(biome_map)
 	
 	# ==========================================================================
-	# STEP 4: DISABLED - Adjacency fixes were destroying distribution
-	# The percentile method already creates valid natural patterns
+	# STEP 4: DISABLED - Post-processing was destroying the even distribution
+	# The percentile method inherently creates valid natural patterns
 	# ==========================================================================
 	# biome_map = _fix_adjacency_violations(coordinates, biome_map)
-	
-	# ==========================================================================
-	# STEP 5: DISABLED - Smoothing was destroying distribution
-	# Trust the noise - percentile thresholds already give perfect balance
-	# ==========================================================================
 	# biome_map = _smooth_biomes_by_neighbors(coordinates, biome_map)
 	
 	# DEBUG: Final distribution
@@ -177,17 +187,17 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	_print_biome_distribution(biome_map)
 	
 	# ==========================================================================
-	# STEP 6: Adjust heights based on final biome assignments
+	# STEP 5: Adjust heights based on final biome assignments
 	# ==========================================================================
 	height_map = _adjust_heights_for_biomes(coordinates, biome_map, height_map)
 	
-	# STEP 7: Smooth height transitions between neighbors
+	# STEP 6: Smooth height transitions between neighbors
 	height_map = _smooth_heights(coordinates, height_map)
 	
-	# STEP 8: Enforce maximum height difference between adjacent tiles
+	# STEP 7: Enforce maximum height difference between adjacent tiles
 	height_map = _enforce_max_height_difference(coordinates, height_map)
 	
-	# STEP 9: Apply final HEIGHT_SCALE
+	# STEP 8: Apply final HEIGHT_SCALE
 	for key in height_map:
 		height_map[key] = height_map[key] * HEIGHT_SCALE
 	
@@ -197,22 +207,23 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	}
 
 
-## Map noise value to biome using pre-calculated percentile thresholds
-## This preserves exact distribution while keeping natural noise patterns
-func _noise_to_biome_percentile(noise_val: float, thresholds: Array[float]) -> Biomes.Type:
-	# Biomes ordered from lowest to highest noise value
+## Map master value to biome using pre-calculated percentile thresholds
+## This ensures each biome gets exactly ~14% of tiles while preserving noise patterns
+func _master_value_to_biome(master_val: float, thresholds: Array[float]) -> Biomes.Type:
+	# Biomes ordered from lowest to highest master value
 	# SWAMP (lowest) -> PLAINS -> FOREST -> HILLS -> WASTES -> ASHLANDS -> PEAKS (highest)
-	if noise_val < thresholds[0]:
+	# This ordering creates natural elevation flow
+	if master_val < thresholds[0]:
 		return Biomes.Type.SWAMP
-	elif noise_val < thresholds[1]:
+	elif master_val < thresholds[1]:
 		return Biomes.Type.PLAINS
-	elif noise_val < thresholds[2]:
+	elif master_val < thresholds[2]:
 		return Biomes.Type.FOREST
-	elif noise_val < thresholds[3]:
+	elif master_val < thresholds[3]:
 		return Biomes.Type.HILLS
-	elif noise_val < thresholds[4]:
+	elif master_val < thresholds[4]:
 		return Biomes.Type.WASTES
-	elif noise_val < thresholds[5]:
+	elif master_val < thresholds[5]:
 		return Biomes.Type.ASHLANDS
 	else:
 		return Biomes.Type.PEAKS
@@ -233,333 +244,46 @@ func _print_biome_distribution(biome_map: Dictionary) -> void:
 
 
 # =============================================================================
-# NOISE SETUP
+# NOISE SETUP - UNIFIED SINGLE SOURCE
 # =============================================================================
 
 func _setup_noise() -> void:
 	var base_seed = _rng.randi()
 	
-	# Elevation noise - Simplex with very low frequency for large organic blobs
-	_elevation_noise = FastNoiseLite.new()
-	_elevation_noise.seed = base_seed
-	_elevation_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_elevation_noise.frequency = NOISE_FREQUENCY
-	_elevation_noise.fractal_octaves = NOISE_OCTAVES
-	_elevation_noise.fractal_lacunarity = 2.0
-	_elevation_noise.fractal_gain = 0.5
+	# ==========================================================================
+	# MASTER NOISE - Single unified source for biome determination
+	# Type: SIMPLEX_SMOOTH for natural organic patterns
+	# Frequency: 0.012 (low) → creates large contiguous biome blobs
+	# ==========================================================================
+	_master_noise = FastNoiseLite.new()
+	_master_noise.seed = base_seed
+	_master_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_master_noise.frequency = MASTER_NOISE_FREQUENCY  # 0.012
+	_master_noise.fractal_octaves = MASTER_NOISE_OCTAVES
+	_master_noise.fractal_lacunarity = 2.0
+	_master_noise.fractal_gain = 0.5
 	
-	# Temperature noise - Simplex for natural hot/cold gradients
-	_temperature_noise = FastNoiseLite.new()
-	_temperature_noise.seed = base_seed + 1000
-	_temperature_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_temperature_noise.frequency = NOISE_FREQUENCY * 0.8
-	_temperature_noise.fractal_octaves = NOISE_OCTAVES
-	_temperature_noise.fractal_lacunarity = 2.0
-	_temperature_noise.fractal_gain = 0.5
+	# ==========================================================================
+	# DOMAIN WARP NOISE - Displaces sample coordinates to break up linear bands
+	# Uses a different seed and higher frequency to create irregular warping
+	# The warp makes biome boundaries look like real terrain instead of contours
+	# ==========================================================================
+	_domain_warp_noise = FastNoiseLite.new()
+	_domain_warp_noise.seed = base_seed + 7777
+	_domain_warp_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_domain_warp_noise.frequency = 0.05  # Higher freq = more irregular warping
+	_domain_warp_noise.fractal_octaves = 3
+	_domain_warp_noise.fractal_lacunarity = 2.0
+	_domain_warp_noise.fractal_gain = 0.5
 	
-	# Moisture noise - Simplex for natural wet/dry gradients
-	_moisture_noise = FastNoiseLite.new()
-	_moisture_noise.seed = base_seed + 2000
-	_moisture_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_moisture_noise.frequency = NOISE_FREQUENCY * 0.9
-	_moisture_noise.fractal_octaves = NOISE_OCTAVES
-	_moisture_noise.fractal_lacunarity = 2.0
-	_moisture_noise.fractal_gain = 0.5
-	
-	# Terrain detail noise - Higher frequency for micro-variation
+	# Terrain detail noise - Higher frequency for micro-variation within biomes
 	_terrain_detail_noise = FastNoiseLite.new()
 	_terrain_detail_noise.seed = base_seed + 3000
 	_terrain_detail_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_terrain_detail_noise.frequency = NOISE_FREQUENCY * 4.0
+	_terrain_detail_noise.frequency = MASTER_NOISE_FREQUENCY * 4.0  # Higher freq for detail
 	_terrain_detail_noise.fractal_octaves = 2
 	_terrain_detail_noise.fractal_lacunarity = 2.0
 	_terrain_detail_noise.fractal_gain = 0.4
-
-
-## Get climate values for a coordinate (all normalized 0-1)
-func _get_climate_values(coord: HexCoordinates) -> Dictionary:
-	var pixel = coord.to_pixel(1.0)
-	
-	# Get raw noise values (-1 to 1) and normalize to 0-1
-	var elevation = (_elevation_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-	var temperature = (_temperature_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-	var moisture = (_moisture_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-	
-	return {
-		"elevation": elevation,
-		"temperature": temperature,
-		"moisture": moisture
-	}
-
-
-# =============================================================================
-# CLIMATE TO BIOME MAPPING
-# =============================================================================
-
-## Map climate values to a biome type
-## Uses combined climate value for even 7-way distribution (~14% each)
-## Cellular noise creates distinct regions, so we map cell values to biomes directly
-func _climate_to_biome(elevation: float, temperature: float, moisture: float) -> Biomes.Type:
-	# Combine climate values into a single index
-	# Each noise value (elevation, temperature, moisture) is 0-1
-	# We weight and combine to get a value that maps to 7 biomes
-	
-	# Primary factor: elevation (0-1) determines base biome
-	# Secondary: temperature shifts within bands
-	# Tertiary: moisture for fine-tuning
-	
-	# Create a combined value that covers the full 0-1 range evenly
-	var combined = elevation * 0.5 + temperature * 0.3 + moisture * 0.2
-	
-	# Map to 7 biomes with equal probability bands (~14.3% each)
-	# Band 0.000 - 0.143: SWAMP (lowest combined = wet + low + cool)
-	# Band 0.143 - 0.286: PLAINS
-	# Band 0.286 - 0.429: FOREST
-	# Band 0.429 - 0.571: HILLS
-	# Band 0.571 - 0.714: WASTES
-	# Band 0.714 - 0.857: ASHLANDS
-	# Band 0.857 - 1.000: PEAKS (highest combined = dry + high + hot)
-	
-	if combined < 0.143:
-		return Biomes.Type.SWAMP
-	elif combined < 0.286:
-		return Biomes.Type.PLAINS
-	elif combined < 0.429:
-		return Biomes.Type.FOREST
-	elif combined < 0.571:
-		return Biomes.Type.HILLS
-	elif combined < 0.714:
-		return Biomes.Type.WASTES
-	elif combined < 0.857:
-		return Biomes.Type.ASHLANDS
-	else:
-		return Biomes.Type.PEAKS
-
-
-# =============================================================================
-# DISTRIBUTION BALANCING
-# =============================================================================
-
-## Balance biome distribution by shifting borderline tiles
-func _balance_distribution(coordinates: Array[HexCoordinates], biome_map: Dictionary, climate_data: Dictionary) -> Dictionary:
-	var new_map: Dictionary = biome_map.duplicate()
-	
-	# Calculate target ranges
-	var min_tiles: int = BASE_TILES_PER_BIOME - TILE_VARIANCE
-	var max_tiles: int = BASE_TILES_PER_BIOME + TILE_VARIANCE
-	
-	# Run many balancing passes to ensure distribution
-	for _pass in range(20):  # More passes for better balance
-		var counts: Dictionary = _count_biomes(new_map)
-		var changed: bool = false
-		
-		# Find overrepresented and underrepresented biomes
-		# Also enforce HARD MAXIMUM cap (no biome > 25%)
-		var over: Array = []
-		var under: Array = []
-		
-		for biome in Biomes.Type.values():
-			var count: int = counts.get(biome, 0)
-			# Hard cap takes priority - any biome over MAX_TILES_PER_BIOME is over
-			if count > MAX_TILES_PER_BIOME:
-				over.append(biome)
-			elif count > max_tiles:
-				over.append(biome)
-			elif count < min_tiles:
-				under.append(biome)
-		
-		# If distribution is balanced, we're done
-		if under.is_empty():
-			break
-		
-		# If no overrepresented biomes but still underrepresented ones,
-		# take from biomes closest to max
-		if over.is_empty() and not under.is_empty():
-			var sorted_biomes: Array = Biomes.Type.values().duplicate()
-			sorted_biomes.sort_custom(func(a, b): return counts.get(a, 0) > counts.get(b, 0))
-			for biome in sorted_biomes:
-				if counts.get(biome, 0) > min_tiles + 5 and biome not in under:
-					over.append(biome)
-					break
-		
-		if over.is_empty():
-			break
-		
-		# For each overrepresented biome, try to shift borderline tiles
-		for over_biome in over:
-			var tiles_to_shift: Array = _find_borderline_tiles(coordinates, new_map, climate_data, over_biome)
-			
-			for tile_key in tiles_to_shift:
-				var current_count: int = counts.get(over_biome, 0)
-				if current_count <= min_tiles + 5:
-					break
-				
-				# Find best alternative biome for this tile
-				var coord = HexCoordinates.from_key(tile_key)
-				var alt_biome = _find_alternative_biome(coord, new_map, under, climate_data[tile_key])
-				
-				if alt_biome != null:
-					new_map[tile_key] = alt_biome
-					counts[over_biome] = counts.get(over_biome, 0) - 1
-					counts[alt_biome] = counts.get(alt_biome, 0) + 1
-					changed = true
-					
-					# Remove from under if now satisfied
-					if counts.get(alt_biome, 0) >= min_tiles:
-						under.erase(alt_biome)
-		
-		if not changed:
-			# Try more aggressive approach - shift any tile adjacent to underrepresented biome
-			for under_biome in under:
-				for coord in coordinates:
-					var key: String = coord._to_key()
-					var current_biome = new_map.get(key)
-					if current_biome == under_biome:
-						continue
-					if counts.get(current_biome, 0) <= min_tiles + 5:
-						continue
-					
-					# Check if adjacent to the under biome
-					for neighbor in _get_valid_neighbors(coord):
-						var nkey: String = neighbor._to_key()
-						if nkey in new_map and new_map[nkey] == under_biome:
-							# Check adjacency rules
-							var valid: bool = true
-							for check_neighbor in _get_valid_neighbors(coord):
-								var cnkey: String = check_neighbor._to_key()
-								if cnkey in new_map and not _can_be_adjacent(under_biome, new_map[cnkey]):
-									valid = false
-									break
-							
-							if valid:
-								new_map[key] = under_biome
-								counts[current_biome] = counts.get(current_biome, 0) - 1
-								counts[under_biome] = counts.get(under_biome, 0) + 1
-								changed = true
-								break
-					
-					if changed:
-						break
-				if changed:
-					break
-	
-	return new_map
-
-
-## Find tiles that are on the border of a biome region (candidates for reassignment)
-func _find_borderline_tiles(coordinates: Array[HexCoordinates], biome_map: Dictionary, climate_data: Dictionary, target_biome: Biomes.Type) -> Array:
-	var borderline: Array = []
-	
-	for coord in coordinates:
-		var key: String = coord._to_key()
-		if biome_map.get(key) != target_biome:
-			continue
-		
-		# Check if this tile borders a different biome
-		var has_different_neighbor: bool = false
-		for neighbor in _get_valid_neighbors(coord):
-			var nkey: String = neighbor._to_key()
-			if nkey in biome_map and biome_map[nkey] != target_biome:
-				has_different_neighbor = true
-				break
-		
-		if has_different_neighbor:
-			# Score by how "borderline" the climate values are
-			var climate = climate_data[key]
-			var score = _get_borderline_score(climate, target_biome)
-			borderline.append({"key": key, "score": score})
-	
-	# Sort by score (highest = most borderline = best candidate for reassignment)
-	borderline.sort_custom(func(a, b): return a["score"] > b["score"])
-	
-	var result: Array = []
-	for item in borderline:
-		result.append(item["key"])
-	return result
-
-
-## Calculate how "borderline" a tile's climate is for its assigned biome
-func _get_borderline_score(climate: Dictionary, biome: Biomes.Type) -> float:
-	# Higher score = more borderline = climate values are near thresholds
-	var e: float = climate.elevation
-	var t: float = climate.temperature
-	var m: float = climate.moisture
-	
-	# Distance from climate thresholds (closer to threshold = more borderline)
-	var threshold_distances: Array = [
-		abs(e - 0.7), abs(e - 0.3), # Elevation thresholds
-		abs(t - 0.35), abs(t - 0.55), abs(t - 0.65), # Temperature thresholds
-		abs(m - 0.55), abs(m - 0.6) # Moisture thresholds
-	]
-	
-	# Return inverse of minimum distance (closer = higher score)
-	var min_dist: float = 1.0
-	for d in threshold_distances:
-		min_dist = min(min_dist, d)
-	
-	return 1.0 - min_dist
-
-
-## Find an alternative biome for a tile that needs reassignment
-## Returns null if no valid alternative found
-func _find_alternative_biome(coord: HexCoordinates, biome_map: Dictionary, under_biomes: Array, climate: Dictionary):
-	var best_biome = null
-	var best_score: float = -1.0
-	
-	for candidate in under_biomes:
-		# Check if this biome would be valid here (no forbidden neighbors)
-		var valid: bool = true
-		for neighbor in _get_valid_neighbors(coord):
-			var nkey: String = neighbor._to_key()
-			if nkey in biome_map:
-				if not _can_be_adjacent(candidate, biome_map[nkey]):
-					valid = false
-					break
-		
-		if not valid:
-			continue
-		
-		# Score based on climate compatibility
-		var score: float = _get_climate_compatibility(climate, candidate)
-		if score > best_score:
-			best_score = score
-			best_biome = candidate
-	
-	return best_biome
-
-
-## Get compatibility score between climate values and a biome type
-func _get_climate_compatibility(climate: Dictionary, biome: Biomes.Type) -> float:
-	var e: float = climate.elevation
-	var t: float = climate.temperature
-	var m: float = climate.moisture
-	
-	match biome:
-		Biomes.Type.PEAKS:
-			return (1.0 - t) * e # Cold + High
-		Biomes.Type.ASHLANDS:
-			return t * e # Hot + High
-		Biomes.Type.HILLS:
-			return e * (1.0 - abs(t - 0.5) * 2) # High + Temperate
-		Biomes.Type.WASTES:
-			return t * (1.0 - m) # Hot + Dry
-		Biomes.Type.SWAMP:
-			return (1.0 - e) * m # Low + Wet
-		Biomes.Type.FOREST:
-			return m * (1.0 - abs(e - 0.5) * 2) # Mid elevation + Wet
-		Biomes.Type.PLAINS:
-			return (1.0 - abs(e - 0.4) * 2) * (1.0 - abs(t - 0.5) * 2) # Mid everything
-		_:
-			return 0.5
-
-
-func _count_biomes(biome_map: Dictionary) -> Dictionary:
-	var counts: Dictionary = {}
-	for biome in Biomes.Type.values():
-		counts[biome] = 0
-	for key in biome_map:
-		counts[biome_map[key]] = counts.get(biome_map[key], 0) + 1
-	return counts
 
 
 # =============================================================================
@@ -592,12 +316,11 @@ func _adjust_heights_for_biomes(coordinates: Array[HexCoordinates], biome_map: D
 		var base_height: float = height_range[0]
 		var max_height: float = height_range[1]
 		
-		# Use the original elevation noise to vary within the biome's range
-		var climate = _get_climate_values(coord)
-		var elevation_factor = (climate.elevation + 1.0) * 0.5 # Convert -1..1 to 0..1
+		# Use the master noise to vary within the biome's range
+		var pixel = coord.to_pixel(1.0)
+		var elevation_factor = (_master_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
 		
 		# Add some micro-variation using detail noise
-		var pixel = coord.to_pixel(1.0)
 		var detail_noise = (_terrain_detail_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
 		
 		# Combine elevation and detail for natural variation within biome range
@@ -781,180 +504,6 @@ func _get_valid_neighbors(coord: HexCoordinates) -> Array[HexCoordinates]:
 			result.append(neighbor)
 	return result
 
-# =============================================================================
-# BIOME SMOOTHING (Neighbor Influence)
-# =============================================================================
-
-## Smooth biomes by neighbor influence - eliminates isolated tiles and thin strings
-## If a tile is surrounded by 5-6 neighbors of a DIFFERENT biome, flip it to match
-func _smooth_biomes_by_neighbors(coordinates: Array[HexCoordinates], biome_map: Dictionary) -> Dictionary:
-	var new_map: Dictionary = biome_map.duplicate()
-	
-	for _pass in range(BIOME_SMOOTHING_PASSES):
-		var changed: bool = false
-		
-		for coord in coordinates:
-			var key: String = coord._to_key()
-			var current_biome: Biomes.Type = new_map.get(key, Biomes.Type.PLAINS)
-			
-			var neighbors: Array[HexCoordinates] = _get_valid_neighbors(coord)
-			if neighbors.size() < 5:
-				continue # Edge tiles - skip
-			
-			# Count how many neighbors share our biome
-			var same_biome_count: int = 0
-			var neighbor_biome_counts: Dictionary = {}
-			
-			for neighbor in neighbors:
-				var nkey: String = neighbor._to_key()
-				if nkey in new_map:
-					var nb: Biomes.Type = new_map[nkey]
-					neighbor_biome_counts[nb] = neighbor_biome_counts.get(nb, 0) + 1
-					if nb == current_biome:
-						same_biome_count += 1
-			
-			# If surrounded by 5+ neighbors of a DIFFERENT biome, flip to dominant neighbor
-			var total_different = neighbors.size() - same_biome_count
-			if total_different >= 5:
-				# Find the most common neighbor biome
-				var best_biome: Biomes.Type = current_biome
-				var best_count: int = 0
-				
-				for biome in neighbor_biome_counts:
-					if biome != current_biome and neighbor_biome_counts[biome] > best_count:
-						# Check adjacency rules before flipping
-						var valid: bool = true
-						for check_neighbor in neighbors:
-							var cnkey: String = check_neighbor._to_key()
-							if cnkey in new_map and not _can_be_adjacent(biome, new_map[cnkey]):
-								valid = false
-								break
-						
-						if valid:
-							best_count = neighbor_biome_counts[biome]
-							best_biome = biome
-				
-				if best_biome != current_biome:
-					new_map[key] = best_biome
-					changed = true
-		
-		if not changed:
-			break
-	
-	return new_map
-
-
-# =============================================================================
-# CLEANUP PASSES
-# =============================================================================
-
-func _cleanup_isolated_tiles(coordinates: Array[HexCoordinates], biome_map: Dictionary) -> Dictionary:
-	var new_map: Dictionary = biome_map.duplicate()
-	
-	for _pass in range(CLEANUP_PASSES):
-		var changed: bool = false
-		
-		for coord in coordinates:
-			var key: String = coord._to_key()
-			var current: Biomes.Type = new_map.get(key, Biomes.Type.PLAINS)
-			
-			var neighbors: Array[HexCoordinates] = _get_valid_neighbors(coord)
-			var neighbor_counts: Dictionary = {}
-			var same_count: int = 0
-			
-			for neighbor in neighbors:
-				var nkey: String = neighbor._to_key()
-				if nkey in new_map:
-					var nb: Biomes.Type = new_map[nkey]
-					neighbor_counts[nb] = neighbor_counts.get(nb, 0) + 1
-					if nb == current:
-						same_count += 1
-			
-			# Merge tiles that have fewer than 2 same-biome neighbors (more aggressive)
-			if same_count < 2 and neighbors.size() >= 3:
-				var best_biome: Biomes.Type = current
-				var best_count: int = 0
-				
-				for biome in neighbor_counts:
-					if neighbor_counts[biome] > best_count:
-						var valid: bool = true
-						for neighbor in neighbors:
-							var nkey: String = neighbor._to_key()
-							if nkey in new_map:
-								if not _can_be_adjacent(biome, new_map[nkey]):
-									valid = false
-									break
-						
-						if valid:
-							best_count = neighbor_counts[biome]
-							best_biome = biome
-				
-				if best_biome != current and best_count >= 2:
-					new_map[key] = best_biome
-					changed = true
-		
-		if not changed:
-			break
-	
-	return new_map
-
-
-func _fix_adjacency_violations(coordinates: Array[HexCoordinates], biome_map: Dictionary) -> Dictionary:
-	var new_map: Dictionary = biome_map.duplicate()
-	
-	for _pass in range(3):
-		var changed: bool = false
-		
-		for coord in coordinates:
-			var key: String = coord._to_key()
-			var current: Biomes.Type = new_map.get(key, Biomes.Type.PLAINS)
-			
-			if current == Biomes.Type.HILLS:
-				continue
-			
-			var neighbors: Array[HexCoordinates] = _get_valid_neighbors(coord)
-			var violation_count: int = 0
-			var neighbor_biome_counts: Dictionary = {}
-			
-			for neighbor in neighbors:
-				var nkey: String = neighbor._to_key()
-				if nkey in new_map:
-					var nb: Biomes.Type = new_map[nkey]
-					neighbor_biome_counts[nb] = neighbor_biome_counts.get(nb, 0) + 1
-					if not _can_be_adjacent(current, nb):
-						violation_count += 1
-			
-			# Only fix if there's at least 1 violation
-			if violation_count >= 1:
-				# Try to find a valid biome that matches most neighbors
-				var best_biome: Biomes.Type = Biomes.Type.HILLS
-				var best_count: int = 0
-				
-				for candidate_biome in neighbor_biome_counts:
-					if candidate_biome == current:
-						continue
-					
-					# Check if this biome would be valid with ALL neighbors
-					var valid: bool = true
-					for neighbor in neighbors:
-						var nkey: String = neighbor._to_key()
-						if nkey in new_map:
-							if not _can_be_adjacent(candidate_biome, new_map[nkey]):
-								valid = false
-								break
-					
-					if valid and neighbor_biome_counts[candidate_biome] > best_count:
-						best_count = neighbor_biome_counts[candidate_biome]
-						best_biome = candidate_biome
-				
-				new_map[key] = best_biome
-				changed = true
-		
-		if not changed:
-			break
-	
-	return new_map
-
 
 # =============================================================================
 # DEBUG UTILITIES
@@ -963,7 +512,7 @@ func _fix_adjacency_violations(coordinates: Array[HexCoordinates], biome_map: Di
 func print_distribution(biome_map: Dictionary) -> void:
 	var counts: Dictionary = _count_biomes(biome_map)
 	
-	print("=== Biome Distribution (Target: ~%d ±%d) ===" % [BASE_TILES_PER_BIOME, TILE_VARIANCE])
+	print("=== Biome Distribution (Target: ~%d ±%d, ~14%% each) ===" % [BASE_TILES_PER_BIOME, TILE_VARIANCE])
 	var total: int = biome_map.size()
 	for biome in Biomes.Type.values():
 		var count: int = counts.get(biome, 0)
@@ -1034,3 +583,12 @@ func get_statistics(coordinates: Array[HexCoordinates], biome_map: Dictionary) -
 	stats["adjacency_violations"] /= 2
 	
 	return stats
+
+
+func _count_biomes(biome_map: Dictionary) -> Dictionary:
+	var counts: Dictionary = {}
+	for biome in Biomes.Type.values():
+		counts[biome] = 0
+	for key in biome_map:
+		counts[biome_map[key]] = counts.get(biome_map[key], 0) + 1
+	return counts

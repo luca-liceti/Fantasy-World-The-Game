@@ -687,7 +687,7 @@ func move_to_hex(new_hex: Node) -> void:
 		new_hex.set_occupant(self)
 	
 	# Update position using vertex averaging method
-	# This calculates Y from the average of the 6 vertex heights + buffer
+	# This calculates Y from the average of the 6 vertex heights + 0.2 buffer
 	# Much faster than raycasting, calculated once per spawn/move
 	if new_hex:
 		var surface_height: float = 0.0
@@ -696,8 +696,8 @@ func move_to_hex(new_hex: Node) -> void:
 		if new_hex.has_method("get_surface_height"):
 			surface_height = new_hex.get_surface_height()
 		elif "tile_height" in new_hex:
-			# Fallback to tile_height + buffer
-			surface_height = new_hex.tile_height + 0.1
+			# Fallback to tile_height + 0.2 buffer
+			surface_height = new_hex.tile_height + 0.2
 		
 		position = new_hex.position + Vector3(0, surface_height, 0)
 	

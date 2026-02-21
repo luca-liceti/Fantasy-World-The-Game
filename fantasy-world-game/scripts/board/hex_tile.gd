@@ -238,9 +238,9 @@ func _rebuild_hex_mesh_with_slopes() -> void:
 		indices.append(((i + 1) % 6) + 1)
 
 	# =========================================================================
-	# SKIRTS (Deep & Clean)
+	# SKIRTS (Shallow - just enough to seal gaps without making board too tall)
 	# =========================================================================
-	var skirt_y = -3.0
+	var skirt_y = -0.5
 	
 	for i in range(6):
 		var next_i = (i + 1) % 6
@@ -324,6 +324,12 @@ func update_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
 	
 	# Build mesh using provided vertex heights
 	_rebuild_hex_mesh_with_vertex_heights(vertex_heights)
+	
+	# Rebuild selection overlay to match new terrain shape
+	_rebuild_selection_overlay()
+	
+	# Rebuild border ring to match new terrain shape
+	_rebuild_border_mesh()
 	
 	# Re-apply material
 	if base_material and mesh_instance:
@@ -424,9 +430,9 @@ func _rebuild_hex_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void
 		indices.append(((i + 1) % 6) + 1)
 
 	# =========================================================================
-	# SKIRTS (Deep & Clean)
+	# SKIRTS (Shallow - just enough to seal gaps without making board too tall)
 	# =========================================================================
-	var skirt_y = -3.0
+	var skirt_y = -0.5
 	
 	for i in range(6):
 		var next_i = (i + 1) % 6
@@ -478,41 +484,89 @@ func _rebuild_hex_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void
 
 
 func _create_selection_overlay() -> void:
-	# Create a slightly raised hex for selection overlay
+	# Create a hex overlay that conforms to the tile's terrain slope
 	selection_mesh = MeshInstance3D.new()
 	add_child(selection_mesh)
+	_rebuild_selection_overlay()
+
+
+## Rebuild the selection overlay mesh to match current vertex heights
+## Called after vertex heights are updated so the highlight follows the terrain
+func _rebuild_selection_overlay() -> void:
+	if not selection_mesh:
+		return
 	
 	var vertices = PackedVector3Array()
+	var normals_arr = PackedVector3Array()
 	var indices = PackedInt32Array()
 	
-	# Center vertex (slightly raised)
-	vertices.append(Vector3(0, 0.02, 0))
+	const OVERLAY_OFFSET: float = 0.025  # Tiny raise above surface to prevent z-fighting
+	const OVERLAY_SCALE: float = 0.97    # Slightly smaller than tile to avoid edge bleed
 	
-	# 6 corner vertices (slightly smaller than base, raised)
-	var overlay_scale = 0.95
+	# Use stored vertex heights if available, otherwise fall back to tile_height
+	var corner_heights: Array[float] = []
+	if stored_vertex_heights.size() == 6:
+		corner_heights = stored_vertex_heights.duplicate()
+	else:
+		for _i in range(6):
+			corner_heights.append(tile_height)
+	
+	# Center height = average of all corners
+	var center_h: float = 0.0
+	for h in corner_heights:
+		center_h += h
+	center_h /= 6.0
+	
+	# Center vertex
+	vertices.append(Vector3(0, center_h + OVERLAY_OFFSET, 0))
+	
+	# 6 corner vertices scaled inward and raised by OVERLAY_OFFSET
 	for i in range(6):
 		var angle = deg_to_rad(60 * i - 30)
-		var x = hex_size * overlay_scale * cos(angle)
-		var z = hex_size * overlay_scale * sin(angle)
-		vertices.append(Vector3(x, 0.02, z))
+		var x = hex_size * OVERLAY_SCALE * cos(angle)
+		var z = hex_size * OVERLAY_SCALE * sin(angle)
+		var y = corner_heights[i] + OVERLAY_OFFSET
+		vertices.append(Vector3(x, y, z))
 	
-	# Create triangles
+	# Triangles (fan from center)
 	for i in range(6):
 		indices.append(0)
 		indices.append(i + 1)
 		indices.append(((i + 1) % 6) + 1)
+	
+	# Calculate per-vertex normals to match tile slope
+	# Center normal = average of face normals
+	var face_normals: Array[Vector3] = []
+	for i in range(6):
+		var v0 = vertices[0]
+		var v1 = vertices[i + 1]
+		var v2 = vertices[((i + 1) % 6) + 1]
+		var edge1 = v1 - v0
+		var edge2 = v2 - v0
+		var fn = edge1.cross(edge2).normalized()
+		if fn.y < 0: fn = -fn
+		face_normals.append(fn)
+	
+	var center_normal = Vector3.ZERO
+	for fn in face_normals:
+		center_normal += fn
+	center_normal = center_normal.normalized()
+	if center_normal.length() < 0.001: center_normal = Vector3.UP
+	normals_arr.append(center_normal)
+	
+	for i in range(6):
+		var prev_fn = face_normals[(i + 5) % 6]
+		var curr_fn = face_normals[i]
+		var corner_normal = (prev_fn + curr_fn).normalized()
+		if corner_normal.length() < 0.001: corner_normal = Vector3.UP
+		normals_arr.append(corner_normal)
 	
 	var mesh = ArrayMesh.new()
 	var arrays = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_INDEX] = indices
-	
-	var normals = PackedVector3Array()
-	for _i in range(vertices.size()):
-		normals.append(Vector3.UP)
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	
+	arrays[Mesh.ARRAY_NORMAL] = normals_arr
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	selection_mesh.mesh = mesh
 	selection_mesh.visible = false
@@ -521,28 +575,38 @@ func _create_selection_overlay() -> void:
 func _create_border_mesh() -> void:
 	border_mesh = MeshInstance3D.new()
 	add_child(border_mesh)
+	_rebuild_border_mesh()
+
+
+## Rebuild the border ring mesh to match current vertex heights
+func _rebuild_border_mesh() -> void:
+	if not border_mesh:
+		return
 	
-	# Create a thick raised hex border
+	const BORDER_OFFSET: float = 0.04   # Raised above surface
+	const OUTER_SCALE: float = 1.0
+	const INNER_SCALE: float = 0.88
+	
+	# Use stored vertex heights if available
+	var corner_heights: Array[float] = []
+	if stored_vertex_heights.size() == 6:
+		corner_heights = stored_vertex_heights.duplicate()
+	else:
+		for _i in range(6):
+			corner_heights.append(tile_height)
+	
 	var vertices = PackedVector3Array()
 	var indices = PackedInt32Array()
+	var normals = PackedVector3Array()
 	
-	var outer_scale = 1.0
-	var inner_scale = 0.88
-	var height = 0.05 # Raised border
-	
-	# Create outer and inner rings at height
+	# Create outer and inner rings at terrain height + offset
 	for i in range(6):
 		var angle = deg_to_rad(60 * i - 30)
-		
-		# Outer vertex
-		var outer_x = hex_size * outer_scale * cos(angle)
-		var outer_z = hex_size * outer_scale * sin(angle)
-		vertices.append(Vector3(outer_x, height, outer_z))
-		
-		# Inner vertex
-		var inner_x = hex_size * inner_scale * cos(angle)
-		var inner_z = hex_size * inner_scale * sin(angle)
-		vertices.append(Vector3(inner_x, height, inner_z))
+		var h = corner_heights[i] + BORDER_OFFSET
+		vertices.append(Vector3(hex_size * OUTER_SCALE * cos(angle), h, hex_size * OUTER_SCALE * sin(angle)))
+		vertices.append(Vector3(hex_size * INNER_SCALE * cos(angle), h, hex_size * INNER_SCALE * sin(angle)))
+		normals.append(Vector3.UP)
+		normals.append(Vector3.UP)
 	
 	# Create triangles for the ring (top face)
 	for i in range(6):
@@ -550,27 +614,15 @@ func _create_border_mesh() -> void:
 		var inner1 = i * 2 + 1
 		var outer2 = ((i + 1) % 6) * 2
 		var inner2 = ((i + 1) % 6) * 2 + 1
-		
-		# Two triangles per segment
-		indices.append(outer1)
-		indices.append(inner1)
-		indices.append(outer2)
-		
-		indices.append(inner1)
-		indices.append(inner2)
-		indices.append(outer2)
+		indices.append(outer1); indices.append(inner1); indices.append(outer2)
+		indices.append(inner1); indices.append(inner2); indices.append(outer2)
 	
 	var mesh = ArrayMesh.new()
 	var arrays = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_INDEX] = indices
-	
-	var normals = PackedVector3Array()
-	for _i in range(vertices.size()):
-		normals.append(Vector3.UP)
 	arrays[Mesh.ARRAY_NORMAL] = normals
-	
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	border_mesh.mesh = mesh
 	border_mesh.visible = false

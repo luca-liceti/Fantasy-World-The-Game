@@ -1,0 +1,10 @@
+# Biome decoration datapacks — public assets, downloadable anytime
+biome_decoration (datapacks)/
+
+# Godot build artifacts
+.godot/
+*.import
+
+# OS files
+.DS_Store
+Thumbs.db

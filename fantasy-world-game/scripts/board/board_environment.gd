@@ -54,10 +54,11 @@ var frame_mesh: MeshInstance3D
 # =============================================================================
 
 ## Create and setup the board environment with optional perimeter data
-static func create_for_board(board_radius: int, hex_size: float, perimeter_points: Array[Vector3] = []) -> BoardEnvironment:
+## skip_table: if true, only creates the stone border frame (no wooden table surface)
+static func create_for_board(board_radius: int, hex_size: float, perimeter_points: Array[Vector3] = [], skip_table: bool = false) -> BoardEnvironment:
 	var env = BoardEnvironment.new()
 	env.name = "BoardEnvironment"
-	env._setup(board_radius, hex_size, perimeter_points)
+	env._setup(board_radius, hex_size, perimeter_points, skip_table)
 	return env
 
 
@@ -65,7 +66,7 @@ static func create_for_board(board_radius: int, hex_size: float, perimeter_point
 # SETUP
 # =============================================================================
 
-func _setup(board_radius: int, hex_size: float, perimeter_points: Array[Vector3] = []) -> void:
+func _setup(board_radius: int, hex_size: float, perimeter_points: Array[Vector3] = [], skip_table: bool = false) -> void:
 	# Calculate board dimensions
 	# For a hexagonal board with pointy-top hexes:
 	# hex width = sqrt(3) * size
@@ -77,8 +78,10 @@ func _setup(board_radius: int, hex_size: float, perimeter_points: Array[Vector3]
 	# Outer frame radius (clean hexagon that surrounds all tiles)
 	var frame_outer_radius: float = world_radius + hex_size + FRAME_WIDTH
 	
-	# Create all elements (order matters for layering)
-	_create_table_surface(world_radius)
+	# Create elements (order matters for layering)
+	# Table surface is only created for standalone mode (no room model)
+	if not skip_table:
+		_create_table_surface(world_radius)
 	
 	if perimeter_points.is_empty():
 		# Fallback to simple hexagon if no perimeter data (legacy)
@@ -88,7 +91,7 @@ func _setup(board_radius: int, hex_size: float, perimeter_points: Array[Vector3]
 		# Create jagged form-fitted border with straight outer edge
 		_create_jagged_board_setup(perimeter_points, frame_outer_radius)
 	
-	print("[BoardEnvironment] Created form-fitted board environment (Jagged: %s)" % [ not perimeter_points.is_empty()])
+	print("[BoardEnvironment] Created board environment (Jagged: %s, Table: %s)" % [not perimeter_points.is_empty(), not skip_table])
 
 
 # =============================================================================
@@ -249,8 +252,8 @@ func _create_solid_jagged_mesh(perimeter: Array[Vector3], bottom_y: float, top_y
 	return mesh
 
 
-## Create a platform mesh that fills from the jagged tile perimeter to a straight hexagonal outer edge
-## This sits beneath the tiles and border frame
+## Create a platform mesh as a RING from the jagged tile perimeter to the straight outer hex
+## This does NOT fill the center area where tiles live — only the border ring area
 func _create_platform_with_straight_outer(perimeter: Array[Vector3], outer_radius: float) -> ArrayMesh:
 	var mesh = ArrayMesh.new()
 	var vertices = PackedVector3Array()
@@ -258,70 +261,121 @@ func _create_platform_with_straight_outer(perimeter: Array[Vector3], outer_radiu
 	var normals = PackedVector3Array()
 	
 	var bottom_y: float = -0.15
-	var top_y: float = GameConfig.BOARD_LIFT - 0.05
+	# Platform top matches tile base level so tiles sit flush on the platform edge
+	var top_y: float = GameConfig.BOARD_LIFT + 0.02  # Same as tile position Y
 	
-	# Generate outer hexagon points (6 corners of a regular hexagon)
-	var outer_hex_points: Array[Vector3] = []
+	var inner_size = perimeter.size()
+	if inner_size < 3:
+		return mesh
+	
+	# Generate subdivided outer hexagon ring to match inner perimeter density
+	var outer_ring_points: Array[Vector3] = []
+	var points_per_edge: int = max(4, inner_size / 6 + 2)
 	for i in range(6):
-		var angle = deg_to_rad(60 * i) # Flat-top hexagon
-		outer_hex_points.append(Vector3(
-			outer_radius * cos(angle),
-			top_y,
-			outer_radius * sin(angle)
-		))
+		var angle1 = deg_to_rad(60 * i)
+		var angle2 = deg_to_rad(60 * (i + 1))
+		var corner1 = Vector3(outer_radius * cos(angle1), top_y, outer_radius * sin(angle1))
+		var corner2 = Vector3(outer_radius * cos(angle2), top_y, outer_radius * sin(angle2))
+		for j in range(points_per_edge):
+			var t = float(j) / float(points_per_edge)
+			outer_ring_points.append(corner1.lerp(corner2, t))
 	
-	# TOP FACE - fill from center to outer hexagon
-	var top_center_idx = vertices.size()
-	vertices.append(Vector3(0, top_y, 0))
-	normals.append(Vector3.UP)
+	var outer_size = outer_ring_points.size()
 	
-	# Add outer hex vertices for top
-	var top_outer_start = vertices.size()
-	for p in outer_hex_points:
+	# === TOP FACE (Ring from inner perimeter to outer hex) ===
+	var inner_top_start = vertices.size()
+	for p in perimeter:
+		vertices.append(Vector3(p.x, top_y, p.z))
+		normals.append(Vector3.UP)
+	
+	var outer_top_start = vertices.size()
+	for p in outer_ring_points:
 		vertices.append(p)
 		normals.append(Vector3.UP)
 	
-	# Top face triangles (fan from center)
-	for i in range(6):
-		indices.append(top_center_idx)
-		indices.append(top_outer_start + i)
-		indices.append(top_outer_start + (i + 1) % 6)
-	
-	# BOTTOM FACE
-	var bot_center_idx = vertices.size()
-	vertices.append(Vector3(0, bottom_y, 0))
-	normals.append(Vector3.DOWN)
-	
-	var bot_outer_start = vertices.size()
-	for p in outer_hex_points:
-		vertices.append(Vector3(p.x, bottom_y, p.z))
-		normals.append(Vector3.DOWN)
-	
-	# Bottom face triangles (reversed winding)
-	for i in range(6):
-		indices.append(bot_center_idx)
-		indices.append(bot_outer_start + (i + 1) % 6)
-		indices.append(bot_outer_start + i)
-	
-	# SIDE FACES (6 sides of the hexagon)
-	for i in range(6):
-		var t1 = top_outer_start + i
-		var t2 = top_outer_start + (i + 1) % 6
-		var b1 = bot_outer_start + i
-		var b2 = bot_outer_start + (i + 1) % 6
+	# Marching ring triangulation
+	var i_inner = 0
+	var i_outer = 0
+	while i_inner < inner_size or i_outer < outer_size:
+		var curr_inner = inner_top_start + (i_inner % inner_size)
+		var next_inner = inner_top_start + ((i_inner + 1) % inner_size)
+		var curr_outer = outer_top_start + (i_outer % outer_size)
+		var next_outer = outer_top_start + ((i_outer + 1) % outer_size)
 		
-		# Calculate outward normal
-		var mid_angle = deg_to_rad(60 * i + 30)
-		var side_normal = Vector3(cos(mid_angle), 0, sin(mid_angle)).normalized()
+		if i_inner >= inner_size:
+			indices.append(curr_inner); indices.append(curr_outer); indices.append(next_outer)
+			i_outer += 1
+		elif i_outer >= outer_size:
+			indices.append(curr_inner); indices.append(curr_outer); indices.append(next_inner)
+			i_inner += 1
+		else:
+			var inner_angle = atan2(vertices[next_inner].z, vertices[next_inner].x)
+			var outer_angle = atan2(vertices[next_outer].z, vertices[next_outer].x)
+			var curr_angle = atan2(vertices[curr_inner].z, vertices[curr_inner].x)
+			var d_inner = fmod(inner_angle - curr_angle + TAU, TAU)
+			var d_outer = fmod(outer_angle - curr_angle + TAU, TAU)
+			
+			if d_inner <= d_outer:
+				indices.append(curr_inner); indices.append(curr_outer); indices.append(next_inner)
+				i_inner += 1
+			else:
+				indices.append(curr_inner); indices.append(curr_outer); indices.append(next_outer)
+				i_outer += 1
+	
+	# === OUTER SIDE WALL ===
+	for i in range(outer_size):
+		var p_curr = outer_ring_points[i]
+		var p_next = outer_ring_points[(i + 1) % outer_size]
+		var side_normal = Vector3((p_curr.x + p_next.x) / 2.0, 0, (p_curr.z + p_next.z) / 2.0).normalized()
 		
 		var s_base = vertices.size()
-		vertices.push_back(vertices[t1]); normals.push_back(side_normal)
-		vertices.push_back(vertices[t2]); normals.push_back(side_normal)
-		vertices.push_back(vertices[b1]); normals.push_back(side_normal)
-		vertices.push_back(vertices[b2]); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_curr.x, top_y, p_curr.z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_next.x, top_y, p_next.z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_curr.x, bottom_y, p_curr.z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_next.x, bottom_y, p_next.z)); normals.push_back(side_normal)
 		
 		indices.push_back(s_base); indices.push_back(s_base + 2); indices.push_back(s_base + 1)
 		indices.push_back(s_base + 1); indices.push_back(s_base + 2); indices.push_back(s_base + 3)
+	
+	# === BOTTOM FACE (Ring) ===
+	var inner_bot_start = vertices.size()
+	for p in perimeter:
+		vertices.append(Vector3(p.x, bottom_y, p.z))
+		normals.append(Vector3.DOWN)
+	
+	var outer_bot_start = vertices.size()
+	for p in outer_ring_points:
+		vertices.append(Vector3(p.x, bottom_y, p.z))
+		normals.append(Vector3.DOWN)
+	
+	# Marching ring triangulation (reversed winding for bottom face)
+	i_inner = 0
+	i_outer = 0
+	while i_inner < inner_size or i_outer < outer_size:
+		var curr_inner = inner_bot_start + (i_inner % inner_size)
+		var next_inner = inner_bot_start + ((i_inner + 1) % inner_size)
+		var curr_outer = outer_bot_start + (i_outer % outer_size)
+		var next_outer = outer_bot_start + ((i_outer + 1) % outer_size)
+		
+		if i_inner >= inner_size:
+			indices.append(curr_inner); indices.append(next_outer); indices.append(curr_outer)
+			i_outer += 1
+		elif i_outer >= outer_size:
+			indices.append(curr_inner); indices.append(next_inner); indices.append(curr_outer)
+			i_inner += 1
+		else:
+			var inner_angle = atan2(vertices[next_inner].z, vertices[next_inner].x)
+			var outer_angle = atan2(vertices[next_outer].z, vertices[next_outer].x)
+			var curr_angle = atan2(vertices[curr_inner].z, vertices[curr_inner].x)
+			var d_inner = fmod(inner_angle - curr_angle + TAU, TAU)
+			var d_outer = fmod(outer_angle - curr_angle + TAU, TAU)
+			
+			if d_inner <= d_outer:
+				indices.append(curr_inner); indices.append(next_inner); indices.append(curr_outer)
+				i_inner += 1
+			else:
+				indices.append(curr_inner); indices.append(next_outer); indices.append(curr_outer)
+				i_outer += 1
 	
 	var arrays = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -333,133 +387,120 @@ func _create_platform_with_straight_outer(perimeter: Array[Vector3], outer_radiu
 
 
 ## Create a frame mesh with:
-## - Jagged INNER edge following the tile perimeter (at fixed BORDER_HEIGHT)
-## - Straight hexagonal OUTER edge (at fixed BORDER_HEIGHT)
-## - Fixed height all around (no rising/falling with terrain)
+## - INNER edge exactly at the tile perimeter (connecting seamlessly to tile edges)
+## - Straight hexagonal OUTER edge
+## - Rim top at tile base level for seamless connection
 func _create_fixed_height_frame_mesh(perimeter: Array[Vector3], outer_radius: float) -> ArrayMesh:
 	var mesh = ArrayMesh.new()
 	var vertices = PackedVector3Array()
 	var indices = PackedInt32Array()
 	var normals = PackedVector3Array()
 	
-	# Fixed heights - rim top matches BORDER_HEIGHT exactly for seamless connection
-	var rim_top_y: float = GameConfig.BORDER_HEIGHT # Matches edge tile corner height
+	# Rim top matches tile position Y exactly so tiles connect seamlessly to frame
+	var rim_top_y: float = GameConfig.BOARD_LIFT + 0.02  # Same as tile position Y
 	var bottom_y: float = -0.15
 	
 	var inner_size = perimeter.size()
+	if inner_size < 3:
+		return mesh
 	
-	# Generate outer hexagon points (6 corners of a regular hexagon)
-	var outer_hex_points: Array[Vector3] = []
+	# Generate outer hexagon points - but with MANY subdivisions to match perimeter density
+	# This prevents degenerate triangles in the top face
+	var outer_ring_points: Array[Vector3] = []
+	var points_per_edge: int = max(4, inner_size / 6 + 2) # Roughly match inner density
 	for i in range(6):
-		var angle = deg_to_rad(60 * i) # Flat-top hexagon
-		outer_hex_points.append(Vector3(
-			outer_radius * cos(angle),
-			rim_top_y,
-			outer_radius * sin(angle)
-		))
+		var angle1 = deg_to_rad(60 * i)
+		var angle2 = deg_to_rad(60 * (i + 1))
+		var corner1 = Vector3(outer_radius * cos(angle1), rim_top_y, outer_radius * sin(angle1))
+		var corner2 = Vector3(outer_radius * cos(angle2), rim_top_y, outer_radius * sin(angle2))
+		for j in range(points_per_edge):
+			var t = float(j) / float(points_per_edge)
+			outer_ring_points.append(corner1.lerp(corner2, t))
 	
-	# For each inner perimeter segment, we need to connect it to the appropriate
-	# section of the outer hexagon. We'll triangulate the top face as a ring.
+	var outer_size = outer_ring_points.size()
 	
-	# === TOP FACE (Ring from jagged inner to straight outer) ===
-	# Group inner perimeter points by which outer hex segment they belong to
-	# Then fan triangles from each outer corner to its segment's inner points
-	
-	# First, add all inner perimeter vertices at fixed height
+	# === TOP FACE (Ring from inner perimeter to subdivided outer) ===
+	# Add inner ring vertices
 	var inner_top_start = vertices.size()
 	for p in perimeter:
 		vertices.append(Vector3(p.x, rim_top_y, p.z))
 		normals.append(Vector3.UP)
 	
-	# Add outer hex vertices
+	# Add outer ring vertices
 	var outer_top_start = vertices.size()
-	for p in outer_hex_points:
+	for p in outer_ring_points:
 		vertices.append(p)
 		normals.append(Vector3.UP)
 	
-	# Assign each inner point to an outer hex segment (0-5)
-	var segment_points: Array = [[], [], [], [], [], []] # 6 segments
-	for i in range(inner_size):
-		var inner_pos = perimeter[i]
-		var inner_angle = atan2(inner_pos.z, inner_pos.x)
-		if inner_angle < 0:
-			inner_angle += TAU
-		var segment_idx = int(floor((inner_angle + deg_to_rad(30)) / deg_to_rad(60))) % 6
-		segment_points[segment_idx].append(i)
-	
-	# For each outer hex segment, create triangles fanning from the outer edge
-	for seg in range(6):
-		var seg_inner_indices = segment_points[seg]
-		var outer_corner_idx = outer_top_start + seg
-		var outer_next_corner_idx = outer_top_start + (seg + 1) % 6
+	# Triangulate the ring between inner and outer using marching approach
+	# Walk both rings simultaneously, always connecting to the closer next point
+	var i_inner = 0
+	var i_outer = 0
+	while i_inner < inner_size or i_outer < outer_size:
+		var curr_inner = inner_top_start + (i_inner % inner_size)
+		var next_inner = inner_top_start + ((i_inner + 1) % inner_size)
+		var curr_outer = outer_top_start + (i_outer % outer_size)
+		var next_outer = outer_top_start + ((i_outer + 1) % outer_size)
 		
-		if seg_inner_indices.size() == 0:
-			# No inner points in this segment - just connect the two outer corners
-			# (This shouldn't happen but handle gracefully)
-			continue
-		
-		# For each consecutive pair of inner points in this segment
-		for j in range(seg_inner_indices.size()):
-			var curr_inner = inner_top_start + seg_inner_indices[j]
-			var next_inner: int
-			
-			if j < seg_inner_indices.size() - 1:
-				next_inner = inner_top_start + seg_inner_indices[j + 1]
-			else:
-				# Last point in segment - connect to first point of next segment
-				var next_seg = (seg + 1) % 6
-				if segment_points[next_seg].size() > 0:
-					next_inner = inner_top_start + segment_points[next_seg][0]
-				else:
-					# Wrap around to find next valid point
-					next_inner = inner_top_start + ((seg_inner_indices[j] + 1) % inner_size)
-			
-			# Triangle: curr_inner, next_inner, outer_corner
+		if i_inner >= inner_size:
+			# Exhausted inner ring, connect remaining outer
 			indices.append(curr_inner)
+			indices.append(curr_outer)
+			indices.append(next_outer)
+			i_outer += 1
+		elif i_outer >= outer_size:
+			# Exhausted outer ring, connect remaining inner
+			indices.append(curr_inner)
+			indices.append(curr_outer)
 			indices.append(next_inner)
-			indices.append(outer_corner_idx)
-		
-		# Connect first inner point of this segment to the previous outer corner
-		if seg_inner_indices.size() > 0:
-			var first_inner = inner_top_start + seg_inner_indices[0]
-			var prev_outer_corner_idx = outer_top_start + ((seg + 5) % 6)
+			i_inner += 1
+		else:
+			# Both rings have points remaining - pick the triangle that advances
+			# the ring whose next point has the smaller angular step
+			var inner_angle = atan2(vertices[next_inner].z, vertices[next_inner].x)
+			var outer_angle = atan2(vertices[next_outer].z, vertices[next_outer].x)
+			var curr_angle = atan2(vertices[curr_inner].z, vertices[curr_inner].x)
 			
-			# Find the last inner point of the previous segment
-			var prev_seg = (seg + 5) % 6
-			if segment_points[prev_seg].size() > 0:
-				var last_of_prev = inner_top_start + segment_points[prev_seg][segment_points[prev_seg].size() - 1]
-				# Triangle: last_of_prev, first_inner, outer_corner (between them)
-				indices.append(last_of_prev)
-				indices.append(first_inner)
-				indices.append(outer_corner_idx)
+			# Normalize angles relative to current position
+			var d_inner = fmod(inner_angle - curr_angle + TAU, TAU)
+			var d_outer = fmod(outer_angle - curr_angle + TAU, TAU)
+			
+			if d_inner <= d_outer:
+				# Advance inner ring
+				indices.append(curr_inner)
+				indices.append(curr_outer)
+				indices.append(next_inner)
+				i_inner += 1
+			else:
+				# Advance outer ring
+				indices.append(curr_inner)
+				indices.append(curr_outer)
+				indices.append(next_outer)
+				i_outer += 1
 	
-	# === OUTER SIDE WALL (6 straight sides of the hexagon) ===
-	for i in range(6):
-		var t1 = outer_top_start + i
-		var t2 = outer_top_start + (i + 1) % 6
+	# === OUTER SIDE WALL (subdivided outer ring to bottom) ===
+	for i in range(outer_size):
+		var p_curr = outer_ring_points[i]
+		var p_next = outer_ring_points[(i + 1) % outer_size]
 		
-		# Calculate outward normal
-		var mid_angle = deg_to_rad(60 * i + 30)
-		var side_normal = Vector3(cos(mid_angle), 0, sin(mid_angle)).normalized()
+		var side_normal = Vector3((p_curr.x + p_next.x) / 2.0, 0, (p_curr.z + p_next.z) / 2.0).normalized()
 		
 		var s_base = vertices.size()
-		vertices.push_back(vertices[t1]); normals.push_back(side_normal)
-		vertices.push_back(vertices[t2]); normals.push_back(side_normal)
-		vertices.push_back(Vector3(outer_hex_points[i].x, bottom_y, outer_hex_points[i].z)); normals.push_back(side_normal)
-		vertices.push_back(Vector3(outer_hex_points[(i + 1) % 6].x, bottom_y, outer_hex_points[(i + 1) % 6].z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_curr.x, rim_top_y, p_curr.z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_next.x, rim_top_y, p_next.z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_curr.x, bottom_y, p_curr.z)); normals.push_back(side_normal)
+		vertices.push_back(Vector3(p_next.x, bottom_y, p_next.z)); normals.push_back(side_normal)
 		
 		indices.push_back(s_base); indices.push_back(s_base + 2); indices.push_back(s_base + 1)
 		indices.push_back(s_base + 1); indices.push_back(s_base + 2); indices.push_back(s_base + 3)
 	
-	# === INNER SIDE WALL (Jagged, follows tile perimeter) ===
+	# === INNER SIDE WALL (perimeter to bottom) ===
 	for i in range(inner_size):
 		var p_curr = perimeter[i]
 		var p_next = perimeter[(i + 1) % inner_size]
 		
-		# Calculate inward normal (pointing toward center)
-		var dir_curr = Vector3(p_curr.x, 0, p_curr.z).normalized()
-		var dir_next = Vector3(p_next.x, 0, p_next.z).normalized()
-		var in_normal = - ((dir_curr + dir_next) * 0.5).normalized()
+		# Inward-facing normal (toward board center)
+		var in_normal = -Vector3((p_curr.x + p_next.x) / 2.0, 0, (p_curr.z + p_next.z) / 2.0).normalized()
 		
 		var s_base = vertices.size()
 		vertices.push_back(Vector3(p_curr.x, rim_top_y, p_curr.z)); normals.push_back(in_normal)
@@ -709,7 +750,7 @@ func _create_stone_border_material() -> StandardMaterial3D:
 		print("[BoardEnvironment] Using fallback gray color for border")
 	
 	material.metallic = 0.0
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.cull_mode = BaseMaterial3D.CULL_BACK
 	
 	# High quality shading
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
@@ -1073,7 +1114,7 @@ func _create_platform_material() -> StandardMaterial3D:
 		material.roughness = 0.95
 	
 	material.metallic = 0.0
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.cull_mode = BaseMaterial3D.CULL_BACK
 	
 	# Triplanar for seamless tiling on sides
 	material.uv1_triplanar = true

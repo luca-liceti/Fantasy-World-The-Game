@@ -109,7 +109,7 @@ const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 # =============================================================================
 # DEBUG FLAGS - Set these to skip game phases during development
 # =============================================================================
-const DEBUG_SKIP_DECK_SELECTION := true # Skip deck selection and use default decks
+const DEBUG_SKIP_DECK_SELECTION := false # Skip deck selection and use default decks
 const DEBUG_SKIP_FIRST_MOVE_DICE := true # Skip the first move dice roll animation
 const DEBUG_DEFAULT_DECK: Array[String] = ["knight", "archer", "cleric", "stone_giant"] # Default deck when skipping
 
@@ -202,17 +202,22 @@ func _generate_board() -> void:
 	hex_board.tile_selected.connect(_on_tile_selected)
 	hex_board.tile_hovered.connect(_on_tile_hovered)
 	
-	# Check if we're using the medieval room (which provides its own table)
+	# Always create the stone border frame around the hex board
+	var board_radius = GameConfig.BOARD_SIZE - 1
+	var perimeter = hex_board.get_perimeter_points()
+	
+	# Check if an environment model provides the table
 	var medieval_room = get_node_or_null("MedievalRoom")
-	if medieval_room:
-		# Medieval room provides the table and environment
-		print("Using MedievalRoom environment - skipping BoardEnvironment")
+	var physical_room = get_node_or_null("PhysicalRoom")
+	if medieval_room or physical_room:
+		# Environment model provides the table and surroundings  
+		# Still create the stone border frame (but skip the wooden table surface)
+		var board_environment = BoardEnvironment.create_for_board(board_radius, hex_board.hex_size, perimeter, true)
+		add_child(board_environment)
+		move_child(board_environment, 0)
+		print("Using environment model - created stone border only (no table)")
 	else:
-		# Create standalone board environment (wooden table, stone frame)
-		# Only used when NOT in a medieval room scene
-		var board_radius = GameConfig.BOARD_SIZE - 1
-		# Get jagged perimeter points for form-fitted border
-		var perimeter = hex_board.get_perimeter_points()
+		# Create standalone board environment (wooden table + stone frame)
 		var board_environment = BoardEnvironment.create_for_board(board_radius, hex_board.hex_size, perimeter)
 		add_child(board_environment)
 		# Move it behind the hex board in the scene tree but keep it at same position
