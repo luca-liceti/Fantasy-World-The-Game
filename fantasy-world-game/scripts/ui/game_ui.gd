@@ -52,6 +52,7 @@ var selected_troop_label: Label
 var troop_cards_panel: PanelContainer
 var troop_cards_container: HBoxContainer
 var troop_card_buttons: Array[Button] = []
+var troop_card_art_rects: Array[TextureRect] = [] # Card art thumbnails in HUD
 
 # =============================================================================
 # COLORS
@@ -375,56 +376,85 @@ func _create_troop_cards_panel() -> void:
 	
 	# Create 4 card slots
 	for i in range(4):
-		var card_button = _create_troop_card_slot(i)
-		troop_card_buttons.append(card_button)
-		troop_cards_container.add_child(card_button)
+		var card_slot = _create_troop_card_slot(i)
+		troop_card_buttons.append(card_slot["button"])
+		troop_card_art_rects.append(card_slot["art_rect"])
+		troop_cards_container.add_child(card_slot["container"])
 
 
-func _create_troop_card_slot(slot_index: int) -> Button:
+func _create_troop_card_slot(slot_index: int) -> Dictionary:
+	# Container panel that holds both the card art and the button
+	var container = PanelContainer.new()
+	container.custom_minimum_size = Vector2(110, 110)
+	
+	# Container style
+	var container_style = StyleBoxFlat.new()
+	container_style.bg_color = Color(0.08, 0.08, 0.12)
+	container_style.border_color = Color(0.3, 0.3, 0.4)
+	container_style.set_border_width_all(2)
+	container_style.set_corner_radius_all(8)
+	container.add_theme_stylebox_override("panel", container_style)
+	
+	# VBox inside: card art on top, button text below
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	container.add_child(vbox)
+	
+	# Card art thumbnail (small portrait)
+	var art_rect = TextureRect.new()
+	art_rect.custom_minimum_size = Vector2(106, 50)
+	art_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	art_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(art_rect)
+	
+	# Button for interaction and stats display
 	var button = Button.new()
-	button.custom_minimum_size = Vector2(110, 110)
+	button.custom_minimum_size = Vector2(106, 55)
 	button.clip_text = true
 	
 	# Default style
 	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.12, 0.12, 0.16)
-	normal_style.border_color = Color(0.3, 0.3, 0.4)
-	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(8)
+	normal_style.bg_color = Color(0.12, 0.12, 0.16, 0.0) # Transparent
+	normal_style.border_color = Color(0.0, 0.0, 0.0, 0.0)
+	normal_style.set_border_width_all(0)
+	normal_style.set_corner_radius_all(0)
 	button.add_theme_stylebox_override("normal", normal_style)
 	
 	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color(0.18, 0.18, 0.24)
-	hover_style.border_color = Color(0.5, 0.5, 0.6)
-	hover_style.set_border_width_all(2)
-	hover_style.set_corner_radius_all(8)
+	hover_style.bg_color = Color(0.18, 0.18, 0.24, 0.5)
+	hover_style.border_color = Color(0.5, 0.5, 0.6, 0.0)
+	hover_style.set_border_width_all(0)
+	hover_style.set_corner_radius_all(0)
 	button.add_theme_stylebox_override("hover", hover_style)
 	
 	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = Color(0.2, 0.25, 0.35)
-	pressed_style.border_color = Color(0.6, 0.7, 1.0)
-	pressed_style.set_border_width_all(3)
-	pressed_style.set_corner_radius_all(8)
+	pressed_style.bg_color = Color(0.2, 0.25, 0.35, 0.5)
+	pressed_style.border_color = Color(0.6, 0.7, 1.0, 0.0)
+	pressed_style.set_border_width_all(0)
+	pressed_style.set_corner_radius_all(0)
 	button.add_theme_stylebox_override("pressed", pressed_style)
 	
 	var focus_style = StyleBoxFlat.new()
-	focus_style.bg_color = Color(0.2, 0.25, 0.35)
-	focus_style.border_color = Color(1.0, 0.84, 0.0)
-	focus_style.set_border_width_all(3)
-	focus_style.set_corner_radius_all(8)
+	focus_style.bg_color = Color(0.2, 0.25, 0.35, 0.0)
+	focus_style.border_color = Color(0.0, 0.0, 0.0, 0.0)
+	focus_style.set_border_width_all(0)
+	focus_style.set_corner_radius_all(0)
 	button.add_theme_stylebox_override("focus", focus_style)
 	
 	var disabled_style = StyleBoxFlat.new()
-	disabled_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
-	disabled_style.border_color = Color(0.2, 0.2, 0.2)
-	disabled_style.set_border_width_all(1)
-	disabled_style.set_corner_radius_all(8)
+	disabled_style.bg_color = Color(0.1, 0.1, 0.1, 0.3)
+	disabled_style.border_color = Color(0.0, 0.0, 0.0, 0.0)
+	disabled_style.set_border_width_all(0)
+	disabled_style.set_corner_radius_all(0)
 	button.add_theme_stylebox_override("disabled", disabled_style)
+	
+	vbox.add_child(button)
 	
 	# Connect signal
 	button.pressed.connect(_on_troop_card_pressed.bind(slot_index))
 	
-	return button
+	return {"container": container, "button": button, "art_rect": art_rect}
 
 
 func _on_troop_card_pressed(slot_index: int) -> void:
@@ -533,23 +563,32 @@ func update_troop_cards(player: Player, selected_troop: Troop = null) -> void:
 	
 	for i in range(4):
 		var button = troop_card_buttons[i]
+		var art_rect = troop_card_art_rects[i]
 		
 		# Check if there's a troop for this slot
 		if i < player.deck.size():
 			var troop_id = player.deck[i]
 			var troop = _find_troop_by_id(player, troop_id)
 			
+			# Load card art for this troop
+			var card_art = CharacterModelLoader.load_card_art(troop_id)
+			if card_art:
+				art_rect.texture = card_art
+				art_rect.visible = true
+			else:
+				art_rect.visible = false
+			
 			if troop and troop.is_alive:
 				# Troop is alive - show info
 				button.disabled = false
-				button.text = "[%d]\n%s\n❤️ %d/%d" % [i + 1, troop.display_name, troop.current_hp, troop.max_hp]
-				button.add_theme_font_size_override("font_size", 11)
+				button.text = "[%d] %s\n❤️ %d/%d" % [i + 1, troop.display_name, troop.current_hp, troop.max_hp]
+				button.add_theme_font_size_override("font_size", 10)
 				
 				# Highlight if selected
 				if troop == selected_troop:
-					_highlight_troop_card(button, true, player.team_color)
+					_highlight_troop_card(button, true, player.team_color, i)
 				else:
-					_highlight_troop_card(button, false, player.team_color)
+					_highlight_troop_card(button, false, player.team_color, i)
 				
 				# Show status indicators
 				if troop.has_moved_this_turn or troop.has_attacked_this_turn:
@@ -558,15 +597,18 @@ func update_troop_cards(player: Player, selected_troop: Troop = null) -> void:
 				# Troop is dead
 				button.disabled = true
 				var card_data = CardData.get_troop(troop_id)
-				var name = card_data.get("name", troop_id) if not card_data.is_empty() else troop_id
-				button.text = "[%d]\n%s\n💀 DEAD" % [i + 1, name]
-				button.add_theme_font_size_override("font_size", 11)
-				_highlight_troop_card(button, false, Color.GRAY)
+				var dead_name = card_data.get("name", troop_id) if not card_data.is_empty() else troop_id
+				button.text = "[%d] %s\n💀 DEAD" % [i + 1, dead_name]
+				button.add_theme_font_size_override("font_size", 10)
+				_highlight_troop_card(button, false, Color.GRAY, i)
+				# Dim the card art for dead troops
+				art_rect.modulate = Color(0.3, 0.3, 0.3)
 		else:
 			# No troop at this slot
 			button.disabled = true
 			button.text = "[%d]\nEmpty" % (i + 1)
-			_highlight_troop_card(button, false, Color.GRAY)
+			art_rect.visible = false
+			_highlight_troop_card(button, false, Color.GRAY, i)
 
 
 func _find_troop_by_id(player: Player, troop_id: String) -> Troop:
@@ -576,17 +618,27 @@ func _find_troop_by_id(player: Player, troop_id: String) -> Troop:
 	return null
 
 
-func _highlight_troop_card(button: Button, is_selected: bool, team_color: Color) -> void:
-	var normal_style = StyleBoxFlat.new()
+func _highlight_troop_card(button: Button, is_selected: bool, team_color: Color, slot_index: int = -1) -> void:
+	# Update the parent container's border to show selection state
+	var container: PanelContainer = null
+	if slot_index >= 0 and slot_index < troop_cards_container.get_child_count():
+		container = troop_cards_container.get_child(slot_index) as PanelContainer
 	
-	if is_selected:
-		normal_style.bg_color = team_color.darkened(0.6)
-		normal_style.border_color = Color(1.0, 0.84, 0.0) # Gold border for selected
-		normal_style.set_border_width_all(3)
-	else:
-		normal_style.bg_color = Color(0.12, 0.12, 0.16)
-		normal_style.border_color = team_color.darkened(0.3)
-		normal_style.set_border_width_all(2)
+	if container:
+		var container_style = StyleBoxFlat.new()
+		if is_selected:
+			container_style.bg_color = team_color.darkened(0.6)
+			container_style.border_color = Color(1.0, 0.84, 0.0) # Gold border for selected
+			container_style.set_border_width_all(3)
+		else:
+			container_style.bg_color = Color(0.08, 0.08, 0.12)
+			container_style.border_color = team_color.darkened(0.3)
+			container_style.set_border_width_all(2)
+		container_style.set_corner_radius_all(8)
+		container.add_theme_stylebox_override("panel", container_style)
 	
-	normal_style.set_corner_radius_all(8)
-	button.add_theme_stylebox_override("normal", normal_style)
+	# Also reset the card art modulate for living troops
+	if slot_index >= 0 and slot_index < troop_card_art_rects.size():
+		var art_rect = troop_card_art_rects[slot_index]
+		if team_color != Color.GRAY:
+			art_rect.modulate = Color.WHITE # Full color for alive troops

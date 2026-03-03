@@ -584,8 +584,6 @@ For casual players, a Simple Combat mode reduces complexity:
 
 - Castle dining hall
 - Forest clearing
-- Mountain fortress
-- Underground cave
 - Battlefield tent
 
 ## ⚠️ CRITICAL: Character Scaling Rule
@@ -642,15 +640,24 @@ All biome, board, and UI textures downloaded (~8.6 GB):
 - **Format**: 4K PNG with PBR maps (Diffuse, Normal, Roughness, AO, Displacement)
 - **Location**: `res://assets/textures/biomes/` and `res://assets/textures/board/`
 
-### 3D Models ⏳ PENDING
+### 3D Models ✅ IMPLEMENTED (Troops, Dice, Card Art)
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Troop Models | 12 | Pending AI generation |
-| NPC Models | 3 | Pending AI generation |
-| Gold Mine Models | 5 levels | Pending AI generation |
-| Dice Model | 1 | Pending |
-| Card Art | 15 | Pending AI generation |
+| Troop Models | 12 | ✅ GLB models imported via `CharacterModelLoader` |
+| NPC Models | 3 | ⏳ Pending AI generation |
+| Gold Mine Models | 5 levels | ✅ Imported in `res://assets/models/mines/` |
+| Dice Model | 1 | ✅ `d20-gold.glb` imported |
+| Card Art | 15 | ✅ All 12 troop + 3 NPC card art PNGs in `res://assets/textures/cards/` |
+
+### Character Model Integration
+
+- **Loader**: `CharacterModelLoader` (`res://scripts/managers/character_model_loader.gd`)
+- **Models Location**: `res://assets/models/characters/`
+- **Card Art Location**: `res://assets/textures/cards/`
+- **Loading Strategy**: Models are cached on first load; placeholder shapes used as fallback
+- **Scale System**: Per-character scale factors in `CharacterModelLoader.MODEL_SCALES`
+- **Card Art in UI**: Shown in Deck Selection UI and in-game HUD troop cards
 
 **Polygon Budget:**
 - Low: 5,000-8,000 tris
@@ -1691,6 +1698,7 @@ This PROJECT_BIBLE.md consolidates the following documentation files:
 | 1.3 | 2026-02-10 | **Implementation Progress overhaul**: Expanded from 30-item checklist to full per-file audit. Fixed asset tracking (card art 15/15, mines 5/5, dice 1/1, troops 3/12). Added system categories: Visual/Effects, Environment, Audio, Managers, Testing, Scenes. Added completion percentages, file sizes, and detailed notes. |
 | 1.4 | 2026-02-10 | **Roadmap restructure**: Reorganized Implementation Progress into phased development roadmap (Phase 0–6). Added visual pipeline diagram, dependency chain, time estimates, and priority ordering per phase. Consolidated Known Issues & Future Work into roadmap phases to avoid duplication. |
 | 1.5 | 2026-02-11 | **Vertical Slice / Goal-Based Roadmap**: Refactored from sequential Phase 1–5 pipeline to Bucket-based system prioritizing micro-wins. Medieval Knight becomes complete character vertical slice (model→scale→animation→SFX). Each remaining troop is independent goal. Identified `physical_room_builder.gd` as critical blocker (referenced in `main.tscn` but file missing). Buckets 3 & 4 can be worked in parallel. Added reusable Micro-Win Checklist template. |
+| 1.7 | 2026-03-01 | **CHANGED: UI/UX Mindmap — Environment Selection entries** (`UI_UX_MENU_MINDMAP.md`): Replaced placeholder "Tavern Room 1 / Tavern Room 2" stubs under `Environment Selection` with the four canonical dynamic background entries that match the Main Menu (`Cozy Tavern`, `Battlefield Tent`, `Dining Hall`, `Deforested Woods`), keeping the mindmap consistent throughout. |
 | 1.6 | 2026-02-19 | **CHANGED: Edge Tile Border Seal** (`hex_board.gd` → `_generate_vertex_heights()`): Replaced imprecise 95% radial distance threshold ("ZERO-G BORDER SEAL") with proper perimeter vertex detection. Interior hex vertices are shared by exactly 3 tiles; perimeter vertices by 1–2 tiles. Checking `height_array.size() < 3` now accurately identifies every perimeter vertex and pins it to `0.0`, eliminating the vertical gap between high edge tiles (e.g. Peaks, Ashlands) and the stone border frame. |
 
 ---

@@ -1,7 +1,7 @@
 @tool
 extends EditorScript
 
-const MedievalThemeBuilder = preload("res://scripts/ui/medieval_theme_builder.gd")
+
 
 ## Run this script in the Godot editor to generate the medieval theme resource
 ## Use Script > Run (Ctrl+Shift+X) in the editor

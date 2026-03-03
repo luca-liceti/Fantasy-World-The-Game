@@ -124,6 +124,8 @@ func load_environment(env: EnvironmentType) -> void:
 	_apply_transform()
 	# Defer table alignment so all child transforms are propagated first
 	call_deferred("_align_to_table")
+	# Defer camera collision generation so transforms are resolved
+	call_deferred("_generate_camera_collision_for_environment")
 
 	print("[EnvironmentBuilder] Loaded environment: %s" % ENVIRONMENT_NAMES.get(env, "Unknown"))
 
@@ -203,3 +205,42 @@ func _get_available_ids() -> Array:
 		if ResourceLoader.exists(ENVIRONMENT_PATHS[env_id]):
 			ids.append(env_id)
 	return ids
+
+
+# =============================================================================
+# CAMERA COLLISION (Layer 16)
+# =============================================================================
+
+## Generate camera collision bodies for the loaded environment model.
+## Walks every MeshInstance3D in the .glb scene tree and creates a trimesh
+## StaticBody3D collider on Layer 16 so the camera can't clip through walls,
+## furniture, shelves, and other room geometry.
+func _generate_camera_collision_for_environment() -> void:
+	if not _environment_instance:
+		return
+	
+	var mesh_count := 0
+	_add_camera_collision_recursive(_environment_instance, mesh_count)
+	print("[EnvironmentBuilder] Camera collision: generated for %d meshes (Layer 16)" % mesh_count)
+
+
+## Recursively traverse a node tree and add trimesh colliders to every MeshInstance3D.
+func _add_camera_collision_recursive(node: Node, count: int) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.mesh:
+			# Godot's built-in method generates a perfectly fitting StaticBody3D child
+			mi.create_trimesh_collision()
+			
+			# The newly created StaticBody3D is the last child of this MeshInstance3D
+			var body_idx := mi.get_child_count() - 1
+			if body_idx >= 0:
+				var body := mi.get_child(body_idx)
+				if body is StaticBody3D:
+					body.collision_layer = 1 << 15  # Layer 16 — camera collision only
+					body.collision_mask = 0          # Doesn't detect anything itself
+					count += 1
+	
+	# Recurse into children
+	for child in node.get_children():
+		_add_camera_collision_recursive(child, count)

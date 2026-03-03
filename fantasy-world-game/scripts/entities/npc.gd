@@ -285,6 +285,20 @@ func _create_placeholder_visual() -> void:
 	var material = StandardMaterial3D.new()
 	material.albedo_color = Color(0.8, 0.2, 0.2)
 	mesh_instance.material_override = material
+	
+	# --- Camera collision (Layer 16) ---
+	var cam_body = StaticBody3D.new()
+	cam_body.name = "CameraCollision"
+	cam_body.collision_layer = 1 << 15  # Layer 16
+	cam_body.collision_mask = 0
+	add_child(cam_body)
+	
+	var cam_col = CollisionShape3D.new()
+	var cam_sphere = SphereShape3D.new()
+	cam_sphere.radius = 0.35
+	cam_col.shape = cam_sphere
+	cam_col.position.y = 0.25
+	cam_body.add_child(cam_col)
 
 
 ## Update visual based on NPC type

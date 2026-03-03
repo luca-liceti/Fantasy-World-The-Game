@@ -37,10 +37,10 @@ var is_hover: bool = false
 
 # Node references
 var mesh_instance: MeshInstance3D
-var collision_shape: CollisionShape3D
 var border_mesh: MeshInstance3D # Border outline
 var selection_mesh: MeshInstance3D # Full tile overlay for selection
-var area: Area3D
+var terrain_collision_body: StaticBody3D # Camera collision (Layer 16)
+var terrain_collision_shape: CollisionShape3D # Trimesh matching terrain surface
 var particle_emitter: BiomeParticleEmitter # Ambient particle effects
 var grass_instance: MultiMeshInstance3D # Witcher 3-style grass
 
@@ -65,7 +65,7 @@ func _ready() -> void:
 	_create_hex_mesh()
 	_create_selection_overlay()
 	_create_border_mesh()
-	_create_collision()
+	_create_terrain_collision()
 	_setup_materials()
 	_update_visual()
 
@@ -308,8 +308,8 @@ func update_mesh_with_neighbors(heights: Array[float]) -> void:
 # Stored vertex heights for surface height calculation (troop placement)
 var stored_vertex_heights: Array[float] = []
 
-## Buffer height for troop placement (ensures they sit above surface)
-const SURFACE_HEIGHT_BUFFER: float = 0.1
+## Buffer height for troop placement (keeps models from z-fighting with terrain)
+const SURFACE_HEIGHT_BUFFER: float = 0.05
 
 
 ## Update mesh with vertex heights from vertex-based displacement system
@@ -331,10 +331,12 @@ func update_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
 	# Rebuild border ring to match new terrain shape
 	_rebuild_border_mesh()
 	
+	# Rebuild terrain collision trimesh to match the new surface
+	_rebuild_terrain_collision()
+	
 	# Re-apply material
 	if base_material and mesh_instance:
 		mesh_instance.material_override = base_material
-
 
 ## Get the average surface height for this tile (used for troop placement)
 ## Uses vertex averaging - much faster than raycasting
@@ -482,7 +484,6 @@ func _rebuild_hex_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void
 	mesh_instance.mesh = st.commit()
 
 
-
 func _create_selection_overlay() -> void:
 	# Create a hex overlay that conforms to the tile's terrain slope
 	selection_mesh = MeshInstance3D.new()
@@ -500,8 +501,8 @@ func _rebuild_selection_overlay() -> void:
 	var normals_arr = PackedVector3Array()
 	var indices = PackedInt32Array()
 	
-	const OVERLAY_OFFSET: float = 0.025  # Tiny raise above surface to prevent z-fighting
-	const OVERLAY_SCALE: float = 0.97    # Slightly smaller than tile to avoid edge bleed
+	const OVERLAY_OFFSET: float = 0.025 # Tiny raise above surface to prevent z-fighting
+	const OVERLAY_SCALE: float = 0.97 # Slightly smaller than tile to avoid edge bleed
 	
 	# Use stored vertex heights if available, otherwise fall back to tile_height
 	var corner_heights: Array[float] = []
@@ -544,7 +545,7 @@ func _rebuild_selection_overlay() -> void:
 		var edge1 = v1 - v0
 		var edge2 = v2 - v0
 		var fn = edge1.cross(edge2).normalized()
-		if fn.y < 0: fn = -fn
+		if fn.y < 0: fn = - fn
 		face_normals.append(fn)
 	
 	var center_normal = Vector3.ZERO
@@ -583,7 +584,7 @@ func _rebuild_border_mesh() -> void:
 	if not border_mesh:
 		return
 	
-	const BORDER_OFFSET: float = 0.04   # Raised above surface
+	const BORDER_OFFSET: float = 0.04 # Raised above surface
 	const OUTER_SCALE: float = 1.0
 	const INNER_SCALE: float = 0.88
 	
@@ -628,21 +629,48 @@ func _rebuild_border_mesh() -> void:
 	border_mesh.visible = false
 
 
-func _create_collision() -> void:
-	area = Area3D.new()
-	add_child(area)
+## Create terrain collision body on Layer 1 & 16.
+## Uses a ConcavePolygonShape3D (trimesh) that exactly matches the visible
+## hex surface mesh. By making this pickable, we get 100% pixel-perfect
+## mouse selection on the exact terrain geometry without overlapping generic shapes.
+func _create_terrain_collision() -> void:
+	terrain_collision_body = StaticBody3D.new()
+	terrain_collision_body.name = "TerrainCollision"
+	# Layer 1 = Gameplay raycast (clicking), Layer 16 = Camera physical bounds
+	terrain_collision_body.collision_layer = 1 | (1 << 15)
+	terrain_collision_body.collision_mask = 0 # Does not detect anything natively
 	
-	collision_shape = CollisionShape3D.new()
-	var shape = CylinderShape3D.new()
-	shape.radius = hex_size * 0.9
-	shape.height = 0.2
-	collision_shape.shape = shape
-	area.add_child(collision_shape)
+	# CRITICAL: This exact trimesh is our mouse-picking surface.
+	terrain_collision_body.input_ray_pickable = true
+	add_child(terrain_collision_body)
 	
-	# Connect signals
-	area.mouse_entered.connect(_on_mouse_entered)
-	area.mouse_exited.connect(_on_mouse_exited)
-	area.input_event.connect(_on_input_event)
+	terrain_collision_shape = CollisionShape3D.new()
+	terrain_collision_shape.name = "TerrainShape"
+	terrain_collision_body.add_child(terrain_collision_shape)
+	
+	# Bind mouse signals directly to the pixel-perfect trimesh
+	terrain_collision_body.mouse_entered.connect(on_mouse_entered)
+	terrain_collision_body.mouse_exited.connect(on_mouse_exited)
+	terrain_collision_body.input_event.connect(_on_trimesh_input_event)
+	
+	# Build initial trimesh from the current mesh
+	_rebuild_terrain_collision()
+
+
+## Rebuild the terrain collision trimesh to match the current visual hex mesh.
+## Called after vertex heights are updated so the collider follows the terrain.
+func _rebuild_terrain_collision() -> void:
+	if not terrain_collision_shape or not mesh_instance or not mesh_instance.mesh:
+		return
+	
+	# Build faces from the mesh (top surface + skirts)
+	var faces = mesh_instance.mesh.get_faces()
+	if faces.size() < 3:
+		return
+	
+	var trimesh = ConcavePolygonShape3D.new()
+	trimesh.set_faces(faces)
+	terrain_collision_shape.shape = trimesh
 
 # =============================================================================
 # PARTICLES (DISABLED)
@@ -838,22 +866,26 @@ func can_place_mine() -> bool:
 
 
 # =============================================================================
-# INPUT HANDLING
+# INPUT HANDLING (Called externally via direct physics raycast)
 # =============================================================================
 
-func _on_mouse_entered() -> void:
+func on_mouse_entered() -> void:
 	is_hover = true
 	_update_visual()
-	tile_hovered.emit(self)
+	tile_hovered.emit(self )
 
 
-func _on_mouse_exited() -> void:
+func on_mouse_exited() -> void:
 	is_hover = false
 	_update_visual()
-	tile_unhovered.emit(self)
+	tile_unhovered.emit(self )
 
 
-func _on_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+func on_mouse_clicked() -> void:
+	tile_clicked.emit(self )
+
+
+func _on_trimesh_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			tile_clicked.emit(self)
+			on_mouse_clicked()

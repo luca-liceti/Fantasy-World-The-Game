@@ -206,6 +206,20 @@ func _create_placeholder_visual() -> void:
 	material.metallic = 0.8
 	material.roughness = 0.3
 	mesh_instance.material_override = material
+	
+	# --- Camera collision (Layer 16) ---
+	var cam_body = StaticBody3D.new()
+	cam_body.name = "CameraCollision"
+	cam_body.collision_layer = 1 << 15  # Layer 16
+	cam_body.collision_mask = 0
+	add_child(cam_body)
+	
+	var cam_col = CollisionShape3D.new()
+	var cam_box = BoxShape3D.new()
+	cam_box.size = Vector3(0.5, 0.4, 0.5)
+	cam_col.shape = cam_box
+	cam_col.position.y = 0.2
+	cam_body.add_child(cam_col)
 
 
 ## Update visual based on level

@@ -16,6 +16,7 @@ const CombatResolutionUIScene = preload("res://scripts/ui/combat_resolution_ui.g
 var hex_board: HexBoard
 var camera: Camera3D
 var camera_pivot: Node3D
+var camera_body: CharacterBody3D # Physical camera carrier (collision)
 var game_manager: GameManager
 var game_ui: GameUI
 var dice_ui: DiceUI
@@ -40,7 +41,12 @@ const ROTATE_SPEED: float = 0.3 # Mouse rotation sensitivity (degrees per pixel)
 const PAN_SPEED_SHIFT: float = 30.0 # Faster pan when holding Shift
 const CAMERA_TRANSITION_SPEED: float = 3.0 # Smooth camera movement speed
 
+# Camera Collision Settings
+const CAMERA_COLLISION_SPHERE_RADIUS: float = 0.3 # Physical camera body radius
+const CAMERA_COLLISION_LAYER: int = 1 << 15 # Physics Layer 16 (0-indexed bit 15)
+
 var camera_distance: float = 35.0 # Current zoom distance (start zoomed out)
+var _camera_body_initialized: bool = false # First-frame teleport flag
 var camera_yaw: float = 0.0 # Horizontal rotation (Y-axis)
 var camera_pitch: float = 45.0 # Vertical rotation (X-axis), start at 45° down
 
@@ -166,7 +172,7 @@ func _print_controls() -> void:
 
 
 func _setup_camera_system() -> void:
-	# Create camera pivot (the point camera orbits around)
+	# Create camera pivot (for reference / compatibility)
 	camera_pivot = Node3D.new()
 	camera_pivot.name = "CameraPivot"
 	add_child(camera_pivot)
@@ -176,7 +182,25 @@ func _setup_camera_system() -> void:
 	camera.name = "MainCamera"
 	camera.current = true
 	camera.fov = 60.0
+	camera.near = 0.1 # Near-clip buffer
 	camera_pivot.add_child(camera)
+	
+	# Create CharacterBody3D as the physical camera carrier.
+	# The camera's eye position IS this body's position.
+	# move_and_collide() prevents it from entering any solid geometry
+	# on Layer 16 — walls, floor, ceiling, decorations, troops, board, etc.
+	# The camera can ONLY travel through air.
+	camera_body = CharacterBody3D.new()
+	camera_body.name = "CameraBody"
+	camera_body.collision_layer = 0 # Invisible to other objects
+	camera_body.collision_mask = CAMERA_COLLISION_LAYER # Detects Layer 16
+	add_child(camera_body)
+	
+	var cam_col = CollisionShape3D.new()
+	var cam_sphere = SphereShape3D.new()
+	cam_sphere.radius = CAMERA_COLLISION_SPHERE_RADIUS
+	cam_col.shape = cam_sphere
+	camera_body.add_child(cam_col)
 	
 	# Remove old camera if it exists
 	var old_camera = get_node_or_null("CameraPivot/GameCamera")
@@ -189,9 +213,10 @@ func _setup_camera_system() -> void:
 	if old_camera:
 		old_camera.queue_free()
 	
-	# Apply initial transform
+	# Apply initial transform (first call teleports the body)
+	_camera_body_initialized = false
 	_update_camera_transform()
-	print("Camera system initialized")
+	print("Camera system initialized (CharacterBody3D collision, radius=%.2f)" % CAMERA_COLLISION_SPHERE_RADIUS)
 
 
 func _generate_board() -> void:
@@ -557,6 +582,13 @@ func _create_troop(troop_id: String, player_id: int, coord: HexCoordinates) -> T
 	# Move to hex and update visual
 	troop.move_to_hex(tile)
 	
+	# Rotate troops to face toward the opponent's side of the board.
+	# Player 2 is turned 150° CW from default, Player 1 mirrors that + 180° flip.
+	if player_id == 0:
+		troop.rotation_degrees.y = 210.0 # Faces toward Player 2
+	else:
+		troop.rotation_degrees.y = 30.0 # Faces toward Player 1
+	
 	# IMPORTANT: Reset move/attack flags since this is initial spawn, not a move action
 	troop.has_moved_this_turn = false
 	troop.has_attacked_this_turn = false
@@ -620,36 +652,82 @@ func _update_ui() -> void:
 # =============================================================================
 
 func _update_camera_transform() -> void:
-	if not camera or not camera_pivot:
+	if not camera or not camera_pivot or not camera_body:
 		return
 	
 	# Clamp pitch
 	camera_pitch = clamp(camera_pitch, 10.0, 89.0)
 	
-	# Position pivot at focus point
+	# Position pivot at focus point (for reference)
 	camera_pivot.global_position = focus_point
 	
-	# Calculate camera position based on spherical coordinates
 	var pitch_rad = deg_to_rad(camera_pitch)
 	var yaw_rad = deg_to_rad(camera_yaw)
 	
-	# Spherical to Cartesian
-	var offset = Vector3(
-		camera_distance * cos(pitch_rad) * sin(yaw_rad),
-		camera_distance * sin(pitch_rad),
-		camera_distance * cos(pitch_rad) * cos(yaw_rad)
+	# Direction unit vector from focus point toward camera
+	var dir = Vector3(
+		cos(pitch_rad) * sin(yaw_rad),
+		sin(pitch_rad),
+		cos(pitch_rad) * cos(yaw_rad)
 	)
 	
-	var new_camera_pos = focus_point + offset
+	# Desired camera world position (from orbit math)
+	var desired_pos = focus_point + dir * camera_distance
 	
-	camera.global_position = new_camera_pos
+	# --- Physics-based camera positioning ---
+	if not _camera_body_initialized:
+		camera_body.global_position = desired_pos
+		_camera_body_initialized = true
+	else:
+		var total_motion = desired_pos - camera_body.global_position
+		if total_motion.length() > 0.001:
+			# Sub-step move_and_collide to prevent tunnelling through thin terrain.
+			# A single large move can skip over a tile's trimesh if the frame delta
+			# is large or the camera moves fast. Splitting into MAX_STEPS small steps
+			# guarantees the sphere always touches the surface.
+			const MAX_STEPS: int = 8
+			var step_motion = total_motion / MAX_STEPS
+			var did_collide: bool = false
+			
+			for _step in range(MAX_STEPS):
+				var collision = camera_body.move_and_collide(step_motion)
+				if collision:
+					did_collide = true
+					break # Stop at first collision; we'll re-evaluate next frame
+			
+			if did_collide:
+				# Project body position back onto the orbit ray so pitch/yaw stay stable
+				var projected_dist = (camera_body.global_position - focus_point).dot(dir)
+				projected_dist = max(projected_dist, ZOOM_MIN)
+				
+				camera_distance = projected_dist
+				if not is_camera_transitioning:
+					target_distance = projected_dist
+				
+				# Snap body to orbit line at the resolved distance
+				camera_body.global_position = focus_point + dir * camera_distance
+	
+	# --- Absolute terrain floor clamp (backstop against tunnelling) ---
+	# Even if the physics steps miss a collision (fast move, thin mesh), the
+	# camera must never go below BOARD_LIFT. This is the final safety net.
+	const CAMERA_FLOOR_Y: float = GameConfig.BOARD_LIFT + CAMERA_COLLISION_SPHERE_RADIUS + 0.05
+	if camera_body.global_position.y < CAMERA_FLOOR_Y:
+		camera_body.global_position.y = CAMERA_FLOOR_Y
+		# Also clamp distance so scrolling doesn't accumulate below the floor
+		var clamped_dist = (camera_body.global_position - focus_point).dot(dir)
+		if clamped_dist > ZOOM_MIN:
+			camera_distance = clamped_dist
+			if not is_camera_transitioning:
+				target_distance = clamped_dist
+	
+	# Camera renders from the physics body's final position
+	camera.global_position = camera_body.global_position
 	camera.look_at(focus_point, Vector3.UP)
 
 
 func _zoom_camera(direction: float) -> void:
-	camera_distance += direction * camera_distance * ZOOM_SPEED
-	camera_distance = clamp(camera_distance, ZOOM_MIN, ZOOM_MAX)
-	_update_camera_transform()
+	target_distance += direction * target_distance * ZOOM_SPEED
+	target_distance = clamp(target_distance, ZOOM_MIN, ZOOM_MAX)
 
 
 func _rotate_camera_view(delta_x: float, delta_y: float) -> void:
@@ -696,7 +774,14 @@ func _pan_camera(direction: Vector3, delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_handle_keyboard_movement(delta)
+	
+	if not is_camera_transitioning and abs(camera_distance - target_distance) > 0.001:
+		camera_distance = lerp(camera_distance, target_distance, 15.0 * delta)
+		_update_camera_transform()
+		
 	_update_camera_smooth(delta)
+	# Camera collision is handled inside _update_camera_transform() via
+	# CharacterBody3D.move_and_collide() — no separate step needed.
 	
 	# Update timer display
 	if game_ui and game_manager and game_manager.turn_manager:
@@ -956,6 +1041,7 @@ func _setup_initial_camera_view() -> void:
 	
 	camera_pitch = 10.0 # Very low angle for dramatic ground-level view
 	camera_distance = 20.0 # Zoomed in closer
+	target_distance = 20.0
 	current_view = CameraView.OVERVIEW
 	
 	print("DEBUG Camera: yaw=%f, pitch=%f, distance=%f" % [camera_yaw, camera_pitch, camera_distance])
@@ -1091,6 +1177,10 @@ func _update_camera_smooth(delta: float) -> void:
 		_update_cinematic_transition(delta)
 	else:
 		_update_normal_transition(delta)
+
+
+# Camera collision is now handled by CharacterBody3D.move_and_collide()
+# inside _update_camera_transform(). No separate collision step needed.
 
 
 ## Smooth easing function (ease in-out cubic)

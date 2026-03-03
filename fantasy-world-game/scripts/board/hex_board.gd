@@ -179,8 +179,6 @@ func _update_tile_meshes_with_neighbors() -> void:
 # =============================================================================
 
 
-
-
 ## Generate vertex heights using biome-based interpolation with proper averaging
 ## PERIMETER SEAL: Vertices shared by fewer than 3 tiles are pinned to 0.0
 ## In a hex grid, interior vertices are always shared by exactly 3 tiles.
@@ -246,14 +244,14 @@ func _generate_vertex_heights() -> void:
 		else:
 			interior_count += 1
 	
-	print("Generated %d unique vertices (perimeter sealed: %d, interior: %d)" % 
+	print("Generated %d unique vertices (perimeter sealed: %d, interior: %d)" %
 		[vertex_map.size(), border_count, interior_count])
 
 
 ## Get the surface height for a tile using vertex averaging
 ## Used for troop placement - much faster than raycasting
-## Returns the average Y height of the 6 vertices + 0.2 buffer
-const TROOP_HEIGHT_BUFFER: float = 0.2  # Troop Y = average of 6 vertices + 0.2
+## Returns the average Y height of the 6 vertices + 0.05 buffer
+const TROOP_HEIGHT_BUFFER: float = 0.05 # Troop Y = average of 6 vertices + 0.05
 
 func get_tile_surface_height(coord: HexCoordinates) -> float:
 	var total_height: float = 0.0
@@ -270,7 +268,7 @@ func get_tile_surface_height(coord: HexCoordinates) -> float:
 	if count > 0:
 		return (total_height / count) + TROOP_HEIGHT_BUFFER
 	
-	return TROOP_HEIGHT_BUFFER  # Fallback
+	return TROOP_HEIGHT_BUFFER # Fallback
 
 ## Update all tile meshes using vertex heights
 func _update_tile_meshes_with_vertex_heights() -> void:
@@ -337,7 +335,6 @@ func _is_tile_on_edge(coord: HexCoordinates) -> bool:
 func _is_vertex_on_perimeter(coord: HexCoordinates, vertex_pos: Vector3) -> bool:
 	# A vertex is shared by up to 3 tiles
 	# If any of those tiles are missing, it's a perimeter vertex
-	
 	# Find all corners of this tile that match this vertex position
 	for i in range(6):
 		var corner_pos = _get_vertex_world_position(coord, i)
@@ -357,7 +354,6 @@ func _is_vertex_on_perimeter(coord: HexCoordinates, vertex_pos: Vector3) -> bool
 			break
 	
 	return false
-
 
 
 ## Create junction fill meshes at 3-tile meeting points to eliminate gaps

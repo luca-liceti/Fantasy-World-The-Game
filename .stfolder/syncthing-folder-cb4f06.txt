@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: fantasy-world
+created: 2026-02-26T17:29:00-08:00

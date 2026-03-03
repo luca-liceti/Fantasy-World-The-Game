@@ -309,26 +309,12 @@ static func _try_load_pbr_textures(material: StandardMaterial3D, texture_prefix:
 	if diffuse_tex:
 		variant_tried = "direct"
 	
-	# Try primary/secondary variants (original texture format)
+	# Try primary variant (original texture format — secondary variants removed)
 	if not diffuse_tex:
-		# Peaks should always use primary (snowy) texture
-		# Other biomes can randomly use primary/secondary for variety
-		var variant: String
-		if biome_type == Biomes.Type.PEAKS:
-			variant = "primary"  # Always snowy for peaks
-		else:
-			variant = "primary" if randf() > 0.3 else "secondary"
-		
-		base_path = TEXTURES_PATH + texture_prefix + "_" + variant + "_"
+		base_path = TEXTURES_PATH + texture_prefix + "_primary_"
 		diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
 		if diffuse_tex:
-			variant_tried = variant
-		elif variant == "secondary":
-			# Fallback to primary
-			base_path = TEXTURES_PATH + texture_prefix + "_primary_"
-			diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
-			if diffuse_tex:
-				variant_tried = "primary"
+			variant_tried = "primary"
 	
 	# Try fallback texture if primary texture not found
 	if not diffuse_tex and BIOME_TEXTURE_FALLBACKS.has(texture_prefix):

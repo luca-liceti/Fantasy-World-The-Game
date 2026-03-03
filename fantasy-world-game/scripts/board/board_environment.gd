@@ -91,7 +91,12 @@ func _setup(board_radius: int, hex_size: float, perimeter_points: Array[Vector3]
 		# Create jagged form-fitted border with straight outer edge
 		_create_jagged_board_setup(perimeter_points, frame_outer_radius)
 	
-	print("[BoardEnvironment] Created board environment (Jagged: %s, Table: %s)" % [not perimeter_points.is_empty(), not skip_table])
+	# --- Camera collision (Layer 16) ---
+	# Add StaticBody3D colliders covering the board surface, border frame,
+	# and table so the physical camera body cannot pass through them.
+	_create_camera_collision(world_radius, frame_outer_radius, skip_table)
+	
+	print("[BoardEnvironment] Created board environment (Jagged: %s, Table: %s)" % [ not perimeter_points.is_empty(), not skip_table])
 
 
 # =============================================================================
@@ -174,6 +179,66 @@ func _create_jagged_board_setup(perimeter: Array[Vector3], outer_radius: float) 
 	frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	
 	print("[BoardEnvironment] Fixed-height frame with straight outer edge created")
+
+
+## Create camera collision bodies (Layer 16) for the board environment.
+## Covers: board playing surface, border frame walls, and table surface.
+## With CharacterBody3D camera, these physically block the camera from
+## passing through — no oscillation, just solid collision response.
+func _create_camera_collision(board_radius: float, frame_radius: float, skip_table: bool) -> void:
+	var cam_body = StaticBody3D.new()
+	cam_body.name = "CameraCollisionBoard"
+	cam_body.collision_layer = 1 << 15 # Layer 16
+	cam_body.collision_mask = 0
+	add_child(cam_body)
+	
+	# 1. Board playing surface — backup floor BELOW tiles
+	#    Each HexTile now provides its own per-vertex terrain collider on Layer 16
+	#    that exactly matches the visible mesh (slopes, elevation, etc.).
+	#    This flat collider sits slightly below the tile base to act as a backstop
+	#    so the camera cannot slip through cracks between tiles.
+	var board_col = CollisionShape3D.new()
+	board_col.name = "BoardFloor"
+	var board_box = BoxShape3D.new()
+	var board_extent = frame_radius * 2.0
+	board_box.size = Vector3(board_extent, 0.3, board_extent)
+	board_col.shape = board_box
+	board_col.position.y = GameConfig.BOARD_LIFT - 0.35 # Below the tile terrain colliders
+	cam_body.add_child(board_col)
+	
+	# 2. Border frame — a raised ring around the board using 6 box segments
+	#    Prevents the camera from clipping through the stone border walls
+	for i in range(6):
+		var angle = deg_to_rad(60 * i + 30)
+		var mid_radius = (board_radius + frame_radius) / 2.0
+		var segment_length = frame_radius - board_radius + FRAME_WIDTH
+		
+		var frame_col = CollisionShape3D.new()
+		frame_col.name = "BorderSegment%d" % i
+		var frame_box = BoxShape3D.new()
+		frame_box.size = Vector3(segment_length, FRAME_HEIGHT + PLATFORM_THICKNESS, frame_radius * 0.6)
+		frame_col.shape = frame_box
+		frame_col.position = Vector3(
+			mid_radius * cos(angle),
+			GameConfig.BOARD_LIFT + (FRAME_HEIGHT / 2.0),
+			mid_radius * sin(angle)
+		)
+		frame_col.rotation.y = angle
+		cam_body.add_child(frame_col)
+	
+	# 3. Table surface (only when a standalone table exists)
+	#    Prevents camera from going below/through the table
+	if not skip_table:
+		var table_col = CollisionShape3D.new()
+		table_col.name = "TableSurface"
+		var table_box = BoxShape3D.new()
+		var table_size = (board_radius + TABLE_PADDING + FRAME_WIDTH + 1.0) * 2.5
+		table_box.size = Vector3(table_size, TABLE_THICKNESS, table_size)
+		table_col.shape = table_box
+		table_col.position.y = - TABLE_THICKNESS / 2.0
+		cam_body.add_child(table_col)
+	
+	print("[BoardEnvironment] Camera collision bodies created (Layer 16): surface + border + table")
 
 
 ## Create a solid jagged mesh to fit under the tiles
@@ -262,7 +327,7 @@ func _create_platform_with_straight_outer(perimeter: Array[Vector3], outer_radiu
 	
 	var bottom_y: float = -0.15
 	# Platform top matches tile base level so tiles sit flush on the platform edge
-	var top_y: float = GameConfig.BOARD_LIFT + 0.02  # Same as tile position Y
+	var top_y: float = GameConfig.BOARD_LIFT + 0.02 # Same as tile position Y
 	
 	var inner_size = perimeter.size()
 	if inner_size < 3:
@@ -397,7 +462,7 @@ func _create_fixed_height_frame_mesh(perimeter: Array[Vector3], outer_radius: fl
 	var normals = PackedVector3Array()
 	
 	# Rim top matches tile position Y exactly so tiles connect seamlessly to frame
-	var rim_top_y: float = GameConfig.BOARD_LIFT + 0.02  # Same as tile position Y
+	var rim_top_y: float = GameConfig.BOARD_LIFT + 0.02 # Same as tile position Y
 	var bottom_y: float = -0.15
 	
 	var inner_size = perimeter.size()
@@ -500,7 +565,7 @@ func _create_fixed_height_frame_mesh(perimeter: Array[Vector3], outer_radius: fl
 		var p_next = perimeter[(i + 1) % inner_size]
 		
 		# Inward-facing normal (toward board center)
-		var in_normal = -Vector3((p_curr.x + p_next.x) / 2.0, 0, (p_curr.z + p_next.z) / 2.0).normalized()
+		var in_normal = - Vector3((p_curr.x + p_next.x) / 2.0, 0, (p_curr.z + p_next.z) / 2.0).normalized()
 		
 		var s_base = vertices.size()
 		vertices.push_back(Vector3(p_curr.x, rim_top_y, p_curr.z)); normals.push_back(in_normal)

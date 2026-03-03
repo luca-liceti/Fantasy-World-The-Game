@@ -9,21 +9,21 @@ extends RefCounted
 # =============================================================================
 
 ## Primary colors
-const COLOR_STONE_DARK := Color(0.16, 0.14, 0.13, 1.0)      # Dark stone background
-const COLOR_STONE_LIGHT := Color(0.28, 0.24, 0.22, 1.0)     # Lighter stone
-const COLOR_WOOD := Color(0.25, 0.18, 0.12, 1.0)             # Weathered wood
-const COLOR_WOOD_LIGHT := Color(0.35, 0.26, 0.18, 1.0)       # Lighter wood (hover)
-const COLOR_IRON := Color(0.35, 0.33, 0.32, 1.0)             # Weathered iron/metal
+const COLOR_STONE_DARK := Color(0.16, 0.14, 0.13, 1.0) # Dark stone background
+const COLOR_STONE_LIGHT := Color(0.28, 0.24, 0.22, 1.0) # Lighter stone
+const COLOR_WOOD := Color(0.25, 0.18, 0.12, 1.0) # Weathered wood
+const COLOR_WOOD_LIGHT := Color(0.35, 0.26, 0.18, 1.0) # Lighter wood (hover)
+const COLOR_IRON := Color(0.35, 0.33, 0.32, 1.0) # Weathered iron/metal
 
 ## Text colors
-const COLOR_TEXT := Color(0.96, 0.91, 0.84, 1.0)             # Cream/parchment (#F5E6D3)
-const COLOR_TEXT_MUTED := Color(0.75, 0.70, 0.65, 1.0)       # Muted text
-const COLOR_TEXT_GOLD := Color(0.83, 0.69, 0.22, 1.0)        # Gold accent
+const COLOR_TEXT := Color(0.96, 0.91, 0.84, 1.0) # Cream/parchment (#F5E6D3)
+const COLOR_TEXT_MUTED := Color(0.75, 0.70, 0.65, 1.0) # Muted text
+const COLOR_TEXT_GOLD := Color(0.83, 0.69, 0.22, 1.0) # Gold accent
 
 ## State colors
-const COLOR_PRESSED := Color(0.18, 0.14, 0.10, 1.0)          # Pressed state (darker)
-const COLOR_DISABLED := Color(0.2, 0.18, 0.16, 0.5)          # Disabled (muted)
-const COLOR_FOCUS := Color(0.83, 0.69, 0.22, 0.8)            # Focus border (gold)
+const COLOR_PRESSED := Color(0.18, 0.14, 0.10, 1.0) # Pressed state (darker)
+const COLOR_DISABLED := Color(0.2, 0.18, 0.16, 0.5) # Disabled (muted)
+const COLOR_FOCUS := Color(0.83, 0.69, 0.22, 0.8) # Focus border (gold)
 
 # =============================================================================
 # THEME GENERATION
@@ -61,7 +61,7 @@ static func create_theme() -> Theme:
 
 
 ## Save theme to file
-static func save_theme_to_file(theme: Theme, path: String := "res://assets/themes/medieval_theme.tres") -> Error:
+static func save_theme_to_file(theme: Theme, path: String = "res://assets/themes/medieval_theme.tres") -> Error:
 	return ResourceSaver.save(theme, path)
 
 
@@ -115,7 +115,7 @@ static func _setup_button_styles(theme: Theme) -> void:
 	pressed.set_border_width_all(2)
 	pressed.set_corner_radius_all(4)
 	pressed.set_content_margin_all(12)
-	pressed.shadow_size = 0  # No shadow when pressed (appears inset)
+	pressed.shadow_size = 0 # No shadow when pressed (appears inset)
 	
 	# Disabled state
 	var disabled := StyleBoxFlat.new()
@@ -127,7 +127,7 @@ static func _setup_button_styles(theme: Theme) -> void:
 	
 	# Focus state (golden highlight)
 	var focus := StyleBoxFlat.new()
-	focus.bg_color = Color(0, 0, 0, 0)  # Transparent
+	focus.bg_color = Color(0, 0, 0, 0) # Transparent
 	focus.border_color = COLOR_FOCUS
 	focus.set_border_width_all(2)
 	focus.set_corner_radius_all(5)

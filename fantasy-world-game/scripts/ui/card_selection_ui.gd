@@ -239,8 +239,8 @@ func _create_role_column(role_info: Dictionary, slot_index: int) -> VBoxContaine
 
 func _create_card_button(card_id: String, role_color: Color, slot_index: int) -> Button:
 	var button = Button.new()
-	button.custom_minimum_size = Vector2(240, 120)
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.custom_minimum_size = Vector2(240, 140)
+	button.clip_text = false
 	
 	# Get card data
 	var card_data = CardData.get_troop(card_id)
@@ -251,17 +251,73 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 	var def = card_data.get("def", 50)
 	var range_val = card_data.get("range", 1)
 	var speed = card_data.get("speed", 2)
-	var ability = card_data.get("ability_description", "")
+	var ability_text = card_data.get("ability_description", "")
 	
-	# Button text
-	var text = "%s\n" % display_name
-	text += "💎 %d Mana\n" % mana_cost
-	text += "❤️ %d  ⚔️ %d  🛡️ %d  📍 %d  🏃 %d\n" % [hp, atk, def, range_val, speed]
-	if ability:
-		text += "✨ %s" % ability
+	# Use an HBoxContainer layout: [Card Art | Stats Text]
+	var hbox = HBoxContainer.new()
+	hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hbox.add_theme_constant_override("separation", 10)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(hbox)
 	
-	button.text = text
-	button.add_theme_font_size_override("font_size", 12)
+	# Card art thumbnail
+	var card_art = CharacterModelLoader.load_card_art(card_id)
+	if card_art:
+		var tex_rect = TextureRect.new()
+		tex_rect.texture = card_art
+		tex_rect.custom_minimum_size = Vector2(80, 120)
+		tex_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(tex_rect)
+	else:
+		# Placeholder colored rectangle if no art available
+		var placeholder = ColorRect.new()
+		placeholder.custom_minimum_size = Vector2(80, 120)
+		placeholder.color = role_color.darkened(0.4)
+		placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(placeholder)
+	
+	# Stats text in a VBoxContainer
+	var stats_vbox = VBoxContainer.new()
+	stats_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_vbox.add_theme_constant_override("separation", 2)
+	stats_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(stats_vbox)
+	
+	# Name label
+	var name_label = Label.new()
+	name_label.text = display_name
+	name_label.add_theme_font_size_override("font_size", 14)
+	name_label.add_theme_color_override("font_color", role_color)
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_vbox.add_child(name_label)
+	
+	# Mana cost
+	var mana_text = Label.new()
+	mana_text.text = "💎 %d Mana" % mana_cost
+	mana_text.add_theme_font_size_override("font_size", 11)
+	mana_text.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	mana_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_vbox.add_child(mana_text)
+	
+	# Stats line
+	var stats_label = Label.new()
+	stats_label.text = "❤️%d ⚔️%d 🛡️%d 📍%d 🏃%d" % [hp, atk, def, range_val, speed]
+	stats_label.add_theme_font_size_override("font_size", 10)
+	stats_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	stats_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_vbox.add_child(stats_label)
+	
+	# Ability text (if any)
+	if ability_text != "":
+		var ability_label = Label.new()
+		ability_label.text = "✨ %s" % ability_text
+		ability_label.add_theme_font_size_override("font_size", 9)
+		ability_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+		ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ability_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stats_vbox.add_child(ability_label)
 	
 	# Style
 	var normal_style = StyleBoxFlat.new()

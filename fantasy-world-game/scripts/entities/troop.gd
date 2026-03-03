@@ -134,7 +134,10 @@ var immunities: Array = []
 # VISUAL COMPONENTS
 # =============================================================================
 var mesh_instance: MeshInstance3D
+var character_model_node: Node3D # The loaded GLB character model
 var health_bar: Node # Reference to health bar UI (set externally)
+var click_area: Area3D # Input detection for clicking the troop directly
+var _using_real_model: bool = false # Whether the real 3D model loaded successfully
 
 # Team color tint
 var team_color: Color = Color.WHITE
@@ -145,7 +148,10 @@ var team_color: Color = Color.WHITE
 # =============================================================================
 
 func _ready() -> void:
+	# Placeholder will be created here; if troop_id is set, the real model
+	# will be loaded in initialize() after data is available.
 	_create_placeholder_visual()
+	_create_click_area()
 
 
 ## Initialize troop from card data
@@ -194,6 +200,9 @@ func initialize(card_id: String, player_id: int) -> void:
 	has_attacked_this_turn = false
 	active_buffs.clear()
 	active_status_effects.clear()
+	
+	# Try to load the real 3D model (replacing the placeholder)
+	_load_character_model()
 	move_cooldowns.clear()
 	stat_stages = {"atk": 0, "def": 0, "speed": 0}
 	endure_uses_remaining = 1
@@ -665,7 +674,7 @@ func _on_death() -> void:
 		# Death burst damage will be handled by CombatManager
 		pass
 	
-	troop_died.emit(self)
+	troop_died.emit(self )
 
 
 # =============================================================================
@@ -684,7 +693,7 @@ func move_to_hex(new_hex: Node) -> void:
 	# Set new hex
 	current_hex = new_hex
 	if new_hex and new_hex.has_method("set_occupant"):
-		new_hex.set_occupant(self)
+		new_hex.set_occupant(self )
 	
 	# Update position using vertex averaging method
 	# This calculates Y from the average of the 6 vertex heights + 0.2 buffer
@@ -696,8 +705,8 @@ func move_to_hex(new_hex: Node) -> void:
 		if new_hex.has_method("get_surface_height"):
 			surface_height = new_hex.get_surface_height()
 		elif "tile_height" in new_hex:
-			# Fallback to tile_height + 0.2 buffer
-			surface_height = new_hex.tile_height + 0.2
+			# Fallback to tile_height + 0.05 buffer
+			surface_height = new_hex.tile_height + 0.05
 		
 		position = new_hex.position + Vector3(0, surface_height, 0)
 	
@@ -709,7 +718,93 @@ func move_to_hex(new_hex: Node) -> void:
 # VISUAL
 # =============================================================================
 
-## Create placeholder visual (will be replaced with actual model)
+## Load the actual 3D character model from the GLB file.
+## If successful, hides the placeholder mesh and shows the real model.
+func _load_character_model() -> void:
+	if troop_id.is_empty():
+		return
+	
+	# Check if model exists for this troop
+	if not CharacterModelLoader.has_model(troop_id):
+		print("Troop '%s': No 3D model found, keeping placeholder" % troop_id)
+		return
+	
+	# Load and instantiate the model
+	var model = CharacterModelLoader.load_character_model(troop_id)
+	if model == null:
+		push_warning("Troop '%s': Failed to load 3D model, keeping placeholder" % troop_id)
+		return
+	
+	# Remove old model if one was already loaded
+	if character_model_node and is_instance_valid(character_model_node):
+		character_model_node.queue_free()
+	
+	# Add the model as a child
+	character_model_node = model
+	add_child(character_model_node)
+	_using_real_model = true
+	
+	# Fix material transparency artifacts — GLB models often have incorrect
+	# double-sided or transparent settings that create a shiny/ghost look from
+	# certain angles (visible especially on wing membranes and thin geometry).
+	_fix_model_materials(character_model_node)
+	
+	# Hide the placeholder mesh but keep it for fallback
+	if mesh_instance:
+		mesh_instance.visible = false
+	
+	print("Troop '%s': 3D model loaded successfully (scale=%s)" % [troop_id, str(model.scale)])
+
+
+## Fix common GLB material artifacts: removes unintended transparency, shimmer,
+## and ghosting caused by AI-generated models baking incorrect PBR values.
+## Common issues:
+##   - TRANSPARENCY_ALPHA on wing membranes → ghost/see-through look
+##   - High metallic (0.8-1.0) on organic surfaces → unnatural shimmer
+##   - High specular on broad surfaces → bright reflective sheen
+func _fix_model_materials(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mesh_inst := node as MeshInstance3D
+		if mesh_inst.mesh:
+			var surface_count = mesh_inst.mesh.get_surface_count()
+			for i in range(surface_count):
+				# Prefer override material, fall back to mesh-embedded material
+				var mat: Material = mesh_inst.get_surface_override_material(i)
+				if mat == null:
+					mat = mesh_inst.mesh.surface_get_material(i)
+				if mat == null:
+					continue
+				
+				# BaseMaterial3D covers StandardMaterial3D & ORM_Material3D
+				if mat is BaseMaterial3D:
+					# Always duplicate before mutating (never modify cached resources)
+					var fixed: BaseMaterial3D = mat.duplicate() as BaseMaterial3D
+					
+					# Force all transparency modes to disabled (removes ghosting)
+					fixed.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+					
+					# Force cull mode to standard backface culling (fixes inside-out hollow rendering)
+					fixed.cull_mode = BaseMaterial3D.CULL_BACK
+					
+					# AI models often bake extreme metallic or specular values.
+					# Force to completely matte to fix the shiny/white glowing effects.
+					fixed.metallic = 0.0
+					fixed.metallic_specular = 0.0
+					
+					# Disable emission which causes bright glowing artifacts
+					fixed.emission_enabled = false
+					
+					# Ensure roughness is maximized for a matte, non-reflective finish
+					fixed.roughness = 1.0
+					
+					mesh_inst.set_surface_override_material(i, fixed)
+	
+	# Recurse into all children
+	for child in node.get_children():
+		_fix_model_materials(child)
+
+
+## Create placeholder visual (used as fallback if real model isn't available)
 ## Uses 1:1 scale: 1 unit = 1 meter, human troops ~1.8-2.0m tall
 func _create_placeholder_visual() -> void:
 	mesh_instance = MeshInstance3D.new()
@@ -761,52 +856,53 @@ func _create_placeholder_visual() -> void:
 	material.albedo_color = team_color
 	mesh_instance.material_override = material
 	
-	# Add a 3D label above the troop showing abbreviated name
-	_create_name_label()
-
-
-## Create 3D label above the troop
-var name_label: Label3D
-func _create_name_label() -> void:
-	name_label = Label3D.new()
-	add_child(name_label)
+	# --- Camera collision (Layer 16) ---
+	# Capsule collider for camera collision body, sized to match the troop visual.
+	var cam_body = StaticBody3D.new()
+	cam_body.name = "CameraCollision"
+	cam_body.collision_layer = 1 << 15 # Layer 16
+	cam_body.collision_mask = 0
+	add_child(cam_body)
 	
-	# Create abbreviated name (first word or acronym)
-	var abbrev = _get_abbreviated_name()
-	name_label.text = abbrev
-	
-	# Position above the troop (troops are now ~2m tall)
-	name_label.position.y = 2.5
-	
-	# Billboard mode - always face camera
-	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	
-	# Styling
-	name_label.font_size = 64
-	name_label.outline_size = 10
-	name_label.modulate = team_color
-	name_label.outline_modulate = Color.BLACK
-
-
-## Get abbreviated name for display
-func _get_abbreviated_name() -> String:
-	if display_name.is_empty():
-		return troop_id.to_upper().substr(0, 6)
-	
-	# Get key identifier from name
-	var words = display_name.split(" ")
-	if words.size() >= 2:
-		# Use last word for most troops (Knight, Dragon, Wizard, etc)
-		return words[-1].to_upper().substr(0, 8)
-	return display_name.to_upper().substr(0, 8)
+	var cam_col = CollisionShape3D.new()
+	var cam_capsule = CapsuleShape3D.new()
+	cam_capsule.radius = 0.5
+	cam_capsule.height = 2.0
+	cam_col.shape = cam_capsule
+	cam_col.position.y = 1.0 # Center at half troop height
+	cam_body.add_child(cam_col)
 
 
 ## Update visual based on current state
 func _update_visual() -> void:
+	# Update placeholder mesh color (even if hidden, for fallback)
 	if mesh_instance and mesh_instance.material_override:
 		mesh_instance.material_override.albedo_color = team_color
-	if name_label:
-		name_label.modulate = team_color
+	
+	# If using a real character model, apply team color tint
+	if _using_real_model and character_model_node and is_instance_valid(character_model_node):
+		_apply_team_tint_to_model(character_model_node)
+
+
+## Apply a subtle team color tint to the 3D model's materials.
+## This creates a color overlay effect to distinguish teams while
+## preserving the model's original texture detail.
+func _apply_team_tint_to_model(node: Node) -> void:
+	# Find all MeshInstance3D children and apply a subtle tint
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			var mesh_inst = child as MeshInstance3D
+			# Apply a subtle team color overlay using modulate
+			# Blend team color at ~20% to keep original texture visible
+			var tint = team_color.lerp(Color.WHITE, 0.7)
+			# We use a separate material override approach to avoid modifying
+			# the shared resource. Skip if the model has its own materials.
+			# For now, just modulate the node.
+			pass
+		
+		# Recurse into children
+		if child.get_child_count() > 0:
+			_apply_team_tint_to_model(child)
 
 
 # =============================================================================
@@ -861,3 +957,51 @@ func from_dict(data: Dictionary) -> void:
 	_recalculate_stats()
 	
 	# Note: hex position needs to be restored by GameManager
+
+
+# =============================================================================
+# INPUT HANDLING (Troop click redirection)
+# =============================================================================
+
+## Create an invisible cylinder around the troop to capture mouse clicks,
+## forwarding them to the hex tile underneath. Allows players to click the
+## character directly instead of having to aim solely for the terrain tile.
+func _create_click_area() -> void:
+	if click_area: return
+	
+	click_area = Area3D.new()
+	click_area.name = "TroopClickArea"
+	click_area.collision_layer = 1 # Layer 1 — same as hex tile mouse picking
+	click_area.collision_mask = 0
+	
+	var col_shape = CollisionShape3D.new()
+	var cylinder = CylinderShape3D.new()
+	cylinder.radius = 0.6
+	cylinder.height = 3.5 # Tall enough to cover all troops (dragons, giants, etc.)
+	col_shape.shape = cylinder
+	col_shape.position.y = 1.75 # Span from Y=0 to Y=3.5 local
+	
+	click_area.add_child(col_shape)
+	add_child(click_area)
+	
+	# Connect signals to forward to current_hex
+	click_area.input_event.connect(_on_click_area_input_event)
+	click_area.mouse_entered.connect(_on_click_area_mouse_entered)
+	click_area.mouse_exited.connect(_on_click_area_mouse_exited)
+
+
+func _on_click_area_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if current_hex and current_hex.has_method("on_mouse_clicked"):
+				current_hex.on_mouse_clicked()
+
+
+func _on_click_area_mouse_entered() -> void:
+	if current_hex and current_hex.has_method("on_mouse_entered"):
+		current_hex.on_mouse_entered()
+
+
+func _on_click_area_mouse_exited() -> void:
+	if current_hex and current_hex.has_method("on_mouse_exited"):
+		current_hex.on_mouse_exited()

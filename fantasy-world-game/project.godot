@@ -91,6 +91,11 @@ select_troop_4={
 ]
 }
 
+[layer_names]
+
+3d_physics/layer_1="Gameplay"
+3d_physics/layer_16="Camera Collision"
+
 [rendering]
 
 anti_aliasing/quality/msaa_3d=2
