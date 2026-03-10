@@ -1,5 +1,5 @@
 ## Troop Status UI
-## Displays status effects, cooldowns, and stat modifiers on troops
+## Displays status effects, cooldowns, stat modifiers, level badge, and team indicator on troops
 ## Part of the D&D × Pokémon hybrid combat system
 class_name TroopStatusUI
 extends Control
@@ -17,6 +17,10 @@ var spd_indicator: Label
 
 var cooldown_container: VBoxContainer
 var cooldown_labels: Dictionary = {}  # move_id -> Label
+
+# Level badge and team indicator
+var level_badge: Label
+var team_indicator: Label
 
 # Reference to troop
 var tracked_troop: Node = null
@@ -44,6 +48,29 @@ func _create_ui() -> void:
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
 	add_child(vbox)
+	
+	# Top row: level badge + team indicator
+	var top_row = HBoxContainer.new()
+	top_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	top_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(top_row)
+	
+	# Team indicator (colored dot)
+	team_indicator = Label.new()
+	team_indicator.text = "●"
+	team_indicator.add_theme_font_size_override("font_size", 12)
+	team_indicator.add_theme_color_override("font_color", Color(0.3, 0.5, 1.0))
+	team_indicator.visible = false
+	top_row.add_child(team_indicator)
+	
+	# Level badge
+	level_badge = Label.new()
+	level_badge.text = "Lv.1"
+	level_badge.add_theme_font_size_override("font_size", 9)
+	level_badge.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
+	level_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_badge.visible = false
+	top_row.add_child(level_badge)
 	
 	# Status effect icons (horizontal row above troop)
 	status_container = HBoxContainer.new()
@@ -108,6 +135,34 @@ func update_display() -> void:
 	
 	_update_status_effects()
 	_update_stat_indicators()
+	_update_level_badge()
+	_update_team_indicator()
+
+
+func _update_level_badge() -> void:
+	if tracked_troop and "level" in tracked_troop:
+		level_badge.text = "Lv.%d" % tracked_troop.level
+		level_badge.visible = true
+		# Color changes based on level
+		if tracked_troop.level >= 4:
+			level_badge.add_theme_color_override("font_color", Color(1.0, 0.7, 0.2)) # Gold for high level
+		elif tracked_troop.level >= 2:
+			level_badge.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0)) # Blue for mid level
+		else:
+			level_badge.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7)) # Gray for level 1
+	else:
+		level_badge.visible = false
+
+
+func _update_team_indicator() -> void:
+	if tracked_troop and "player_id" in tracked_troop:
+		team_indicator.visible = true
+		if tracked_troop.player_id == 0:
+			team_indicator.add_theme_color_override("font_color", Color(0.3, 0.5, 1.0)) # Blue
+		else:
+			team_indicator.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3)) # Red
+	else:
+		team_indicator.visible = false
 
 
 ## Force update (call each frame or on change)

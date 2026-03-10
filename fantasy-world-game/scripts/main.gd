@@ -919,6 +919,11 @@ func _handle_key_press(event: InputEventKey) -> void:
 		KEY_V:
 			# Cycle camera views
 			_cycle_camera_view()
+		
+		KEY_F1:
+			# Toggle keyboard shortcuts overlay
+			if game_ui:
+				game_ui.toggle_keyboard_overlay()
 
 
 ## Selects troop based on slot number (1-4 keys select troops 1-4)

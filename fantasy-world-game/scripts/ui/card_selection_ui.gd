@@ -175,6 +175,20 @@ func _create_header(parent: VBoxContainer) -> void:
 	instructions.add_theme_font_size_override("font_size", 16)
 	instructions.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	parent.add_child(instructions)
+	
+	# Info badges row
+	var badges_row = HBoxContainer.new()
+	badges_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	badges_row.add_theme_constant_override("separation", 20)
+	parent.add_child(badges_row)
+	
+	# Simultaneous selection badge
+	var simul_badge = _create_info_badge("🔄 Both players select simultaneously", Color(0.4, 0.6, 1.0))
+	badges_row.add_child(simul_badge)
+	
+	# Duplicates allowed badge
+	var dupe_badge = _create_info_badge("✅ Duplicate troop picks allowed", Color(0.4, 0.8, 0.4))
+	badges_row.add_child(dupe_badge)
 
 
 func _create_card_grid(parent: VBoxContainer) -> void:
@@ -441,6 +455,28 @@ func _create_footer(parent: VBoxContainer) -> void:
 	
 	confirm_button.pressed.connect(_on_confirm_pressed)
 	footer.add_child(confirm_button)
+
+
+func _create_info_badge(text: String, color: Color) -> PanelContainer:
+	var badge = PanelContainer.new()
+	var badge_style = StyleBoxFlat.new()
+	badge_style.bg_color = color.darkened(0.7)
+	badge_style.border_color = color.darkened(0.3)
+	badge_style.set_border_width_all(1)
+	badge_style.set_corner_radius_all(6)
+	badge_style.content_margin_left = 10
+	badge_style.content_margin_right = 10
+	badge_style.content_margin_top = 4
+	badge_style.content_margin_bottom = 4
+	badge.add_theme_stylebox_override("panel", badge_style)
+	
+	var label = Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", color)
+	badge.add_child(label)
+	
+	return badge
 
 
 # =============================================================================

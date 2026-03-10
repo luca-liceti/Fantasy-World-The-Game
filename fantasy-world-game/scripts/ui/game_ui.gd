@@ -1,5 +1,6 @@
 ## Game UI
-## Main in-game UI with action buttons, player info, and turn state
+## Main in-game UI with action buttons, player info, turn state,
+## item inventory, mine count, toast notifications, and keyboard shortcuts overlay
 class_name GameUI
 extends CanvasLayer
 
@@ -54,6 +55,24 @@ var troop_cards_container: HBoxContainer
 var troop_card_buttons: Array[Button] = []
 var troop_card_art_rects: Array[TextureRect] = [] # Card art thumbnails in HUD
 
+# Item inventory display
+var item_inventory_panel: PanelContainer
+var item_slot_labels: Array[Label] = []
+
+# Mine count labels
+var p1_mine_label: Label
+var p2_mine_label: Label
+
+# Toast notification system
+var toast_container: VBoxContainer
+var active_toasts: Array[Control] = []
+const MAX_TOASTS: int = 5
+const TOAST_DURATION: float = 3.5
+
+# Keyboard shortcuts overlay
+var keyboard_overlay: Control = null
+var keyboard_overlay_visible: bool = false
+
 # =============================================================================
 # COLORS
 # =============================================================================
@@ -85,6 +104,8 @@ func _create_ui() -> void:
 	_create_selected_troop_panel()
 	_create_troop_cards_panel()
 	_create_quick_action_panel()
+	_create_item_inventory_panel()
+	_create_toast_container()
 
 
 func _create_top_bar() -> void:
@@ -243,6 +264,7 @@ func _create_side_panels() -> void:
 	var p1_vbox = player1_panel.get_child(0)
 	p1_gold_label = p1_vbox.get_child(1)
 	p1_xp_label = p1_vbox.get_child(2)
+	p1_mine_label = p1_vbox.get_child(3)
 	
 	# Player 2 panel (right side)
 	player2_panel = _create_player_panel("PLAYER 2", PLAYER2_COLOR)
@@ -253,6 +275,7 @@ func _create_side_panels() -> void:
 	var p2_vbox = player2_panel.get_child(0)
 	p2_gold_label = p2_vbox.get_child(1)
 	p2_xp_label = p2_vbox.get_child(2)
+	p2_mine_label = p2_vbox.get_child(3)
 
 
 func _create_player_panel(title: String, color: Color) -> PanelContainer:
@@ -291,6 +314,13 @@ func _create_player_panel(title: String, color: Color) -> PanelContainer:
 	xp_label.add_theme_font_size_override("font_size", 14)
 	xp_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
 	vbox.add_child(xp_label)
+	
+	# Mine count
+	var mine_label = Label.new()
+	mine_label.text = "⛏️ 0/5 Mines"
+	mine_label.add_theme_font_size_override("font_size", 14)
+	mine_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	vbox.add_child(mine_label)
 	
 	return panel
 
@@ -642,3 +672,317 @@ func _highlight_troop_card(button: Button, is_selected: bool, team_color: Color,
 		var art_rect = troop_card_art_rects[slot_index]
 		if team_color != Color.GRAY:
 			art_rect.modulate = Color.WHITE # Full color for alive troops
+
+
+# =============================================================================
+# ITEM INVENTORY DISPLAY
+# =============================================================================
+
+func _create_item_inventory_panel() -> void:
+	item_inventory_panel = PanelContainer.new()
+	item_inventory_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	item_inventory_panel.position = Vector2(10, -85)
+	item_inventory_panel.custom_minimum_size = Vector2(200, 75)
+	main_container.add_child(item_inventory_panel)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.08, 0.12, 0.9)
+	style.border_color = Color(0.5, 0.7, 0.4, 0.7)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	item_inventory_panel.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	item_inventory_panel.add_child(vbox)
+	
+	# Header
+	var header = Label.new()
+	header.text = "🎒 ITEMS (0/3)"
+	header.name = "ItemHeader"
+	header.add_theme_font_size_override("font_size", 11)
+	header.add_theme_color_override("font_color", Color(0.5, 0.7, 0.4))
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+	
+	# Item slots row
+	var slots_row = HBoxContainer.new()
+	slots_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	slots_row.add_theme_constant_override("separation", 6)
+	vbox.add_child(slots_row)
+	
+	for i in range(3):
+		var slot_panel = PanelContainer.new()
+		slot_panel.custom_minimum_size = Vector2(58, 32)
+		
+		var slot_style = StyleBoxFlat.new()
+		slot_style.bg_color = Color(0.12, 0.12, 0.16, 0.8)
+		slot_style.border_color = Color(0.3, 0.3, 0.4, 0.5)
+		slot_style.set_border_width_all(1)
+		slot_style.set_corner_radius_all(4)
+		slot_panel.add_theme_stylebox_override("panel", slot_style)
+		
+		var slot_label = Label.new()
+		slot_label.text = "Empty"
+		slot_label.add_theme_font_size_override("font_size", 9)
+		slot_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
+		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		slot_panel.add_child(slot_label)
+		
+		slots_row.add_child(slot_panel)
+		item_slot_labels.append(slot_label)
+
+
+## Update item inventory display
+func update_item_inventory(items: Array) -> void:
+	# Update header count
+	var header = item_inventory_panel.get_child(0).get_child(0) # VBox -> Header label
+	header.text = "🎒 ITEMS (%d/3)" % items.size()
+	
+	for i in range(3):
+		if i < items.size() and items[i] != "":
+			var item_name = items[i]
+			match item_name:
+				"speed_potion":
+					item_slot_labels[i].text = "🧴 Spd"
+					item_slot_labels[i].add_theme_color_override("font_color", Color(0.3, 0.8, 1.0))
+				"whetstone":
+					item_slot_labels[i].text = "🗡️ Whet"
+					item_slot_labels[i].add_theme_color_override("font_color", Color(1.0, 0.6, 0.3))
+				"phoenix_feather":
+					item_slot_labels[i].text = "🪶 Phnx"
+					item_slot_labels[i].add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+				_:
+					item_slot_labels[i].text = item_name.substr(0, 4)
+					item_slot_labels[i].add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+		else:
+			item_slot_labels[i].text = "Empty"
+			item_slot_labels[i].add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
+
+
+# =============================================================================
+# MINE COUNT
+# =============================================================================
+
+## Update mine count for a player
+func update_mine_count(player_id: int, mine_count: int) -> void:
+	if player_id == 0:
+		p1_mine_label.text = "⛏️ %d/5 Mines" % mine_count
+	else:
+		p2_mine_label.text = "⛏️ %d/5 Mines" % mine_count
+
+
+# =============================================================================
+# TOAST NOTIFICATION SYSTEM
+# =============================================================================
+
+func _create_toast_container() -> void:
+	toast_container = VBoxContainer.new()
+	toast_container.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	toast_container.position = Vector2(-320, 60)
+	toast_container.custom_minimum_size = Vector2(300, 0)
+	toast_container.add_theme_constant_override("separation", 6)
+	toast_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_container.add_child(toast_container)
+
+
+## Show a toast notification
+func show_toast(message: String, color: Color = Color(0.3, 0.6, 1.0), duration: float = TOAST_DURATION) -> void:
+	# Remove oldest if at max
+	if active_toasts.size() >= MAX_TOASTS:
+		var oldest = active_toasts.pop_front()
+		if oldest and is_instance_valid(oldest):
+			oldest.queue_free()
+	
+	# Create toast panel
+	var toast = PanelContainer.new()
+	toast.custom_minimum_size = Vector2(300, 36)
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.08, 0.12, 0.92)
+	style.border_color = color.darkened(0.2)
+	style.set_border_width_all(1)
+	style.border_width_left = 4 # Accent bar on left side
+	style.border_color = color
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	toast.add_theme_stylebox_override("panel", style)
+	
+	var label = Label.new()
+	label.text = message
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95))
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.add_child(label)
+	
+	toast_container.add_child(toast)
+	active_toasts.append(toast)
+	
+	# Slide in animation
+	toast.modulate.a = 0
+	toast.position.x = 50
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(toast, "modulate:a", 1.0, 0.3)
+	tween.parallel().tween_property(toast, "position:x", 0.0, 0.3)
+	
+	# Auto-dismiss after duration
+	tween.tween_interval(duration)
+	tween.tween_property(toast, "modulate:a", 0.0, 0.4)
+	tween.tween_callback(func():
+		active_toasts.erase(toast)
+		toast.queue_free()
+	)
+
+
+## Convenience toast methods
+func show_toast_mine(message: String) -> void:
+	show_toast(message, Color(1.0, 0.85, 0.3))
+
+func show_toast_combat(message: String) -> void:
+	show_toast(message, Color(1.0, 0.3, 0.3))
+
+func show_toast_item(message: String) -> void:
+	show_toast(message, Color(0.3, 0.8, 0.5))
+
+func show_toast_npc(message: String) -> void:
+	show_toast(message, Color(0.8, 0.5, 0.9))
+
+func show_toast_warning(message: String) -> void:
+	show_toast(message, Color(0.9, 0.6, 0.2))
+
+func show_toast_error(message: String) -> void:
+	show_toast(message, Color(0.9, 0.2, 0.2))
+
+
+# =============================================================================
+# KEYBOARD SHORTCUTS OVERLAY (F1)
+# =============================================================================
+
+func toggle_keyboard_overlay() -> void:
+	if keyboard_overlay_visible:
+		_hide_keyboard_overlay()
+	else:
+		_show_keyboard_overlay()
+
+
+func _show_keyboard_overlay() -> void:
+	if keyboard_overlay != null:
+		return
+	
+	keyboard_overlay_visible = true
+	keyboard_overlay = Control.new()
+	keyboard_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	keyboard_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_container.add_child(keyboard_overlay)
+	
+	# Semi-transparent panel at center
+	var panel = PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(400, 340)
+	panel.position = Vector2(-200, -170)
+	keyboard_overlay.add_child(panel)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.05, 0.1, 0.95)
+	style.border_color = Color(0.4, 0.6, 1.0, 0.6)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(12)
+	panel.add_theme_stylebox_override("panel", style)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 25)
+	margin.add_theme_constant_override("margin_right", 25)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+	
+	# Title
+	var title = Label.new()
+	title.text = "🎮  KEYBOARD SHORTCUTS"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.4, 0.6, 1.0))
+	vbox.add_child(title)
+	
+	var sep = HSeparator.new()
+	sep.modulate = Color(1, 1, 1, 0.2)
+	vbox.add_child(sep)
+	
+	# Shortcut entries
+	var shortcuts = [
+		["WASD", "Camera Pan"],
+		["Q / E", "Camera Rotate"],
+		["Scroll", "Zoom In/Out"],
+		["1-4", "Select Troop"],
+		["M", "Move Mode"],
+		["T", "Attack Mode"],
+		["Space", "End Turn"],
+		["Esc", "Pause Menu"],
+		["F1", "Toggle This Overlay"]
+	]
+	
+	for entry in shortcuts:
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		
+		# Key badge
+		var key_lbl = Label.new()
+		key_lbl.text = entry[0]
+		key_lbl.custom_minimum_size = Vector2(80, 0)
+		key_lbl.add_theme_font_size_override("font_size", 13)
+		key_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.6))
+		key_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(key_lbl)
+		
+		# Separator dot
+		var dot = Label.new()
+		dot.text = "•"
+		dot.add_theme_font_size_override("font_size", 13)
+		dot.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
+		row.add_child(dot)
+		
+		# Action
+		var action_lbl = Label.new()
+		action_lbl.text = entry[1]
+		action_lbl.add_theme_font_size_override("font_size", 13)
+		action_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+		row.add_child(action_lbl)
+		
+		vbox.add_child(row)
+	
+	# Footer hint
+	var hint = Label.new()
+	hint.text = "Press F1 to close"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6))
+	vbox.add_child(hint)
+	
+	# Animate in
+	panel.modulate.a = 0
+	var tween = create_tween()
+	tween.tween_property(panel, "modulate:a", 1.0, 0.2)
+
+
+func _hide_keyboard_overlay() -> void:
+	keyboard_overlay_visible = false
+	if keyboard_overlay and is_instance_valid(keyboard_overlay):
+		var tween = create_tween()
+		tween.tween_property(keyboard_overlay, "modulate:a", 0.0, 0.15)
+		tween.tween_callback(func():
+			if keyboard_overlay:
+				keyboard_overlay.queue_free()
+				keyboard_overlay = null
+		)

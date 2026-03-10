@@ -1,365 +1,350 @@
-## Start Menu
-## Main menu UI with Play, Settings, and Quit options
-## Features animated background, title effects, and smooth transitions
+## Start Menu — Fantasy World
+## Full-screen main menu. Each sub-screen (Settings, Online Multiplayer, etc.)
+## slides in as a CanvasLayer over the same revolving background so the
+## background is always visible. Logo image replaces the text title.
+## All text uses the Cinzel font via UITheme.
 class_name StartMenu
 extends Control
 
-# Preload dependencies
+# Preload sub-screens
 const SettingsMenuScene = preload("res://scripts/ui/settings_menu.gd")
-const LobbyUIScene = preload("res://scripts/ui/lobby_ui.gd")
+const LobbyUIScene      = preload("res://scripts/ui/lobby_ui.gd")
 
 # =============================================================================
 # SIGNALS
 # =============================================================================
 signal play_pressed
 signal multiplayer_pressed
+signal tutorial_pressed
+signal archives_pressed
+signal credits_pressed
 signal settings_pressed
 signal quit_pressed
 
 # =============================================================================
-# UI ELEMENTS
+# BACKGROUND CYCLING
 # =============================================================================
-var background: ColorRect
-var particles_container: Control
-var title_container: VBoxContainer
-var title_label: Label
-var subtitle_label: Label
-var button_container: VBoxContainer
-var play_button: Button
-var multiplayer_button: Button
-var settings_button: Button
-var quit_button: Button
-var lobby_ui: Node = null # LobbyUI instance
-var version_label: Label
+const BG_PATHS: Array[String] = [
+	"res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png",
+	"res://assets/textures/ui/main_menu_backgrounds/battlefield_tent_background.png",
+	"res://assets/textures/ui/main_menu_backgrounds/grand_dinning_hall_background.png",
+	"res://assets/textures/ui/main_menu_backgrounds/deforested_woods_background.png",
+]
+const BG_HOLD:  float = 15.0   # seconds per background
+const BG_FADE:  float = 2.0    # cross-fade duration
 
-# Animation tweens
-var title_tween: Tween
-var button_tweens: Array[Tween] = []
+var _bg_textures: Array[Texture2D] = []
+var _bg_current:  TextureRect = null
+var _bg_next:     TextureRect = null
+var _bg_index:    int   = 0
+var _bg_timer:    float = 0.0
+var _bg_fading:   bool  = false
+var _bg_progress: float = 0.0
 
-# Particle effect
-var particles: Array[Dictionary] = []
-const NUM_PARTICLES: int = 50
-
-# =============================================================================
-# COLORS & STYLING
-# =============================================================================
-const BG_COLOR_TOP = Color(0.05, 0.08, 0.15, 1.0) # Deep dark blue
-const BG_COLOR_BOTTOM = Color(0.12, 0.08, 0.18, 1.0) # Deep purple
-const TITLE_COLOR = Color(0.95, 0.85, 0.55, 1.0) # Golden
-const TITLE_GLOW = Color(1.0, 0.9, 0.5, 0.5) # Golden glow
-const SUBTITLE_COLOR = Color(0.7, 0.75, 0.9, 1.0) # Light blue-silver
-const BUTTON_BG = Color(0.15, 0.12, 0.25, 0.9) # Dark purple
-const BUTTON_HOVER = Color(0.25, 0.2, 0.4, 0.95) # Lighter purple
-const BUTTON_TEXT = Color(0.9, 0.85, 0.7, 1.0) # Warm white
-const ACCENT_COLOR = Color(0.4, 0.6, 1.0, 1.0) # Blue accent
-const PARTICLE_COLOR = Color(0.6, 0.7, 1.0, 0.3) # Soft blue particles
-
+# Shared background CanvasLayer — kept alive when sub-screens open
+var _bg_layer: CanvasLayer = null
 
 # =============================================================================
-# INITIALIZATION
+# MAIN MENU NODES
+# =============================================================================
+var _logo:           TextureRect   = null
+var _btn_container:  VBoxContainer = null
+var _version_label:  Label         = null
+
+var _vignette:       ColorRect     = null
+var _intro_tween:    Tween         = null
+var _menu_layer:     CanvasLayer   = null   # holds logo + buttons
+
+# Active sub-screen
+var _sub_screen: CanvasLayer = null
+var _lobby_ui:   Node        = null
+
+
+# =============================================================================
+# READY
 # =============================================================================
 
 func _ready() -> void:
-	_create_ui()
-	_initialize_particles()
-	_play_intro_animation()
-
-
-func _create_ui() -> void:
-	# Set anchors for full screen
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	
-	# Create gradient background
-	_create_background()
-	
-	# Create particle container
-	_create_particles_container()
-	
-	# Create main content
-	_create_title()
-	_create_buttons()
-	_create_version_label()
 
-
-func _create_background() -> void:
-	background = ColorRect.new()
-	background.set_anchors_preset(Control.PRESET_FULL_RECT)
-	background.color = BG_COLOR_TOP
-	add_child(background)
-	
-	# Add a gradient overlay using a shader-like approach with multiple rects
-	var gradient_overlay = ColorRect.new()
-	gradient_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	gradient_overlay.color = Color(0, 0, 0, 0)
-	add_child(gradient_overlay)
-	
-	# Create a vignette effect
-	var vignette = ColorRect.new()
-	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vignette.color = Color(0, 0, 0, 0.3)
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(vignette)
-
-
-func _create_particles_container() -> void:
-	particles_container = Control.new()
-	particles_container.set_anchors_preset(Control.PRESET_FULL_RECT)
-	particles_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(particles_container)
-
-
-func _initialize_particles() -> void:
-	var viewport_size = get_viewport().get_visible_rect().size
-	if viewport_size == Vector2.ZERO:
-		viewport_size = Vector2(1920, 1080)
-	
-	for i in range(NUM_PARTICLES):
-		var particle = {
-			"position": Vector2(randf() * viewport_size.x, randf() * viewport_size.y),
-			"velocity": Vector2(randf_range(-20, 20), randf_range(-30, -10)),
-			"size": randf_range(2, 6),
-			"alpha": randf_range(0.1, 0.4),
-			"pulse_speed": randf_range(1.0, 3.0),
-			"pulse_offset": randf() * TAU
-		}
-		particles.append(particle)
-
-
-func _create_title() -> void:
-	title_container = VBoxContainer.new()
-	title_container.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	title_container.position = Vector2(-400, 120)
-	title_container.custom_minimum_size = Vector2(800, 200)
-	title_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	title_container.add_theme_constant_override("separation", 15)
-	title_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(title_container)
-	
-	# Main title
-	title_label = Label.new()
-	title_label.text = "FANTASY WORLD"
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 80)
-	title_label.add_theme_color_override("font_color", TITLE_COLOR)
-	title_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
-	title_label.add_theme_constant_override("shadow_offset_x", 4)
-	title_label.add_theme_constant_override("shadow_offset_y", 4)
-	title_label.modulate.a = 0 # Start invisible for animation
-	title_container.add_child(title_label)
-	
-	# Subtitle
-	subtitle_label = Label.new()
-	subtitle_label.text = "⚔️ The Board Game ⚔️"
-	subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle_label.add_theme_font_size_override("font_size", 28)
-	subtitle_label.add_theme_color_override("font_color", SUBTITLE_COLOR)
-	subtitle_label.modulate.a = 0 # Start invisible for animation
-	title_container.add_child(subtitle_label)
-
-
-func _create_buttons() -> void:
-	button_container = VBoxContainer.new()
-	button_container.set_anchors_preset(Control.PRESET_CENTER)
-	button_container.position = Vector2(-150, 50)
-	button_container.custom_minimum_size = Vector2(300, 250)
-	button_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	button_container.add_theme_constant_override("separation", 20)
-	add_child(button_container)
-	
-	# Play Button (Local/Singleplayer)
-	play_button = _create_menu_button("⚔️  PLAY GAME  ⚔️", ACCENT_COLOR)
-	play_button.pressed.connect(_on_play_pressed)
-	play_button.modulate.a = 0
-	
-	# Multiplayer Button
-	multiplayer_button = _create_menu_button("🌐  MULTIPLAYER", Color(0.3, 0.8, 0.4))
-	multiplayer_button.pressed.connect(_on_multiplayer_pressed)
-	multiplayer_button.modulate.a = 0
-	
-	# Settings Button
-	settings_button = _create_menu_button("⚙️  SETTINGS", Color(0.6, 0.6, 0.7))
-	settings_button.pressed.connect(_on_settings_pressed)
-	settings_button.modulate.a = 0
-	
-	# Quit Button
-	quit_button = _create_menu_button("🚪  QUIT", Color(0.8, 0.4, 0.4))
-	quit_button.pressed.connect(_on_quit_pressed)
-	quit_button.modulate.a = 0
-
-
-func _create_menu_button(text: String, accent: Color) -> Button:
-	var button = Button.new()
-	button.text = text
-	button.custom_minimum_size = Vector2(300, 60)
-	button.add_theme_font_size_override("font_size", 22)
-	button.add_theme_color_override("font_color", BUTTON_TEXT)
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	
-	# Normal style
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = BUTTON_BG
-	normal_style.border_color = accent.darkened(0.3)
-	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(12)
-	normal_style.content_margin_left = 20
-	normal_style.content_margin_right = 20
-	normal_style.content_margin_top = 10
-	normal_style.content_margin_bottom = 10
-	button.add_theme_stylebox_override("normal", normal_style)
-	
-	# Hover style
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = BUTTON_HOVER
-	hover_style.border_color = accent
-	hover_style.set_border_width_all(3)
-	hover_style.set_corner_radius_all(12)
-	hover_style.content_margin_left = 20
-	hover_style.content_margin_right = 20
-	hover_style.content_margin_top = 10
-	hover_style.content_margin_bottom = 10
-	button.add_theme_stylebox_override("hover", hover_style)
-	
-	# Pressed style
-	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = accent.darkened(0.4)
-	pressed_style.border_color = accent.lightened(0.2)
-	pressed_style.set_border_width_all(3)
-	pressed_style.set_corner_radius_all(12)
-	pressed_style.content_margin_left = 20
-	pressed_style.content_margin_right = 20
-	pressed_style.content_margin_top = 10
-	pressed_style.content_margin_bottom = 10
-	button.add_theme_stylebox_override("pressed", pressed_style)
-	
-	# Focus style (same as hover)
-	button.add_theme_stylebox_override("focus", hover_style)
-	
-	# Connect hover signals for animation
-	button.mouse_entered.connect(_on_button_hover.bind(button))
-	button.mouse_exited.connect(_on_button_unhover.bind(button))
-	
-	button_container.add_child(button)
-	return button
-
-
-func _create_version_label() -> void:
-	version_label = Label.new()
-	version_label.text = "v0.1.0 - Development Build"
-	version_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	version_label.position = Vector2(-200, -40)
-	version_label.add_theme_font_size_override("font_size", 14)
-	version_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.7))
-	add_child(version_label)
+	_load_bg_textures()
+	_build_bg_layer()          # always-visible background
+	_build_vignette()
+	_build_menu_layer()        # logo + buttons on top
+	_play_intro()
 
 
 # =============================================================================
-# ANIMATIONS
+# BACKGROUND  (lives on its own CanvasLayer so sub-screens sit above it)
 # =============================================================================
 
-func _play_intro_animation() -> void:
-	# Title fade in
-	if title_tween:
-		title_tween.kill()
-	title_tween = create_tween()
-	title_tween.set_ease(Tween.EASE_OUT)
-	title_tween.set_trans(Tween.TRANS_CUBIC)
-	
-	# Title animation with scale bounce
-	title_label.pivot_offset = title_label.size / 2
-	title_tween.tween_property(title_label, "modulate:a", 1.0, 0.8)
-	title_tween.parallel().tween_property(title_label, "scale", Vector2(1.0, 1.0), 0.8).from(Vector2(0.8, 0.8))
-	
-	# Subtitle with delay
-	title_tween.tween_property(subtitle_label, "modulate:a", 1.0, 0.6).set_delay(0.2)
-	
-	# Buttons appear one by one
-	var buttons = [play_button, multiplayer_button, settings_button, quit_button]
+func _load_bg_textures() -> void:
+	for p in BG_PATHS:
+		if ResourceLoader.exists(p):
+			var t = load(p) as Texture2D
+			if t:
+				_bg_textures.append(t)
+
+func _make_bg_rect(tex: Texture2D) -> TextureRect:
+	var r = TextureRect.new()
+	r.set_anchors_preset(Control.PRESET_FULL_RECT)
+	r.texture      = tex
+	r.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+func _build_bg_layer() -> void:
+	_bg_layer = CanvasLayer.new()
+	_bg_layer.layer = 0
+	add_child(_bg_layer)
+
+	if _bg_textures.is_empty():
+		var fb = ColorRect.new()
+		fb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		fb.color = Color(0.07, 0.05, 0.04, 1.0)
+		fb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_bg_layer.add_child(fb)
+		return
+
+	_bg_current = _make_bg_rect(_bg_textures[0])
+	_bg_layer.add_child(_bg_current)
+
+	if _bg_textures.size() > 1:
+		_bg_next = _make_bg_rect(_bg_textures[1 % _bg_textures.size()])
+		_bg_next.modulate.a = 0.0
+		_bg_layer.add_child(_bg_next)
+
+func _build_vignette() -> void:
+	# Vignette sits above the BG layer but below everything else
+	var vlayer = CanvasLayer.new()
+	vlayer.layer = 1
+	add_child(vlayer)
+
+	_vignette = ColorRect.new()
+	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_vignette.color = UITheme.C_SCREEN_DIM
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vlayer.add_child(_vignette)
+
+
+# =============================================================================
+# MENU LAYER  (logo + buttons)
+# =============================================================================
+
+func _build_menu_layer() -> void:
+	_menu_layer = CanvasLayer.new()
+	_menu_layer.layer = 10
+	add_child(_menu_layer)
+
+	# Root control that fills the screen
+	var root = Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_menu_layer.add_child(root)
+
+	_build_logo(root)
+	_build_buttons(root)
+	_build_version_label(root)
+
+
+func _build_logo(parent: Control) -> void:
+	var tex = UITheme.tex_logo()
+	_logo = TextureRect.new()
+	_logo.name = "Logo"
+	_logo.texture      = tex
+	_logo.expand_mode  = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_logo.custom_minimum_size = Vector2(UITheme.LOGO_W, UITheme.LOGO_H)
+	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# Centre-top anchor
+	_logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 48)
+	_logo.modulate.a = 0.0
+	parent.add_child(_logo)
+
+func _build_buttons(parent: Control) -> void:
+	_btn_container = VBoxContainer.new()
+	_btn_container.name = "ButtonContainer"
+	_btn_container.set_anchors_preset(Control.PRESET_CENTER)
+	_btn_container.custom_minimum_size = Vector2(UITheme.BTN_W, 0)
+	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, 40)
+	_btn_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	_btn_container.add_theme_constant_override("separation", 10)
+	parent.add_child(_btn_container)
+
+	# 7 buttons — order and labels match the UI template exactly
+	_make_btn("PLAY GAME",          true).pressed.connect(_on_play_pressed)
+	_make_btn("ONLINE MULTIPLAYER", false).pressed.connect(_on_multiplayer_pressed)
+	_make_btn("THE ARCHIVES",       false).pressed.connect(_on_archives_pressed)
+	_make_btn("TUTORIAL",           false).pressed.connect(_on_tutorial_pressed)
+	_make_btn("SETTINGS",           false).pressed.connect(_on_settings_pressed)
+	_make_btn("CREDITS",            false).pressed.connect(_on_credits_pressed)
+	_make_btn("QUIT GAME",          false).pressed.connect(_on_quit_pressed)
+
+func _make_btn(label: String, primary: bool) -> Button:
+	var btn = Button.new()
+	btn.name = label.replace(" ", "") + "Btn"
+	btn.text = label
+	btn.custom_minimum_size = Vector2(UITheme.BTN_W, UITheme.BTN_H)
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	btn.modulate.a = 0.0
+	btn.clip_text = false
+
+	UITheme.apply_menu_button(btn, UITheme.BTN_FONT_SIZE)
+
+	# Bright gold text for the primary (Play) button
+	if primary:
+		btn.add_theme_color_override("font_color", UITheme.C_GOLD_BRIGHT)
+
+	btn.mouse_entered.connect(_on_btn_hover.bind(btn))
+	btn.mouse_exited.connect(_on_btn_unhover.bind(btn))
+	_btn_container.add_child(btn)
+	return btn
+
+func _build_version_label(parent: Control) -> void:
+	_version_label = Label.new()
+	_version_label.name = "VersionLabel"
+	_version_label.text = "v0.1.0 — Development Build"
+	_version_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_version_label.position = Vector2(-240, -52)
+	UITheme.style_label(_version_label, 13, UITheme.C_DIM)
+	parent.add_child(_version_label)
+
+
+
+
+# =============================================================================
+# INTRO ANIMATION
+# =============================================================================
+
+func _play_intro() -> void:
+	if _intro_tween:
+		_intro_tween.kill()
+	_intro_tween = create_tween()
+	_intro_tween.set_ease(Tween.EASE_OUT)
+	_intro_tween.set_trans(Tween.TRANS_CUBIC)
+
+	# Logo fades in + gentle upward settle
+	_intro_tween.tween_property(_logo, "modulate:a", 1.0, 1.0)
+	_intro_tween.parallel().tween_property(_logo, "position:y", 48.0, 1.0).from(72.0)
+
+	# Buttons cascade in left-to-right
+	var buttons = _btn_container.get_children()
 	for i in range(buttons.size()):
-		var button = buttons[i]
-		var delay = 0.6 + (i * 0.15)
-		title_tween.parallel().tween_property(button, "modulate:a", 1.0, 0.4).set_delay(delay)
-		title_tween.parallel().tween_property(button, "position:x", 0.0, 0.5).from(-50.0).set_delay(delay)
-
-
-func _on_button_hover(button: Button) -> void:
-	var tween = create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_BACK)
-	tween.tween_property(button, "scale", Vector2(1.05, 1.05), 0.15)
-	button_tweens.append(tween)
-
-
-func _on_button_unhover(button: Button) -> void:
-	var tween = create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(button, "scale", Vector2(1.0, 1.0), 0.1)
-	button_tweens.append(tween)
+		var btn = buttons[i]
+		if not btn is Button:
+			continue
+		var delay = 0.55 + i * 0.10
+		_intro_tween.parallel().tween_property(btn, "modulate:a", 1.0, 0.4).set_delay(delay)
+		_intro_tween.parallel().tween_property(btn, "position:x", 0.0, 0.45).from(-28.0).set_delay(delay)
 
 
 # =============================================================================
-# PROCESS (Particle Animation)
+# BUTTON HOVER MICRO-ANIMATIONS
+# =============================================================================
+
+func _on_btn_hover(btn: Button) -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(btn, "scale", Vector2(1.04, 1.04), 0.13)
+
+func _on_btn_unhover(btn: Button) -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.10)
+
+
+# =============================================================================
+# PROCESS — BACKGROUND CYCLING + LOGO GLOW
 # =============================================================================
 
 func _process(delta: float) -> void:
-	_update_particles(delta)
-	_update_title_glow(delta)
-	queue_redraw()
+	_cycle_background(delta)
+	_pulse_logo()
 
-
-func _update_particles(delta: float) -> void:
-	var viewport_size = get_viewport().get_visible_rect().size
-	if viewport_size == Vector2.ZERO:
+func _cycle_background(delta: float) -> void:
+	if _bg_textures.size() <= 1 or _bg_next == null:
 		return
-	
-	for particle in particles:
-		# Update position
-		particle["position"] += particle["velocity"] * delta
-		
-		# Wrap around screen
-		if particle["position"].y < -20:
-			particle["position"].y = viewport_size.y + 20
-			particle["position"].x = randf() * viewport_size.x
-		if particle["position"].x < -20:
-			particle["position"].x = viewport_size.x + 20
-		if particle["position"].x > viewport_size.x + 20:
-			particle["position"].x = -20
-		
-		# Pulse alpha
-		var time = Time.get_ticks_msec() / 1000.0
-		var pulse = sin(time * particle["pulse_speed"] + particle["pulse_offset"])
-		particle["current_alpha"] = particle["alpha"] * (0.5 + 0.5 * pulse)
+	if _bg_fading:
+		_bg_progress += delta / BG_FADE
+		if _bg_progress >= 1.0:
+			# swap: next becomes current
+			_bg_current.texture   = _bg_next.texture
+			_bg_current.modulate.a = 1.0
+			_bg_index = (_bg_index + 1) % _bg_textures.size()
+			var coming = (_bg_index + 1) % _bg_textures.size()
+			_bg_next.texture    = _bg_textures[coming]
+			_bg_next.modulate.a = 0.0
+			_bg_fading   = false
+			_bg_progress = 0.0
+			_bg_timer    = 0.0
+		else:
+			_bg_next.modulate.a = _bg_progress
+	else:
+		_bg_timer += delta
+		if _bg_timer >= BG_HOLD:
+			_bg_fading   = true
+			_bg_progress = 0.0
+
+func _pulse_logo() -> void:
+	if not _logo or _logo.modulate.a < 0.5:
+		return
+	var t = Time.get_ticks_msec() / 1000.0
+	var p = 0.95 + 0.05 * sin(t * 1.3)
+	_logo.modulate = Color(p, p * 0.98, p * 0.92, _logo.modulate.a)
 
 
-func _update_title_glow(delta: float) -> void:
-	# Subtle pulsing glow on title
-	var time = Time.get_ticks_msec() / 1000.0
-	var glow_intensity = 0.85 + 0.15 * sin(time * 2.0)
-	title_label.modulate = Color(glow_intensity, glow_intensity, glow_intensity, title_label.modulate.a)
+# =============================================================================
+# SHOW / HIDE MENU LAYER  (hide when a sub-screen is active)
+# =============================================================================
+
+func _show_main_menu() -> void:
+	_menu_layer.visible = true
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(_menu_layer, "offset_v", 0.0, 0.3)
+	_menu_layer.modulate.a = 0.0
+	tw.parallel().tween_property(_menu_layer, "modulate:a", 1.0, 0.3)
+
+func _hide_main_menu() -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(_menu_layer, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(func(): _menu_layer.visible = false)
 
 
-func _draw() -> void:
-	# Draw gradient background
-	var viewport_size = get_viewport().get_visible_rect().size
-	if viewport_size == Vector2.ZERO:
-		viewport_size = Vector2(1920, 1080)
-	
-	# Draw multiple gradient layers for depth
-	for i in range(20):
-		var t = float(i) / 20.0
-		var color = BG_COLOR_TOP.lerp(BG_COLOR_BOTTOM, t)
-		var rect = Rect2(0, viewport_size.y * t, viewport_size.x, viewport_size.y / 20.0 + 1)
-		draw_rect(rect, color)
-	
-	# Draw particles
-	for particle in particles:
-		var alpha = particle.get("current_alpha", particle["alpha"])
-		var color = PARTICLE_COLOR
-		color.a = alpha
-		var pos = particle["position"]
-		var size = particle["size"]
-		draw_circle(pos, size, color)
+# =============================================================================
+# SUB-SCREEN MANAGEMENT
+# Each sub-screen is a CanvasLayer at layer 20. Opening one hides the menu
+# buttons but keeps the background (layers 0-1) visible.
+# =============================================================================
+
+func _open_sub_screen(screen: CanvasLayer) -> void:
+	if _sub_screen:
+		_sub_screen.queue_free()
+	_sub_screen = screen
+	_hide_main_menu()
+	screen.layer = 20
+	add_child(screen)
+	# Animate in
+	screen.modulate.a = 0.0
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(screen, "modulate:a", 1.0, 0.35)
+
+func _close_sub_screen() -> void:
+	if not _sub_screen:
+		return
+	var dying = _sub_screen
+	_sub_screen = null
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(dying, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(dying.queue_free)
+	_show_main_menu()
 
 
 # =============================================================================
@@ -367,71 +352,307 @@ func _draw() -> void:
 # =============================================================================
 
 func _on_play_pressed() -> void:
-	print("Play button pressed!")
-	_play_transition_out()
 	play_pressed.emit()
-
+	_play_transition_to_game()
 
 func _on_multiplayer_pressed() -> void:
-	print("Multiplayer button pressed!")
 	multiplayer_pressed.emit()
-	_open_lobby_ui()
+	_open_lobby_screen()
 
+func _on_archives_pressed() -> void:
+	archives_pressed.emit()
+	_open_coming_soon("THE ARCHIVES",
+		"The Archives will contain:\n\n" +
+		"  • Troop Card Gallery (all 12 troops)\n" +
+		"  • Rules & Lore Reference\n" +
+		"  • Type Effectiveness Chart\n" +
+		"  • Defensive Stances Guide\n" +
+		"  • Item Catalog")
+
+func _on_tutorial_pressed() -> void:
+	tutorial_pressed.emit()
+	_open_coming_soon("TUTORIAL",
+		"The tutorial system is coming soon!\n\nLessons planned:\n\n" +
+		"  1. Basic Attack\n  2. Move Variety\n  3. Type Effectiveness\n" +
+		"  4. Defensive Stances\n  5. Positioning & Cover\n  6. Full Combat Simulation")
 
 func _on_settings_pressed() -> void:
-	print("Settings button pressed!")
 	settings_pressed.emit()
-	_open_settings_menu()
+	var sm = SettingsMenuScene.new()
+	sm.closed.connect(_close_sub_screen)
+	_open_sub_screen(sm)
 
-
-func _open_settings_menu() -> void:
-	var settings_menu = SettingsMenuScene.new()
-	add_child(settings_menu)
-
-
-func _open_lobby_ui() -> void:
-	if lobby_ui != null:
-		return # Already open
-	
-	lobby_ui = LobbyUIScene.new()
-	lobby_ui.lobby_cancelled.connect(_on_lobby_cancelled)
-	lobby_ui.game_starting.connect(_on_multiplayer_game_starting)
-	add_child(lobby_ui)
-
-
-func _on_lobby_cancelled() -> void:
-	lobby_ui = null
-
-
-func _on_multiplayer_game_starting() -> void:
-	print("Multiplayer game starting!")
-	# Transition to the game scene
-	_play_transition_out()
-
+func _on_credits_pressed() -> void:
+	credits_pressed.emit()
+	_open_credits_screen()
 
 func _on_quit_pressed() -> void:
-	print("Quit button pressed!")
 	quit_pressed.emit()
-	get_tree().quit()
+	_open_quit_confirm()
 
 
-func _play_transition_out() -> void:
-	var tween = create_tween()
-	tween.set_ease(Tween.EASE_IN)
-	tween.set_trans(Tween.TRANS_CUBIC)
-	
-	# Fade out all elements
-	tween.tween_property(self, "modulate:a", 0.0, 0.5)
-	
-	# After transition, switch to game scene
-	tween.tween_callback(_switch_to_game)
+# =============================================================================
+# LOBBY  (Online Multiplayer)
+# =============================================================================
 
+func _open_lobby_screen() -> void:
+	if _lobby_ui != null:
+		return
+	var lobby = LobbyUIScene.new()
+	lobby.lobby_cancelled.connect(_on_lobby_cancelled)
+	lobby.game_starting.connect(_on_mp_game_starting)
+	_lobby_ui = lobby
+	_open_sub_screen(lobby)
+
+func _on_lobby_cancelled() -> void:
+	_lobby_ui = null
+	_close_sub_screen()
+
+func _on_mp_game_starting() -> void:
+	_lobby_ui = null
+	_play_transition_to_game()
+
+
+# =============================================================================
+# CREDITS SUB-SCREEN
+# =============================================================================
+
+func _open_credits_screen() -> void:
+	var layer = CanvasLayer.new()
+	layer.layer = 20
+
+	var root = _make_fullscreen_root(layer)
+
+	var content = _make_page_content(root, "CREDITS", 560, 560)
+
+	_add_credits_section(content, "DEVELOPMENT TEAM")
+	_add_credits_entry(content,   "Game Design & Development", "Luca Liceti")
+	_add_credits_entry(content,   "Art Direction",             "Luca Liceti")
+	_add_credits_entry(content,   "Game Engine",               "Godot 4.x")
+
+	_add_credits_section(content, "ASSET SOURCES")
+	_add_credits_text(content, "3D Character Models — various artists on Sketchfab")
+	_add_credits_text(content, "Card art & UI elements — original work for the project")
+	_add_credits_text(content, "Environment models — curated community resources")
+
+	_add_credits_section(content, "TOOLS & MIDDLEWARE")
+	_add_credits_text(content, "Godot Engine 4.x — game engine")
+	_add_credits_text(content, "Blender — 3D modelling & animation")
+	_add_credits_text(content, "GIMP / Photoshop — texture & UI art")
+	_add_credits_text(content, "Git — version control")
+
+	_add_credits_section(content, "SPECIAL THANKS")
+	_add_credits_text(content, "The Godot community for documentation and support")
+	_add_credits_text(content, "Playtesters and friends who provided feedback")
+	_add_credits_text(content, "You — for playing Fantasy World!")
+
+	_add_back_button(root, func(): _close_sub_screen())
+
+	_open_sub_screen(layer)
+
+
+# =============================================================================
+# COMING SOON SUB-SCREEN  (Archives / Tutorial)
+# =============================================================================
+
+func _open_coming_soon(title: String, description: String) -> void:
+	var layer = CanvasLayer.new()
+	var root  = _make_fullscreen_root(layer)
+	var content = _make_page_content(root, title, 540, 400)
+
+	var desc = Label.new()
+	desc.text = description
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(desc, 16, UITheme.C_WARM_WHITE)
+	content.add_child(desc)
+
+	_add_back_button(root, func(): _close_sub_screen())
+	_open_sub_screen(layer)
+
+
+# =============================================================================
+# QUIT CONFIRMATION SUB-SCREEN
+# =============================================================================
+
+func _open_quit_confirm() -> void:
+	var layer = CanvasLayer.new()
+	var root  = _make_fullscreen_root(layer)
+	var content = _make_page_content(root, "QUIT GAME", 440, 260)
+
+	var msg = Label.new()
+	msg.text = "Are you sure you want to exit Fantasy World?"
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(msg, 16, UITheme.C_WARM_WHITE)
+	content.add_child(msg)
+
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 16)
+	content.add_child(spacer)
+
+	var row = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	content.add_child(row)
+
+	var yes_btn = _make_action_btn("YES — EXIT")
+	yes_btn.pressed.connect(func(): get_tree().quit())
+	row.add_child(yes_btn)
+
+	var no_btn = _make_action_btn("NO — BACK")
+	no_btn.pressed.connect(func(): _close_sub_screen())
+	row.add_child(no_btn)
+
+	_open_sub_screen(layer)
+
+
+# =============================================================================
+# SHARED SUB-SCREEN BUILDERS
+# =============================================================================
+
+## Creates a full-screen Control on the given CanvasLayer
+func _make_fullscreen_root(layer: CanvasLayer) -> Control:
+	var root = Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(root)
+	return root
+
+## Creates the standard page layout:
+##   logo (top-center) + page title label + a content VBoxContainer inside a
+##   content_box panel centred on screen.
+## Returns the inner VBoxContainer for callers to populate.
+func _make_page_content(root: Control, page_title: String,
+		panel_w: float, panel_h: float) -> VBoxContainer:
+
+	# Logo at top of every sub-screen
+	var logo = TextureRect.new()
+	logo.texture      = UITheme.tex_logo()
+	logo.expand_mode  = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.custom_minimum_size = Vector2(UITheme.LOGO_W * 0.75, UITheme.LOGO_H * 0.75)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	logo.position = Vector2(-UITheme.LOGO_W * 0.75 * 0.5, 32)
+	root.add_child(logo)
+
+	# Page title (e.g. "SETTINGS")
+	var title_lbl = Label.new()
+	title_lbl.text = page_title
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	title_lbl.custom_minimum_size = Vector2(800, 60)
+	title_lbl.position = Vector2(-400, UITheme.LOGO_H * 0.75 + 56)
+	UITheme.style_label(title_lbl, UITheme.TITLE_FONT, UITheme.C_GOLD, true)
+	root.add_child(title_lbl)
+
+	# Gold separator under title
+	var sep = UITheme.make_separator()
+	sep.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	sep.custom_minimum_size = Vector2(640, 4)
+	sep.position = Vector2(-320, UITheme.LOGO_H * 0.75 + 56 + 62)
+	root.add_child(sep)
+
+	# Content panel — centred
+	var panel = PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(panel_w, panel_h)
+	panel.position = Vector2(-panel_w * 0.5, -panel_h * 0.5 + 32)
+	UITheme.apply_panel(panel)
+	root.add_child(panel)
+
+	# Scroll inside panel
+	var scroll = ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+
+	# Inner VBox for content
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 12)
+	scroll.add_child(vbox)
+
+	return vbox
+
+## Action button for sub-screens (uses same texture, smaller size)
+func _make_action_btn(label: String) -> Button:
+	var btn = Button.new()
+	btn.text = label
+	btn.custom_minimum_size = Vector2(UITheme.BTN_SM_W, UITheme.BTN_SM_H)
+	UITheme.apply_menu_button(btn, UITheme.BTN_SM_FONT)
+	btn.mouse_entered.connect(_on_btn_hover.bind(btn))
+	btn.mouse_exited.connect(_on_btn_unhover.bind(btn))
+	return btn
+
+## BACK button anchored bottom-left — used on every sub-screen
+func _add_back_button(root: Control, callback: Callable) -> void:
+	var back = _make_action_btn("BACK")
+	back.name = "BackBtn"
+	back.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	back.position = Vector2(UITheme.PAD * 2, -(UITheme.BTN_SM_H + UITheme.PAD * 2))
+	back.pressed.connect(callback)
+	root.add_child(back)
+
+
+
+
+
+# =============================================================================
+# CREDITS CONTENT HELPERS
+# =============================================================================
+
+func _add_credits_section(parent: VBoxContainer, text: String) -> void:
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 6)
+	parent.add_child(spacer)
+
+	var lbl = Label.new()
+	lbl.text = text
+	UITheme.style_label(lbl, 14, UITheme.C_GOLD, true)
+	parent.add_child(lbl)
+
+	parent.add_child(UITheme.make_separator())
+
+func _add_credits_entry(parent: VBoxContainer, role: String, name_text: String) -> void:
+	var row = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+
+	var role_lbl = Label.new()
+	role_lbl.text = role
+	role_lbl.custom_minimum_size = Vector2(220, 0)
+	role_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	UITheme.style_label(role_lbl, 13, UITheme.C_DIM)
+	row.add_child(role_lbl)
+
+	var name_lbl = Label.new()
+	name_lbl.text = name_text
+	UITheme.style_label(name_lbl, 13, UITheme.C_WARM_WHITE)
+	row.add_child(name_lbl)
+
+	parent.add_child(row)
+
+func _add_credits_text(parent: VBoxContainer, text: String) -> void:
+	var lbl = Label.new()
+	lbl.text = "  •  " + text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(lbl, 13, UITheme.C_WARM_WHITE)
+	parent.add_child(lbl)
+
+
+# =============================================================================
+# SCENE TRANSITION TO GAME
+# =============================================================================
+
+func _play_transition_to_game() -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(self, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(_switch_to_game)
 
 func _switch_to_game() -> void:
-	# Switch to the main game scene using SceneManager for smooth transition
 	if SceneManagerAutoload:
-		SceneManagerAutoload.change_scene("main", false) # No extra transition (we already faded)
+		SceneManagerAutoload.change_scene("main", false)
 	else:
-		# Fallback if autoload not available
-		push_warning("SceneManagerAutoload not available, using direct scene change")
+		push_warning("StartMenu: SceneManagerAutoload not found — direct scene change.")
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
