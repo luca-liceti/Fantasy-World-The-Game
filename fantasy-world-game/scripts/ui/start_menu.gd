@@ -54,6 +54,7 @@ var _version_label:  Label         = null
 var _vignette:       ColorRect     = null
 var _intro_tween:    Tween         = null
 var _menu_layer:     CanvasLayer   = null   # holds logo + buttons
+var _menu_root:      Control       = null   # root Control inside _menu_layer (animatable)
 
 # Active sub-screen
 var _sub_screen: CanvasLayer = null
@@ -138,15 +139,16 @@ func _build_menu_layer() -> void:
 	_menu_layer.layer = 10
 	add_child(_menu_layer)
 
-	# Root control that fills the screen
-	var root = Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_menu_layer.add_child(root)
+	# Root control that fills the screen (CanvasLayer itself has no modulate,
+	# so we animate this Control's modulate instead)
+	_menu_root = Control.new()
+	_menu_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_menu_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_menu_layer.add_child(_menu_root)
 
-	_build_logo(root)
-	_build_buttons(root)
-	_build_version_label(root)
+	_build_logo(_menu_root)
+	_build_buttons(_menu_root)
+	_build_version_label(_menu_root)
 
 
 func _build_logo(parent: Control) -> void:
@@ -161,7 +163,7 @@ func _build_logo(parent: Control) -> void:
 
 	# Centre-top anchor
 	_logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 48)
+	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 16)
 	_logo.modulate.a = 0.0
 	parent.add_child(_logo)
 
@@ -170,9 +172,9 @@ func _build_buttons(parent: Control) -> void:
 	_btn_container.name = "ButtonContainer"
 	_btn_container.set_anchors_preset(Control.PRESET_CENTER)
 	_btn_container.custom_minimum_size = Vector2(UITheme.BTN_W, 0)
-	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, 40)
+	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, -30)
 	_btn_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	_btn_container.add_theme_constant_override("separation", 10)
+	_btn_container.add_theme_constant_override("separation", 6)
 	parent.add_child(_btn_container)
 
 	# 7 buttons — order and labels match the UI template exactly
@@ -192,6 +194,8 @@ func _make_btn(label: String, primary: bool) -> Button:
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn.modulate.a = 0.0
 	btn.clip_text = false
+	# Set pivot to centre so scale animations shrink evenly from the middle
+	btn.pivot_offset = Vector2(UITheme.BTN_W * 0.5, UITheme.BTN_H * 0.5)
 
 	UITheme.apply_menu_button(btn, UITheme.BTN_FONT_SIZE)
 
@@ -199,8 +203,10 @@ func _make_btn(label: String, primary: bool) -> Button:
 	if primary:
 		btn.add_theme_color_override("font_color", UITheme.C_GOLD_BRIGHT)
 
-	btn.mouse_entered.connect(_on_btn_hover.bind(btn))
-	btn.mouse_exited.connect(_on_btn_unhover.bind(btn))
+	# Hover: highlight only (texture swap via UITheme), NO scale change
+	# Press: shrink like a real button being pushed down
+	btn.button_down.connect(_on_btn_press.bind(btn))
+	btn.button_up.connect(_on_btn_release.bind(btn))
 	_btn_container.add_child(btn)
 	return btn
 
@@ -229,7 +235,7 @@ func _play_intro() -> void:
 
 	# Logo fades in + gentle upward settle
 	_intro_tween.tween_property(_logo, "modulate:a", 1.0, 1.0)
-	_intro_tween.parallel().tween_property(_logo, "position:y", 48.0, 1.0).from(72.0)
+	_intro_tween.parallel().tween_property(_logo, "position:y", 16.0, 1.0).from(40.0)
 
 	# Buttons cascade in left-to-right
 	var buttons = _btn_container.get_children()
@@ -246,15 +252,17 @@ func _play_intro() -> void:
 # BUTTON HOVER MICRO-ANIMATIONS
 # =============================================================================
 
-func _on_btn_hover(btn: Button) -> void:
-	var tw = create_tween()
-	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tw.tween_property(btn, "scale", Vector2(1.04, 1.04), 0.13)
-
-func _on_btn_unhover(btn: Button) -> void:
+## Press: shrink the button like it’s being physically pushed
+func _on_btn_press(btn: Button) -> void:
 	var tw = create_tween()
 	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.10)
+	tw.tween_property(btn, "scale", Vector2(0.95, 0.95), 0.08)
+
+## Release: pop back to normal size
+func _on_btn_release(btn: Button) -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12)
 
 
 # =============================================================================
@@ -303,16 +311,15 @@ func _pulse_logo() -> void:
 
 func _show_main_menu() -> void:
 	_menu_layer.visible = true
+	_menu_root.modulate.a = 0.0
 	var tw = create_tween()
 	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(_menu_layer, "offset_v", 0.0, 0.3)
-	_menu_layer.modulate.a = 0.0
-	tw.parallel().tween_property(_menu_layer, "modulate:a", 1.0, 0.3)
+	tw.tween_property(_menu_root, "modulate:a", 1.0, 0.3)
 
 func _hide_main_menu() -> void:
 	var tw = create_tween()
 	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(_menu_layer, "modulate:a", 0.0, 0.25)
+	tw.tween_property(_menu_root, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(func(): _menu_layer.visible = false)
 
 
@@ -329,22 +336,35 @@ func _open_sub_screen(screen: CanvasLayer) -> void:
 	_hide_main_menu()
 	screen.layer = 20
 	add_child(screen)
-	# Animate in
-	screen.modulate.a = 0.0
-	var tw = create_tween()
-	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(screen, "modulate:a", 1.0, 0.35)
+	# CanvasLayer has no modulate — find its first Control child to animate
+	var ctrl = _get_canvas_root(screen)
+	if ctrl:
+		ctrl.modulate.a = 0.0
+		var tw = create_tween()
+		tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(ctrl, "modulate:a", 1.0, 0.35)
 
 func _close_sub_screen() -> void:
 	if not _sub_screen:
 		return
 	var dying = _sub_screen
 	_sub_screen = null
-	var tw = create_tween()
-	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(dying, "modulate:a", 0.0, 0.25)
-	tw.tween_callback(dying.queue_free)
+	var ctrl = _get_canvas_root(dying)
+	if ctrl:
+		var tw = create_tween()
+		tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(ctrl, "modulate:a", 0.0, 0.25)
+		tw.tween_callback(dying.queue_free)
+	else:
+		dying.queue_free()
 	_show_main_menu()
+
+## Returns the first Control child of a CanvasLayer (its animatable root).
+func _get_canvas_root(layer: CanvasLayer) -> Control:
+	for child in layer.get_children():
+		if child is Control:
+			return child
+	return null
 
 
 # =============================================================================
@@ -423,7 +443,7 @@ func _open_credits_screen() -> void:
 
 	var root = _make_fullscreen_root(layer)
 
-	var content = _make_page_content(root, "CREDITS", 560, 560)
+	var content = _make_page_content(root, "CREDITS", 640, 640)
 
 	_add_credits_section(content, "DEVELOPMENT TEAM")
 	_add_credits_entry(content,   "Game Design & Development", "Luca Liceti")
@@ -458,7 +478,7 @@ func _open_credits_screen() -> void:
 func _open_coming_soon(title: String, description: String) -> void:
 	var layer = CanvasLayer.new()
 	var root  = _make_fullscreen_root(layer)
-	var content = _make_page_content(root, title, 540, 400)
+	var content = _make_page_content(root, title, 560, 420)
 
 	var desc = Label.new()
 	desc.text = description
@@ -477,7 +497,7 @@ func _open_coming_soon(title: String, description: String) -> void:
 func _open_quit_confirm() -> void:
 	var layer = CanvasLayer.new()
 	var root  = _make_fullscreen_root(layer)
-	var content = _make_page_content(root, "QUIT GAME", 440, 260)
+	var content = _make_page_content(root, "QUIT GAME", 480, 320)
 
 	var msg = Label.new()
 	msg.text = "Are you sure you want to exit Fantasy World?"
@@ -525,15 +545,18 @@ func _make_fullscreen_root(layer: CanvasLayer) -> Control:
 func _make_page_content(root: Control, page_title: String,
 		panel_w: float, panel_h: float) -> VBoxContainer:
 
-	# Logo at top of every sub-screen
+	# Logo at top of every sub-screen (smaller than main menu logo)
+	var sub_logo_scale = 0.50
+	var slw = UITheme.LOGO_W * sub_logo_scale
+	var slh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
 	logo.texture      = UITheme.tex_logo()
 	logo.expand_mode  = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	logo.custom_minimum_size = Vector2(UITheme.LOGO_W * 0.75, UITheme.LOGO_H * 0.75)
+	logo.custom_minimum_size = Vector2(slw, slh)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	logo.position = Vector2(-UITheme.LOGO_W * 0.75 * 0.5, 32)
+	logo.position = Vector2(-slw * 0.5, 20)
 	root.add_child(logo)
 
 	# Page title (e.g. "SETTINGS")
@@ -542,7 +565,7 @@ func _make_page_content(root: Control, page_title: String,
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	title_lbl.custom_minimum_size = Vector2(800, 60)
-	title_lbl.position = Vector2(-400, UITheme.LOGO_H * 0.75 + 56)
+	title_lbl.position = Vector2(-400, slh + 32)
 	UITheme.style_label(title_lbl, UITheme.TITLE_FONT, UITheme.C_GOLD, true)
 	root.add_child(title_lbl)
 
@@ -550,7 +573,7 @@ func _make_page_content(root: Control, page_title: String,
 	var sep = UITheme.make_separator()
 	sep.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	sep.custom_minimum_size = Vector2(640, 4)
-	sep.position = Vector2(-320, UITheme.LOGO_H * 0.75 + 56 + 62)
+	sep.position = Vector2(-320, slh + 32 + 62)
 	root.add_child(sep)
 
 	# Content panel — centred
@@ -580,9 +603,11 @@ func _make_action_btn(label: String) -> Button:
 	var btn = Button.new()
 	btn.text = label
 	btn.custom_minimum_size = Vector2(UITheme.BTN_SM_W, UITheme.BTN_SM_H)
+	# Set pivot to centre so scale animations shrink evenly
+	btn.pivot_offset = Vector2(UITheme.BTN_SM_W * 0.5, UITheme.BTN_SM_H * 0.5)
 	UITheme.apply_menu_button(btn, UITheme.BTN_SM_FONT)
-	btn.mouse_entered.connect(_on_btn_hover.bind(btn))
-	btn.mouse_exited.connect(_on_btn_unhover.bind(btn))
+	btn.button_down.connect(_on_btn_press.bind(btn))
+	btn.button_up.connect(_on_btn_release.bind(btn))
 	return btn
 
 ## BACK button anchored bottom-left — used on every sub-screen

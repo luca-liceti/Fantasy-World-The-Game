@@ -26,23 +26,23 @@ const PATH_FONT_BLACK   = "res://assets/fonts/Cinzel-Black.ttf"
 # =============================================================================
 const C_GOLD         = Color(0.88, 0.76, 0.44, 1.0)   # Title / section gold
 const C_GOLD_BRIGHT  = Color(1.00, 0.90, 0.55, 1.0)   # Hovered text / accent
-const C_WARM_WHITE   = Color(0.95, 0.90, 0.80, 1.0)   # Body text
-const C_DIM          = Color(0.65, 0.60, 0.50, 0.80)  # Disabled / version label
+const C_WARM_WHITE   = Color(0.72, 0.71, 0.68, 1.0)   # Tarnished silver body text
+const C_DIM          = Color(0.55, 0.52, 0.48, 0.80)  # Disabled / version label
 const C_SHADOW       = Color(0.00, 0.00, 0.00, 0.70)  # Drop shadow
-const C_SCREEN_DIM   = Color(0.00, 0.00, 0.00, 0.38)  # Background vignette tint
-const C_PANEL_FILL   = Color(0.06, 0.05, 0.04, 0.82)  # Semi-transparent panel fill
+const C_SCREEN_DIM   = Color(0.00, 0.00, 0.00, 0.60)  # Background vignette tint — increased for readability
+const C_PANEL_FILL   = Color(0.06, 0.05, 0.04, 0.92)  # Semi-transparent panel fill — increased for readability
 
 # =============================================================================
 # GEOMETRY CONSTANTS  (all spacing is a multiple of 8 px)
 # =============================================================================
 # Primary menu buttons  (the pointed banner)
 const BTN_W         = 360   # px
-const BTN_H         = 56    # px
+const BTN_H         = 64    # px  (taller for breathing room around text)
 const BTN_FONT_SIZE = 20    # pt
 
 # Secondary / action buttons  (smaller, same texture)
 const BTN_SM_W      = 220
-const BTN_SM_H      = 48
+const BTN_SM_H      = 52
 const BTN_SM_FONT   = 17
 
 # Input boxes
@@ -51,8 +51,8 @@ const INPUT_FONT    = 16
 
 # Panel title font
 const TITLE_FONT    = 42    # Screen header size (e.g. "SETTINGS")
-const LOGO_W        = 640   # Logo image max width
-const LOGO_H        = 220   # Logo image max height
+const LOGO_W        = 960   # Logo image max width (matches reference screenshot)
+const LOGO_H        = 340   # Logo image max height (matches reference screenshot)
 
 # 9-slice inset sizes for each texture (pixels from edge that contain the
 # non-stretchable art — pointed tips, border corners, etc.)
@@ -60,8 +60,9 @@ const SLICE_BTN     = 40    # horizontal tip width preserved on both sides
 const SLICE_BTN_V   = 8     # vertical margin preserved top & bottom
 const SLICE_INPUT_H = 12    # input box corner inset
 const SLICE_INPUT_V = 8
-const SLICE_PANEL_H = 32    # content_box corner inset
-const SLICE_PANEL_V = 32
+const SLICE_PANEL_H = 40    # content_box corner inset
+const SLICE_PANEL_V = 20    # content_box side/bottom border
+const PANEL_BANNER  = 80    # content_box banner header height in source texture
 
 # Content padding inside panels
 const PAD           = 24    # standard inner margin
@@ -150,10 +151,15 @@ static func btn_normal() -> StyleBoxTexture:
 	s.texture_margin_right  = SLICE_BTN
 	s.texture_margin_top    = SLICE_BTN_V
 	s.texture_margin_bottom = SLICE_BTN_V
-	s.content_margin_left   = SLICE_BTN + 8
-	s.content_margin_right  = SLICE_BTN + 8
-	s.content_margin_top    = SLICE_BTN_V + 4
-	s.content_margin_bottom = SLICE_BTN_V + 4
+	s.content_margin_left   = SLICE_BTN + 12
+	s.content_margin_right  = SLICE_BTN + 12
+	s.content_margin_top    = SLICE_BTN_V + 10
+	s.content_margin_bottom = SLICE_BTN_V + 10
+	# Prevent the stylebox from ever expanding the button's layout size
+	s.expand_margin_left   = 0
+	s.expand_margin_right  = 0
+	s.expand_margin_top    = 0
+	s.expand_margin_bottom = 0
 	return s
 
 ## Hovered (bronze/gold) button — same shape, lighter texture
@@ -164,10 +170,15 @@ static func btn_hover() -> StyleBoxTexture:
 	s.texture_margin_right  = SLICE_BTN
 	s.texture_margin_top    = SLICE_BTN_V
 	s.texture_margin_bottom = SLICE_BTN_V
-	s.content_margin_left   = SLICE_BTN + 8
-	s.content_margin_right  = SLICE_BTN + 8
-	s.content_margin_top    = SLICE_BTN_V + 4
-	s.content_margin_bottom = SLICE_BTN_V + 4
+	s.content_margin_left   = SLICE_BTN + 12
+	s.content_margin_right  = SLICE_BTN + 12
+	s.content_margin_top    = SLICE_BTN_V + 10
+	s.content_margin_bottom = SLICE_BTN_V + 10
+	# Prevent the stylebox from ever expanding the button's layout size
+	s.expand_margin_left   = 0
+	s.expand_margin_right  = 0
+	s.expand_margin_top    = 0
+	s.expand_margin_bottom = 0
 	return s
 
 ## Pressed — same as hover but tinted slightly darker
@@ -222,11 +233,11 @@ static func panel_content() -> StyleBoxTexture:
 	s.texture = tex_content()
 	s.texture_margin_left   = SLICE_PANEL_H
 	s.texture_margin_right  = SLICE_PANEL_H
-	s.texture_margin_top    = SLICE_PANEL_V + 48  # extra top: the banner header is taller
+	s.texture_margin_top    = PANEL_BANNER
 	s.texture_margin_bottom = SLICE_PANEL_V
-	s.content_margin_left   = SLICE_PANEL_H + PAD
-	s.content_margin_right  = SLICE_PANEL_H + PAD
-	s.content_margin_top    = SLICE_PANEL_V + 48 + PAD_SM
+	s.content_margin_left   = SLICE_PANEL_H + PAD_SM
+	s.content_margin_right  = SLICE_PANEL_H + PAD_SM
+	s.content_margin_top    = PANEL_BANNER + PAD_SM
 	s.content_margin_bottom = SLICE_PANEL_V + PAD_SM
 	return s
 

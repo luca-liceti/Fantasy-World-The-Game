@@ -63,3 +63,9 @@ $RECYCLE.BIN/
 build/
 export/
 dist/
+
+# -----------------------------------------------------------------------------
+# Godot Version Folders
+# (Older engine version copies — not source, not needed in version control)
+# -----------------------------------------------------------------------------
+fantasy-world-game-(4.5)/

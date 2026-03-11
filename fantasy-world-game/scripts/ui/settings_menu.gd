@@ -17,7 +17,7 @@ signal settings_applied
 const TAB_W   = 180   # px per tab button
 const TAB_H   = 48
 const PANEL_W = 900   # inner content panel
-const PANEL_H = 480
+const PANEL_H = 520
 
 # =============================================================================
 # TAB DEFINITIONS  (no emoji — labels match the UI template)
@@ -60,20 +60,21 @@ func _build_ui() -> void:
 	add_child(_root)
 
 	# Logo
+	var sub_logo_scale = 0.50
+	var lw = UITheme.LOGO_W * sub_logo_scale
+	var lh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
 	logo.texture      = UITheme.tex_logo()
 	logo.expand_mode  = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	var lw = UITheme.LOGO_W * 0.70
-	var lh = UITheme.LOGO_H * 0.70
 	logo.custom_minimum_size = Vector2(lw, lh)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	logo.position = Vector2(-lw * 0.5, 28)
+	logo.position = Vector2(-lw * 0.5, 20)
 	_root.add_child(logo)
 
 	# Page title
-	var title_top = lh + 44.0
+	var title_top = lh + 32.0
 	var title = Label.new()
 	title.text = "SETTINGS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -106,10 +107,13 @@ func _build_ui() -> void:
 	back.name = "BackBtn"
 	back.text = "BACK"
 	back.custom_minimum_size = Vector2(UITheme.BTN_SM_W, UITheme.BTN_SM_H)
+	back.pivot_offset = Vector2(UITheme.BTN_SM_W * 0.5, UITheme.BTN_SM_H * 0.5)
 	back.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	back.position = Vector2(UITheme.PAD * 2, -(UITheme.BTN_SM_H + UITheme.PAD * 2))
 	UITheme.apply_menu_button(back, UITheme.BTN_SM_FONT)
 	back.pressed.connect(_on_close_pressed)
+	back.button_down.connect(func(): _btn_press_anim(back))
+	back.button_up.connect(func(): _btn_release_anim(back))
 	_root.add_child(back)
 
 
@@ -130,6 +134,7 @@ func _build_tab_row(top_y: float) -> void:
 		btn.name = tab_id + "Tab"
 		btn.text = tab_id
 		btn.custom_minimum_size = Vector2(TAB_W, TAB_H)
+		btn.pivot_offset = Vector2(TAB_W * 0.5, TAB_H * 0.5)
 		UITheme.apply_menu_button(btn, UITheme.BTN_SM_FONT)
 		btn.pressed.connect(_switch_tab.bind(tab_id))
 		row.add_child(btn)
@@ -161,11 +166,14 @@ func _build_footer() -> void:
 	_apply_btn.name = "ApplyBtn"
 	_apply_btn.text = "APPLY CHANGES"
 	_apply_btn.custom_minimum_size = Vector2(280, UITheme.BTN_SM_H)
+	_apply_btn.pivot_offset = Vector2(140, UITheme.BTN_SM_H * 0.5)
 	_apply_btn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_apply_btn.position = Vector2(-140, -(UITheme.BTN_SM_H + UITheme.PAD * 2))
 	UITheme.apply_menu_button(_apply_btn, UITheme.BTN_SM_FONT)
 	_apply_btn.add_theme_color_override("font_color", UITheme.C_GOLD_BRIGHT)
 	_apply_btn.pressed.connect(_on_apply_pressed)
+	_apply_btn.button_down.connect(func(): _btn_press_anim(_apply_btn))
+	_apply_btn.button_up.connect(func(): _btn_release_anim(_apply_btn))
 	_root.add_child(_apply_btn)
 
 
@@ -468,6 +476,18 @@ func _animate_out() -> void:
 		closed.emit()
 		queue_free()
 	)
+
+## Press: shrink button like a real button being pushed
+func _btn_press_anim(btn: Button) -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(btn, "scale", Vector2(0.95, 0.95), 0.08)
+
+## Release: pop back to normal size
+func _btn_release_anim(btn: Button) -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12)
 
 
 # =============================================================================

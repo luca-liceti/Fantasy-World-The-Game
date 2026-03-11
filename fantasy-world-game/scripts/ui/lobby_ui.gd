@@ -96,8 +96,9 @@ func _build_ui() -> void:
 
 
 func _build_logo() -> void:
-	var lw = UITheme.LOGO_W * 0.70
-	var lh = UITheme.LOGO_H * 0.70
+	var sub_logo_scale = 0.50
+	var lw = UITheme.LOGO_W * sub_logo_scale
+	var lh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
 	logo.texture      = UITheme.tex_logo()
 	logo.expand_mode  = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
@@ -105,11 +106,11 @@ func _build_logo() -> void:
 	logo.custom_minimum_size = Vector2(lw, lh)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	logo.position = Vector2(-lw * 0.5, 28)
+	logo.position = Vector2(-lw * 0.5, 20)
 	_root.add_child(logo)
 
 func _build_page_title() -> void:
-	var lh = UITheme.LOGO_H * 0.70
+	var lh = UITheme.LOGO_H * 0.50
 
 	var title = Label.new()
 	title.text = "ONLINE MULTIPLAYER"
@@ -136,7 +137,7 @@ func _build_page_title() -> void:
 	_root.add_child(sep)
 
 func _build_panels() -> void:
-	var lh = UITheme.LOGO_H * 0.70
+	var lh = UITheme.LOGO_H * 0.50
 	var panel_top = lh + 148.0
 	var total_w   = LEFT_W + GAP + RIGHT_W
 	var left_x    = -total_w * 0.5
@@ -220,10 +221,13 @@ func _build_back_btn() -> void:
 	back.name  = "BackBtn"
 	back.text  = "BACK"
 	back.custom_minimum_size = Vector2(UITheme.BTN_SM_W, UITheme.BTN_SM_H)
+	back.pivot_offset = Vector2(UITheme.BTN_SM_W * 0.5, UITheme.BTN_SM_H * 0.5)
 	back.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	back.position = Vector2(UITheme.PAD * 2, -(UITheme.BTN_SM_H + UITheme.PAD * 2))
 	UITheme.apply_menu_button(back, UITheme.BTN_SM_FONT)
 	back.pressed.connect(_on_back_pressed)
+	back.button_down.connect(func(): _hover_press(back))
+	back.button_up.connect(func():  _hover_release(back))
 	_root.add_child(back)
 
 
@@ -394,9 +398,11 @@ func _make_panel_btn(text: String) -> Button:
 	btn.text = text
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.custom_minimum_size = Vector2(0, UITheme.BTN_H)
+	# Pivot at centre for even scale animations
+	btn.pivot_offset = Vector2(btn.custom_minimum_size.x * 0.5 if btn.custom_minimum_size.x > 0 else 180, UITheme.BTN_H * 0.5)
 	UITheme.apply_menu_button(btn, UITheme.BTN_FONT_SIZE)
-	btn.mouse_entered.connect(func(): _hover_anim(btn, true))
-	btn.mouse_exited.connect(func():  _hover_anim(btn, false))
+	btn.button_down.connect(func(): _hover_press(btn))
+	btn.button_up.connect(func():  _hover_release(btn))
 	return btn
 
 ## Compact button (half-width pair)
@@ -404,9 +410,11 @@ func _make_small_btn(text: String) -> Button:
 	var btn = Button.new()
 	btn.text = text
 	btn.custom_minimum_size = Vector2(160, UITheme.BTN_SM_H)
+	# Pivot at centre for even scale animations
+	btn.pivot_offset = Vector2(80, UITheme.BTN_SM_H * 0.5)
 	UITheme.apply_menu_button(btn, UITheme.BTN_SM_FONT)
-	btn.mouse_entered.connect(func(): _hover_anim(btn, true))
-	btn.mouse_exited.connect(func():  _hover_anim(btn, false))
+	btn.button_down.connect(func(): _hover_press(btn))
+	btn.button_up.connect(func():  _hover_release(btn))
 	return btn
 
 func _make_player_row(default_name: String, _is_host: bool) -> HBoxContainer:
@@ -428,11 +436,15 @@ func _make_player_row(default_name: String, _is_host: bool) -> HBoxContainer:
 
 	return row
 
-func _hover_anim(btn: Button, entering: bool) -> void:
+func _hover_press(btn: Button) -> void:
 	var tw = create_tween()
-	tw.set_ease(Tween.EASE_OUT)
-	tw.set_trans(Tween.TRANS_BACK if entering else Tween.TRANS_CUBIC)
-	tw.tween_property(btn, "scale", Vector2(1.04, 1.04) if entering else Vector2.ONE, 0.12)
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(btn, "scale", Vector2(0.95, 0.95), 0.08)
+
+func _hover_release(btn: Button) -> void:
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12)
 
 
 # =============================================================================
