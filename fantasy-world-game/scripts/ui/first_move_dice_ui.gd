@@ -100,15 +100,8 @@ func _create_ui() -> void:
 	main_panel.pivot_offset = Vector2(300, 225)
 	center_container.add_child(main_panel)
 	
-	# Style the main panel
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = COLOR_BG
-	panel_style.border_color = Color(0.5, 0.4, 0.3, 0.9)
-	panel_style.set_border_width_all(3)
-	panel_style.set_corner_radius_all(20)
-	panel_style.shadow_color = Color(0, 0, 0, 0.6)
-	panel_style.shadow_size = 30
-	main_panel.add_theme_stylebox_override("panel", panel_style)
+	# Style the main panel — UITheme overlay
+	main_panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
 	
 	# Content container
 	var margin = MarginContainer.new()
@@ -141,16 +134,14 @@ func _create_header() -> void:
 	title_label = Label.new()
 	title_label.text = "🎲 FIRST MOVE ROLL 🎲"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 32)
-	title_label.add_theme_color_override("font_color", Color.WHITE)
+	UITheme.style_label(title_label, 32, UITheme.C_GOLD_BRIGHT, true)
 	content_container.add_child(title_label)
 	
 	# Subtitle
 	subtitle_label = Label.new()
 	subtitle_label.text = "Rolling to see who moves first..."
 	subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle_label.add_theme_font_size_override("font_size", 16)
-	subtitle_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	UITheme.style_label(subtitle_label, 16, UITheme.C_WARM_WHITE)
 	content_container.add_child(subtitle_label)
 	
 	# Separator
@@ -187,12 +178,7 @@ func _create_player_dice_panel(player_name: String, color: Color) -> PanelContai
 	var panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(180, 180)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.12)
-	style.border_color = color
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(15)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.section_panel(color))
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
@@ -210,25 +196,22 @@ func _create_player_dice_panel(player_name: String, color: Color) -> PanelContai
 	var name_label = Label.new()
 	name_label.text = player_name
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.add_theme_font_size_override("font_size", 18)
-	name_label.add_theme_color_override("font_color", color)
+	UITheme.style_label(name_label, 18, color, true)
 	vbox.add_child(name_label)
 	
 	# Dice roll value (the big number)
 	var roll_label = Label.new()
 	roll_label.text = "?"
 	roll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	roll_label.add_theme_font_size_override("font_size", 64)
-	roll_label.add_theme_color_override("font_color", Color.WHITE)
 	roll_label.custom_minimum_size = Vector2(100, 80)
+	UITheme.style_label(roll_label, 64, Color.WHITE, true)
 	vbox.add_child(roll_label)
 	
 	# d20 indicator
 	var dice_type_label = Label.new()
 	dice_type_label.text = "d20"
 	dice_type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dice_type_label.add_theme_font_size_override("font_size", 14)
-	dice_type_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	UITheme.style_label(dice_type_label, 14, UITheme.C_DIM)
 	vbox.add_child(dice_type_label)
 	
 	# Store references based on player
@@ -252,16 +235,14 @@ func _create_result_display() -> void:
 	result_label = Label.new()
 	result_label.text = ""
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_label.add_theme_font_size_override("font_size", 24)
-	result_label.add_theme_color_override("font_color", COLOR_GOLD)
+	UITheme.style_label(result_label, 24, UITheme.C_GOLD_BRIGHT, true)
 	content_container.add_child(result_label)
 	
 	# Instruction label
 	instruction_label = Label.new()
 	instruction_label.text = ""
 	instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	instruction_label.add_theme_font_size_override("font_size", 14)
-	instruction_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	UITheme.style_label(instruction_label, 14, UITheme.C_DIM)
 	content_container.add_child(instruction_label)
 
 
@@ -340,7 +321,7 @@ func _show_final_result() -> void:
 	
 	# Highlight the winner
 	var winner_name = "PLAYER 1" if first_player_id == 0 else "PLAYER 2"
-	var winner_color = PLAYER1_COLOR if first_player_id == 0 else PLAYER2_COLOR
+	var _winner_color = PLAYER1_COLOR if first_player_id == 0 else PLAYER2_COLOR
 	
 	if first_player_id == 0:
 		p1_roll_label.add_theme_color_override("font_color", COLOR_GOLD)
@@ -411,7 +392,7 @@ func _reset_panel_border(panel: PanelContainer, color: Color) -> void:
 func _pulse_label(label: Label) -> void:
 	# Use modulate animation instead of scale (Labels don't scale well without pivot)
 	var pulse = create_tween()
-	var original_color = label.get_theme_color("font_color")
+	var _original_color = label.get_theme_color("font_color")
 	pulse.tween_property(label, "modulate", Color(1.3, 1.3, 1.0, 1.0), 0.12)
 	pulse.tween_property(label, "modulate", Color.WHITE, 0.12)
 

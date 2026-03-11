@@ -35,6 +35,8 @@ var _current_tab:     String         = "VIDEO"
 var _setting_ctrls:   Dictionary     = {}
 var _pending:         Dictionary     = {}
 
+var _is_showing_confirm: bool = false
+
 
 # =============================================================================
 # READY
@@ -264,17 +266,11 @@ func _build_controls_tab() -> void:
 
 
 func _build_gameplay_tab() -> void:
-	_add_section("Turn Settings")
-	_add_dropdown("gameplay/turn_timer", "TURN TIMER",
-			["1 Minute", "2 Minutes", "3 Minutes", "5 Minutes"])
+	_add_section("Turn Behaviour")
 	_add_toggle("gameplay/auto_end_turn", "AUTO-END TURN WHEN NO ACTIONS")
-	_add_section("Combat")
+	_add_section("Combat Visuals")
 	_add_toggle("gameplay/show_damage_numbers",     "SHOW DAMAGE NUMBERS")
 	_add_toggle("gameplay/show_combat_animations",  "SHOW COMBAT ANIMATIONS")
-	_add_dropdown("gameplay/combat_speed", "COMBAT SPEED",
-			["0.5× Slow", "1× Normal", "1.5× Fast", "2× Very Fast"])
-	_add_dropdown("gameplay/combat_mode", "COMBAT MODE",
-			["Standard (4 Moves)", "Simplified (2 Moves)"])
 	_add_section("Information")
 	_add_toggle("gameplay/show_biome_tooltips",    "SHOW BIOME TOOLTIPS")
 	_add_toggle("gameplay/show_contextual_hints",  "SHOW CONTEXTUAL HINTS")
@@ -447,11 +443,97 @@ func _convert_dropdown(path: String, idx: int) -> Variant:
 func _on_apply_pressed() -> void:
 	if SettingsManager:
 		SettingsManager.save_settings()
+	_pending.clear()
 	settings_applied.emit()
 	_close()
 
 func _on_close_pressed() -> void:
+	if _pending.size() > 0:
+		_show_discard_confirm()
+	else:
+		_close()
+
+func _discard_changes() -> void:
+	if SettingsManager:
+		SettingsManager.discard_changes()
 	_close()
+
+func _show_discard_confirm() -> void:
+	var confirm_layer = CanvasLayer.new()
+	confirm_layer.layer = 150
+	confirm_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = UITheme.C_OVERLAY_DIM
+	confirm_layer.add_child(bg)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	confirm_layer.add_child(center)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480, 240)
+	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
+	center.add_child(panel)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 24)
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "DISCARD CHANGES"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, 24, UITheme.C_GOLD, true)
+	vbox.add_child(title)
+	
+	var msg = Label.new()
+	msg.text = "Are you sure you want to discard your unsaved changes?"
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(msg, 16, UITheme.C_WARM_WHITE)
+	vbox.add_child(msg)
+	
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 24)
+	vbox.add_child(btn_row)
+	
+	var yes_btn = Button.new()
+	yes_btn.text = "YES"
+	yes_btn.custom_minimum_size = Vector2(160, 50)
+	yes_btn.pivot_offset = Vector2(80, 25)
+	yes_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	UITheme.apply_menu_button(yes_btn, 18)
+	yes_btn.pressed.connect(func():
+		_is_showing_confirm = false
+		confirm_layer.queue_free()
+		_discard_changes()
+	)
+	btn_row.add_child(yes_btn)
+	
+	var no_btn = Button.new()
+	no_btn.text = "NO"
+	no_btn.custom_minimum_size = Vector2(160, 50)
+	no_btn.pivot_offset = Vector2(80, 25)
+	no_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	UITheme.apply_menu_button(no_btn, 18)
+	no_btn.pressed.connect(func():
+		_is_showing_confirm = false
+		confirm_layer.queue_free()
+	)
+	btn_row.add_child(no_btn)
+	
+	_is_showing_confirm = true
+	add_child(confirm_layer)
 
 func _close() -> void:
 	_animate_out()
@@ -495,6 +577,8 @@ func _btn_release_anim(btn: Button) -> void:
 # =============================================================================
 
 func _input(event: InputEvent) -> void:
+	if _is_showing_confirm:
+		return
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_ESCAPE:
 			_on_close_pressed()

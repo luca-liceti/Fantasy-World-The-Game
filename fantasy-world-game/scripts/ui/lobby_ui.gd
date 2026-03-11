@@ -113,7 +113,7 @@ func _build_page_title() -> void:
 	var lh = UITheme.LOGO_H * 0.50
 
 	var title = Label.new()
-	title.text = "ONLINE MULTIPLAYER"
+	title.text = "MULTIPLAYER"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	title.custom_minimum_size = Vector2(800, 56)

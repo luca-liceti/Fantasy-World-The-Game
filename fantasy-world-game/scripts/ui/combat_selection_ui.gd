@@ -114,10 +114,8 @@ func _create_ui() -> void:
 	main_container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(main_container)
 	
-	# Semi-transparent background
-	var bg = ColorRect.new()
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0, 0, 0, 0.7)
+	# Semi-transparent background — UITheme overlay
+	var bg = UITheme.make_overlay_bg()
 	main_container.add_child(bg)
 	
 	# Center panel
@@ -127,14 +125,7 @@ func _create_ui() -> void:
 	background_panel.position = Vector2(-325, -250)
 	main_container.add_child(background_panel)
 	
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = BG_COLOR
-	panel_style.border_color = BORDER_COLOR
-	panel_style.set_border_width_all(3)
-	panel_style.set_corner_radius_all(16)
-	panel_style.shadow_color = Color(0, 0, 0, 0.5)
-	panel_style.shadow_size = 10
-	background_panel.add_theme_stylebox_override("panel", panel_style)
+	background_panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
 	
 	# Content container
 	content_container = VBoxContainer.new()
@@ -157,17 +148,15 @@ func _create_header() -> void:
 	# Title
 	header_label = Label.new()
 	header_label.text = "⚔️ COMBAT! ⚔️"
-	header_label.add_theme_font_size_override("font_size", 28)
-	header_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
 	header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(header_label, 28, UITheme.C_GOLD_BRIGHT, true)
 	header_container.add_child(header_label)
 	
 	# Combatants
 	combatants_label = Label.new()
 	combatants_label.text = "Attacker vs Defender"
-	combatants_label.add_theme_font_size_override("font_size", 16)
-	combatants_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
 	combatants_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(combatants_label, 16, UITheme.C_WARM_WHITE)
 	header_container.add_child(combatants_label)
 
 
@@ -179,27 +168,25 @@ func _create_stats_display() -> void:
 	
 	attacker_stats_label = Label.new()
 	attacker_stats_label.text = "ATK: -- | HP: --/--"
-	attacker_stats_label.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+	UITheme.style_label(attacker_stats_label, 14, Color(0.9, 0.6, 0.6))
 	stats_container.add_child(attacker_stats_label)
 	
 	var vs = Label.new()
 	vs.text = "VS"
-	vs.add_theme_color_override("font_color", Color.GRAY)
+	UITheme.style_label(vs, 14, UITheme.C_DIM)
 	stats_container.add_child(vs)
 	
 	defender_stats_label = Label.new()
 	defender_stats_label.text = "DEF: -- | HP: --/--"
-	defender_stats_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.9))
+	UITheme.style_label(defender_stats_label, 14, Color(0.6, 0.6, 0.9))
 	stats_container.add_child(defender_stats_label)
 
 
 func _create_modifiers_display() -> void:
 	modifiers_label = Label.new()
 	modifiers_label.text = "Positioning: Normal"
-	modifiers_label.add_theme_font_size_override("font_size", 12)
-	modifiers_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4))
 	modifiers_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content_container.add_child(modifiers_label)
+	UITheme.style_label(modifiers_label, 12, UITheme.C_GOLD)
 
 
 func _create_timer() -> void:
@@ -277,12 +264,7 @@ func _create_selection_panels() -> void:
 func _create_panel_section(title: String, accent_color: Color) -> PanelContainer:
 	var panel = PanelContainer.new()
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = PANEL_COLOR
-	style.border_color = accent_color.darkened(0.3)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(10)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.section_panel(accent_color))
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
@@ -290,9 +272,8 @@ func _create_panel_section(title: String, accent_color: Color) -> PanelContainer
 	
 	var title_label = Label.new()
 	title_label.text = title
-	title_label.add_theme_font_size_override("font_size", 16)
-	title_label.add_theme_color_override("font_color", accent_color)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title_label, 16, accent_color, true)
 	vbox.add_child(title_label)
 	
 	return panel
@@ -392,34 +373,18 @@ func _create_ready_section() -> void:
 	ready_container.add_theme_constant_override("separation", 20)
 	content_container.add_child(ready_container)
 	
-	# Ready button
+	# Ready button — styled via UITheme
 	ready_button = Button.new()
 	ready_button.text = "✅ READY"
 	ready_button.custom_minimum_size = Vector2(160, 50)
-	ready_button.add_theme_font_size_override("font_size", 20)
-	
-	var ready_style = StyleBoxFlat.new()
-	ready_style.bg_color = Color(0.2, 0.6, 0.3)
-	ready_style.border_color = Color(0.3, 0.8, 0.4)
-	ready_style.set_border_width_all(2)
-	ready_style.set_corner_radius_all(10)
-	ready_button.add_theme_stylebox_override("normal", ready_style)
-	
-	var ready_hover = StyleBoxFlat.new()
-	ready_hover.bg_color = Color(0.25, 0.7, 0.35)
-	ready_hover.border_color = Color(0.4, 0.9, 0.5)
-	ready_hover.set_border_width_all(2)
-	ready_hover.set_corner_radius_all(10)
-	ready_button.add_theme_stylebox_override("hover", ready_hover)
-	
+	UITheme.apply_hud_button(ready_button, Color(0.3, 0.8, 0.4), 20)
 	ready_button.pressed.connect(_on_ready_pressed)
 	ready_container.add_child(ready_button)
 	
 	# Waiting label
 	waiting_label = Label.new()
 	waiting_label.text = ""
-	waiting_label.add_theme_font_size_override("font_size", 16)
-	waiting_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+	UITheme.style_label(waiting_label, 16, UITheme.C_WARM_WHITE)
 	ready_container.add_child(waiting_label)
 
 

@@ -101,14 +101,7 @@ func _create_ui() -> void:
 	resolution_panel.position = Vector2(-275, -225)
 	main_container.add_child(resolution_panel)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.1, 0.95)
-	style.border_color = Color(0.4, 0.4, 0.5)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(16)
-	style.shadow_color = Color(0, 0, 0, 0.6)
-	style.shadow_size = 12
-	resolution_panel.add_theme_stylebox_override("panel", style)
+	resolution_panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
 	
 	# Content
 	content_container = VBoxContainer.new()
@@ -123,9 +116,8 @@ func _create_ui() -> void:
 func _create_header() -> void:
 	header_label = Label.new()
 	header_label.text = "⚔️ COMBAT RESOLUTION ⚔️"
-	header_label.add_theme_font_size_override("font_size", 24)
-	header_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
 	header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(header_label, 24, UITheme.C_GOLD_BRIGHT, true)
 	content_container.add_child(header_label)
 
 
@@ -157,12 +149,7 @@ func _create_roll_panel(title: String, color: Color) -> PanelContainer:
 	var panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(140, 100)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = color.darkened(0.7)
-	style.border_color = color.darkened(0.4)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(10)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.section_panel(color))
 	
 	var vbox = VBoxContainer.new()
 	vbox.name = "VBox"
@@ -171,25 +158,22 @@ func _create_roll_panel(title: String, color: Color) -> PanelContainer:
 	
 	var title_label = Label.new()
 	title_label.text = title
-	title_label.add_theme_font_size_override("font_size", 12)
-	title_label.add_theme_color_override("font_color", color)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title_label, 12, color)
 	vbox.add_child(title_label)
 	
 	var roll_label = Label.new()
 	roll_label.name = "RollLabel"
 	roll_label.text = "0"
-	roll_label.add_theme_font_size_override("font_size", 36)
-	roll_label.add_theme_color_override("font_color", Color.WHITE)
 	roll_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(roll_label, 36, Color.WHITE, true)
 	vbox.add_child(roll_label)
 	
 	var detail_label = Label.new()
 	detail_label.name = "DetailLabel"
 	detail_label.text = "(d20 + ATK)"
-	detail_label.add_theme_font_size_override("font_size", 10)
-	detail_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7))
 	detail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(detail_label, 10, UITheme.C_DIM)
 	vbox.add_child(detail_label)
 	
 	return panel

@@ -1297,96 +1297,79 @@ func _toggle_pause_menu() -> void:
 func _open_pause_menu() -> void:
 	is_paused = true
 	get_tree().paused = true
-	
+
 	pause_menu = CanvasLayer.new()
 	pause_menu.layer = 100
 	pause_menu.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(pause_menu)
-	
+
 	# Dark overlay
 	var overlay = ColorRect.new()
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.color = Color(0, 0, 0, 0.7)
+	overlay.color = UITheme.C_OVERLAY_DIM
 	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	pause_menu.add_child(overlay)
-	
+
 	# Menu panel
 	var panel = PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(350, 400)
-	panel.position = Vector2(-175, -200)
+	panel.custom_minimum_size = Vector2(380, 420)
+	panel.position = Vector2(-190, -210)
 	panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
 	pause_menu.add_child(panel)
-	
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.08, 0.08, 0.12, 0.98)
-	panel_style.set_corner_radius_all(16)
-	panel_style.set_border_width_all(2)
-	panel_style.border_color = Color(0.4, 0.6, 1.0, 0.5)
-	panel.add_theme_stylebox_override("panel", panel_style)
-	
+
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 20)
+	vbox.add_theme_constant_override("separation", 16)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(vbox)
-	
+
 	# Title
 	var title = Label.new()
-	title.text = "⏸️ PAUSED"
-	title.add_theme_font_size_override("font_size", 32)
-	title.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
+	title.text = "PAUSED"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, 32, UITheme.C_GOLD, true)
 	vbox.add_child(title)
-	
+
+	vbox.add_child(UITheme.make_separator())
+
 	# Spacer
 	var spacer = Control.new()
-	spacer.custom_minimum_size = Vector2(0, 10)
+	spacer.custom_minimum_size = Vector2(0, 4)
 	vbox.add_child(spacer)
-	
+
 	# Resume Button
-	var resume_btn = _create_pause_button("▶️  RESUME", Color(0.4, 0.7, 0.4))
+	var resume_btn = _create_pause_button("RESUME")
+	resume_btn.add_theme_color_override("font_color", UITheme.C_GOLD_BRIGHT)
 	resume_btn.pressed.connect(_close_pause_menu)
 	vbox.add_child(resume_btn)
-	
+
 	# Settings Button
-	var settings_btn = _create_pause_button("⚙️  SETTINGS", Color(0.6, 0.6, 0.8))
+	var settings_btn = _create_pause_button("SETTINGS")
 	settings_btn.pressed.connect(_open_settings_from_pause)
 	vbox.add_child(settings_btn)
-	
+
 	# Main Menu Button
-	var menu_btn = _create_pause_button("🏠  MAIN MENU", Color(0.7, 0.6, 0.4))
-	menu_btn.pressed.connect(_return_to_main_menu)
+	var menu_btn = _create_pause_button("MAIN MENU")
+	menu_btn.pressed.connect(_confirm_return_to_main_menu)
 	vbox.add_child(menu_btn)
-	
+
 	# Quit Button
-	var quit_btn = _create_pause_button("🚪  QUIT GAME", Color(0.7, 0.4, 0.4))
-	quit_btn.pressed.connect(func(): get_tree().quit())
+	var quit_btn = _create_pause_button("QUIT GAME")
+	quit_btn.pressed.connect(_confirm_quit_game)
 	vbox.add_child(quit_btn)
-	
+
 	print("Game paused")
 
 
-func _create_pause_button(text: String, color: Color) -> Button:
+
+func _create_pause_button(text: String) -> Button:
 	var button = Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(280, 50)
-	button.add_theme_font_size_override("font_size", 18)
+	button.custom_minimum_size = Vector2(UITheme.BTN_W, UITheme.BTN_H)
+	button.pivot_offset = Vector2(UITheme.BTN_W * 0.5, UITheme.BTN_H * 0.5)
 	button.process_mode = Node.PROCESS_MODE_ALWAYS
-	
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = color.darkened(0.5)
-	normal_style.set_corner_radius_all(10)
-	normal_style.set_border_width_all(2)
-	normal_style.border_color = color.darkened(0.3)
-	button.add_theme_stylebox_override("normal", normal_style)
-	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = color.darkened(0.3)
-	hover_style.set_corner_radius_all(10)
-	hover_style.set_border_width_all(2)
-	hover_style.border_color = color
-	button.add_theme_stylebox_override("hover", hover_style)
-	
+	UITheme.apply_menu_button(button, UITheme.BTN_FONT_SIZE)
 	return button
 
 
@@ -1426,6 +1409,85 @@ func _return_to_main_menu() -> void:
 		SceneManagerAutoload.change_scene("start_menu")
 	else:
 		get_tree().change_scene_to_file("res://scenes/ui/start_menu.tscn")
+
+func _confirm_return_to_main_menu() -> void:
+	_show_confirmation_dialog("MAIN MENU", "Are you sure you want to return to the main menu? Any unsaved progress will be lost.", _return_to_main_menu)
+
+func _confirm_quit_game() -> void:
+	_show_confirmation_dialog("QUIT GAME", "Are you sure you want to exit Fantasy World? Any unsaved progress will be lost.", func(): get_tree().quit())
+
+func _show_confirmation_dialog(title_text: String, message_text: String, on_confirm: Callable) -> void:
+	var confirm_layer = CanvasLayer.new()
+	confirm_layer.layer = 150
+	confirm_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(confirm_layer)
+	
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = UITheme.C_OVERLAY_DIM
+	confirm_layer.add_child(bg)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	confirm_layer.add_child(center)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480, 240)
+	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
+	center.add_child(panel)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 24)
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = title_text
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, 24, UITheme.C_GOLD, true)
+	vbox.add_child(title)
+	
+	var msg = Label.new()
+	msg.text = message_text
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(msg, 16, UITheme.C_WARM_WHITE)
+	vbox.add_child(msg)
+	
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 24)
+	vbox.add_child(btn_row)
+	
+	var yes_btn = Button.new()
+	yes_btn.text = "YES"
+	yes_btn.custom_minimum_size = Vector2(160, 50)
+	yes_btn.pivot_offset = Vector2(80, 25)
+	yes_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	UITheme.apply_menu_button(yes_btn, 18)
+	yes_btn.pressed.connect(func():
+		confirm_layer.queue_free()
+		on_confirm.call()
+	)
+	btn_row.add_child(yes_btn)
+	
+	var no_btn = Button.new()
+	no_btn.text = "NO"
+	no_btn.custom_minimum_size = Vector2(160, 50)
+	no_btn.pivot_offset = Vector2(80, 25)
+	no_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	UITheme.apply_menu_button(no_btn, 18)
+	no_btn.pressed.connect(func():
+		confirm_layer.queue_free()
+	)
+	btn_row.add_child(no_btn)
 
 
 # =============================================================================

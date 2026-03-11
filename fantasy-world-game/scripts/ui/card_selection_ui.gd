@@ -57,12 +57,31 @@ var confirm_button: Button
 # Timer
 var selection_timer: Timer
 var time_remaining: float = SELECTION_TIME
+var _is_showing_confirm: bool = false
+
 
 # State
 var selected_deck: Array[String] = ["", "", "", ""] # One slot per role
 var player_id: int = 0
 var is_visible_ui: bool = false
 var current_tween: Tween = null
+
+# =============================================================================
+# CHARACTER PREVIEW (right panel)
+# =============================================================================
+var _preview_viewport: SubViewport = null
+var _preview_model_root: Node3D = null  # Currently shown model
+var _preview_current_id: String = ""    # Card ID in the viewport
+var _preview_name_lbl: Label = null
+var _preview_role_lbl: Label = null
+var _preview_mana_lbl: Label = null
+var _preview_hp_lbl:   Label = null
+var _preview_atk_lbl:  Label = null
+var _preview_def_lbl:  Label = null
+var _preview_rng_lbl:  Label = null
+var _preview_spd_lbl:  Label = null
+var _preview_abi_lbl:  Label = null
+var _preview_empty_lbl: Label = null
 
 # =============================================================================
 # CARD DATA (organized by role)
@@ -97,7 +116,7 @@ func _create_ui() -> void:
 	# Dark overlay
 	overlay = ColorRect.new()
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.color = Color(0, 0, 0, 0.85)
+	overlay.color = UITheme.C_OVERLAY_DIM
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	root_control.add_child(overlay)
 	
@@ -110,12 +129,7 @@ func _create_ui() -> void:
 	main_panel.offset_bottom = -50
 	root_control.add_child(main_panel)
 	
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = COLOR_BG
-	panel_style.border_color = Color(0.6, 0.5, 0.3)
-	panel_style.set_border_width_all(3)
-	panel_style.set_corner_radius_all(15)
-	main_panel.add_theme_stylebox_override("panel", panel_style)
+	main_panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
 	
 	# Main layout
 	var margin = MarginContainer.new()
@@ -130,10 +144,10 @@ func _create_ui() -> void:
 	margin.add_child(main_vbox)
 	
 	_create_header(main_vbox)
-	_create_card_grid(main_vbox)
+	_create_card_and_preview_area(main_vbox)
 	_create_deck_display(main_vbox)
 	_create_footer(main_vbox)
-	
+
 	# Create timer
 	selection_timer = Timer.new()
 	selection_timer.one_shot = false
@@ -150,9 +164,8 @@ func _create_header(parent: VBoxContainer) -> void:
 	title_label = Label.new()
 	title_label.text = "⚔️ SELECT YOUR DECK ⚔️"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", 32)
-	title_label.add_theme_color_override("font_color", Color.WHITE)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UITheme.style_label(title_label, 32, UITheme.C_GOLD_BRIGHT, true)
 	header_box.add_child(title_label)
 	
 	# Spacer
@@ -164,16 +177,14 @@ func _create_header(parent: VBoxContainer) -> void:
 	timer_label = Label.new()
 	timer_label.text = "⏱ 30s"
 	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	timer_label.add_theme_font_size_override("font_size", 24)
-	timer_label.add_theme_color_override("font_color", Color.YELLOW)
+	UITheme.style_label(timer_label, 24, Color.YELLOW)
 	header_box.add_child(timer_label)
 	
 	# Instructions
 	var instructions = Label.new()
 	instructions.text = "Pick 1 card from each role. Your deck must cost ≤ 22 mana total."
 	instructions.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	instructions.add_theme_font_size_override("font_size", 16)
-	instructions.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	UITheme.style_label(instructions, 16, UITheme.C_DIM)
 	parent.add_child(instructions)
 	
 	# Info badges row
@@ -191,29 +202,284 @@ func _create_header(parent: VBoxContainer) -> void:
 	badges_row.add_child(dupe_badge)
 
 
-func _create_card_grid(parent: VBoxContainer) -> void:
+# Replaces old _create_card_grid — now places cards left + preview right
+func _create_card_and_preview_area(parent: VBoxContainer) -> void:
+	var h_split = HBoxContainer.new()
+	h_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	h_split.add_theme_constant_override("separation", 16)
+	parent.add_child(h_split)
+
+	# ── Left: scrollable card columns ──
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	parent.add_child(scroll)
-	
+	h_split.add_child(scroll)
+
 	var grid = HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 30)
+	grid.add_theme_constant_override("separation", 16)
 	grid.alignment = BoxContainer.ALIGNMENT_CENTER
 	scroll.add_child(grid)
-	
-	# Create 4 columns for 4 roles
+
 	var role_data = [
 		{"name": "GROUND TANK", "color": COLOR_GROUND_TANK, "cards": GROUND_TANK_CARDS, "icon": "🛡️"},
-		{"name": "AIR/HYBRID", "color": COLOR_AIR_HYBRID, "cards": AIR_HYBRID_CARDS, "icon": "🐲"},
-		{"name": "RANGED/MAGIC", "color": COLOR_RANGED_MAGIC, "cards": RANGED_MAGIC_CARDS, "icon": "✨"},
-		{"name": "FLEX/SUPPORT", "color": COLOR_FLEX, "cards": FLEX_CARDS, "icon": "⚡"}
+		{"name": "AIR/HYBRID",  "color": COLOR_AIR_HYBRID,  "cards": AIR_HYBRID_CARDS,  "icon": "🐲"},
+		{"name": "RANGED/MAGIC","color": COLOR_RANGED_MAGIC,"cards": RANGED_MAGIC_CARDS,"icon": "✨"},
+		{"name": "FLEX/SUPPORT","color": COLOR_FLEX,        "cards": FLEX_CARDS,        "icon": "⚡"}
 	]
-	
+
 	for i in range(4):
 		var column = _create_role_column(role_data[i], i)
 		card_columns.append(column)
 		grid.add_child(column)
+
+	# ── Right: character preview ──
+	_create_preview_panel(h_split)
+
+
+func _create_preview_panel(parent: HBoxContainer) -> void:
+	var outer = VBoxContainer.new()
+	outer.custom_minimum_size = Vector2(280, 0)
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_theme_constant_override("separation", 10)
+	parent.add_child(outer)
+
+	# ── 3D Viewport ──
+	var vp_container = SubViewportContainer.new()
+	vp_container.custom_minimum_size = Vector2(280, 300)
+	vp_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vp_container.stretch = true
+	# Panel border around the viewport
+	var vp_style = StyleBoxFlat.new()
+	vp_style.bg_color      = Color(0.0, 0.0, 0.0, 0.0)  # Fully transparent
+	vp_style.border_color  = UITheme.C_GOLD.darkened(0.4)
+	vp_style.set_border_width_all(2)
+	vp_style.set_corner_radius_all(10)
+	vp_container.add_theme_stylebox_override("panel", vp_style)
+	outer.add_child(vp_container)
+
+	_preview_viewport = SubViewport.new()
+	_preview_viewport.size = Vector2i(280, 300)
+	_preview_viewport.transparent_bg = true
+	_preview_viewport.own_world_3d = true
+	_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	vp_container.add_child(_preview_viewport)
+
+	# Camera — framed to fit a 3.5-unit tall character perfectly
+	var camera = Camera3D.new()
+	camera.name = "PreviewCamera"
+	camera.position = Vector3(0.0, 1.75, 6.5)   # exactly half of target height, pulled back to fit FOV
+	camera.rotation_degrees = Vector3(0.0, 0.0, 0.0)  # straight on
+	camera.fov = 40.0
+	_preview_viewport.add_child(camera)
+
+	# Key light (bright, front-left)
+	var key_light = DirectionalLight3D.new()
+	key_light.rotation_degrees = Vector3(-30.0, 45.0, 0.0)
+	key_light.light_energy = 1.2
+	key_light.light_color = Color(1.0, 0.95, 0.85)
+	_preview_viewport.add_child(key_light)
+
+	# Rim light (blueish, back-right)
+	var rim_light = DirectionalLight3D.new()
+	rim_light.rotation_degrees = Vector3(-45.0, -135.0, 0.0)
+	rim_light.light_energy = 0.8
+	rim_light.light_color = Color(0.5, 0.65, 1.0)
+	_preview_viewport.add_child(rim_light)
+
+	# WorldEnvironment so the background is transparent dark
+	var world_env = WorldEnvironment.new()
+	var env = Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.0, 0.0, 0.0, 0.0)  # Fully transparent
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.8, 0.8, 0.8)
+	env.ambient_light_energy = 0.5
+	world_env.environment = env
+	_preview_viewport.add_child(world_env)
+
+	# ── "Hover a card" placeholder label ──
+	_preview_empty_lbl = Label.new()
+	_preview_empty_lbl.text = "Select a card\nto preview"
+	_preview_empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_preview_empty_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	_preview_empty_lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_preview_empty_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(_preview_empty_lbl, 15, UITheme.C_DIM)
+	vp_container.add_child(_preview_empty_lbl)
+
+	# ── Stats panel (below viewport) ──
+	var stats_panel = PanelContainer.new()
+	var stats_style = StyleBoxFlat.new()
+	stats_style.bg_color     = Color(0.07, 0.06, 0.05, 0.95)
+	stats_style.border_color = UITheme.C_GOLD.darkened(0.4)
+	stats_style.set_border_width_all(2)
+	stats_style.set_corner_radius_all(10)
+	stats_style.content_margin_left   = 14
+	stats_style.content_margin_right  = 14
+	stats_style.content_margin_top    = 10
+	stats_style.content_margin_bottom = 10
+	stats_panel.add_theme_stylebox_override("panel", stats_style)
+	outer.add_child(stats_panel)
+
+	var stats_vbox = VBoxContainer.new()
+	stats_vbox.add_theme_constant_override("separation", 5)
+	stats_panel.add_child(stats_vbox)
+
+	# Name + mana row
+	var name_row = HBoxContainer.new()
+	stats_vbox.add_child(name_row)
+
+	_preview_name_lbl = Label.new()
+	_preview_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UITheme.style_label(_preview_name_lbl, 16, UITheme.C_GOLD_BRIGHT, true)
+	name_row.add_child(_preview_name_lbl)
+
+	_preview_mana_lbl = Label.new()
+	UITheme.style_label(_preview_mana_lbl, 13, Color(0.6, 0.85, 1.0))
+	name_row.add_child(_preview_mana_lbl)
+
+	_preview_role_lbl = Label.new()
+	UITheme.style_label(_preview_role_lbl, 12, UITheme.C_DIM)
+	stats_vbox.add_child(_preview_role_lbl)
+
+	stats_vbox.add_child(UITheme.make_separator())
+
+	stats_vbox.add_child(UITheme.make_separator())
+
+	# Stat horizontal layout (Row 1: HP, ATK, DEF)
+	var stat_hbox1 = HBoxContainer.new()
+	stat_hbox1.alignment = BoxContainer.ALIGNMENT_CENTER
+	stat_hbox1.add_theme_constant_override("separation", 24)
+	stats_vbox.add_child(stat_hbox1)
+
+	_preview_hp_lbl  = _make_stat_row(stat_hbox1, "❤️")
+	_preview_atk_lbl = _make_stat_row(stat_hbox1, "⚔️")
+	_preview_def_lbl = _make_stat_row(stat_hbox1, "🛡️")
+
+	# Stat horizontal layout (Row 2: Range, Speed)
+	var stat_hbox2 = HBoxContainer.new()
+	stat_hbox2.alignment = BoxContainer.ALIGNMENT_CENTER
+	stat_hbox2.add_theme_constant_override("separation", 24)
+	stats_vbox.add_child(stat_hbox2)
+
+	_preview_rng_lbl = _make_stat_row(stat_hbox2, "📍 Range")
+	_preview_spd_lbl = _make_stat_row(stat_hbox2, "🏃 Speed")
+
+	stats_vbox.add_child(UITheme.make_separator())
+
+	_preview_abi_lbl = Label.new()
+	_preview_abi_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_preview_abi_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(_preview_abi_lbl, 11, Color(1.0, 0.9, 0.5))
+	stats_vbox.add_child(_preview_abi_lbl)
+
+	# Start hidden until a card is selected
+	stats_panel.visible = false
+	# Store reference so we can toggle it
+	_preview_viewport.set_meta("stats_panel", stats_panel)
+
+
+## Creates an icon + value horizontal container. Returns the value label.
+func _make_stat_row(parent: Control, icon: String) -> Label:
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 4)
+	parent.add_child(hbox)
+
+	var icon_lbl = Label.new()
+	icon_lbl.text = icon
+	UITheme.style_label(icon_lbl, 13, UITheme.C_DIM)
+	hbox.add_child(icon_lbl)
+
+	var val_lbl = Label.new()
+	UITheme.style_label(val_lbl, 14, UITheme.C_WARM_WHITE, true)
+	hbox.add_child(val_lbl)
+	return val_lbl
+
+
+## Load / swap the 3D model in the SubViewport and fill the stats panel.
+func _show_character_preview(card_id: String, role_color: Color) -> void:
+	if _preview_viewport == null:
+		return
+
+	# Avoid reloading the same model
+	if _preview_current_id == card_id:
+		return
+	_preview_current_id = card_id
+
+	# Remove old model
+	if _preview_model_root and is_instance_valid(_preview_model_root):
+		_preview_model_root.queue_free()
+		_preview_model_root = null
+
+	# Load + add new model
+	var model = CharacterModelLoader.load_character_model(card_id)
+	if model:
+		# Normalise scale so every character looks good in the small viewport.
+		# Target: the model's world-space height fits into ~3 units visible by camera.
+		var raw_scale = CharacterModelLoader.MODEL_SCALES.get(card_id, Vector3.ONE)
+		var world_h   = raw_scale.y          # approximate height in world units
+		var target_h  = 3.5                  # desired height in viewport units
+		var uniform   = target_h / max(world_h, 0.01)
+		model.scale    = raw_scale * uniform
+		model.position = Vector3(0.0, CharacterModelLoader.MODEL_Y_OFFSETS.get(card_id, 0.0) * uniform, 0.0)
+		# Front-left facing: base rotation + 60 degree anticlockwise turn
+		var base_rot = CharacterModelLoader.MODEL_ROTATIONS.get(card_id, 0.0)
+		model.rotation_degrees.y = base_rot + 60.0  # 60° extra = anticlockwise for a better quarter view
+		_preview_viewport.add_child(model)
+		_preview_model_root = model
+		_preview_empty_lbl.visible = false
+	else:
+		_preview_empty_lbl.visible = true
+
+	# Fill stats — CardData uses "name" and "mana", not "display_name" and "mana_cost"
+	var card_data    = CardData.get_troop(card_id)
+	var display_name = card_data.get("name", card_id.replace("_", " ").capitalize())
+	var mana_cost    = card_data.get("mana", 0)
+	var hp           = card_data.get("hp", 0)
+	var atk          = card_data.get("atk", 0)
+	var def_val      = card_data.get("def", 0)
+	var rng          = card_data.get("range", 1)
+	var spd          = card_data.get("speed", 2)
+	var ability      = card_data.get("ability_description", "")
+	var role_enum    = card_data.get("role", -1)
+
+	# Convert Role enum to readable string
+	var role_text = ""
+	match role_enum:
+		CardData.Role.GROUND_TANK:  role_text = "Ground Tank"
+		CardData.Role.AIR_HYBRID:   role_text = "Air / Hybrid"
+		CardData.Role.RANGED_MAGIC: role_text = "Ranged / Magic"
+		CardData.Role.FLEX_SUPPORT: role_text = "Flex / Support"
+
+	_preview_name_lbl.text = display_name
+	_preview_name_lbl.add_theme_color_override("font_color", role_color)
+	_preview_mana_lbl.text  = "💎 %d" % mana_cost
+	_preview_role_lbl.text  = role_text
+	_preview_hp_lbl.text    = str(hp)
+	_preview_atk_lbl.text   = str(atk)
+	_preview_def_lbl.text   = str(def_val)
+	_preview_rng_lbl.text   = str(rng)
+	_preview_spd_lbl.text   = str(spd)
+	_preview_abi_lbl.text   = ability if ability != "" else "—"
+
+	# Show stats panel
+	var stats_panel = _preview_viewport.get_meta("stats_panel", null) as PanelContainer
+	if stats_panel:
+		stats_panel.visible = true
+
+
+## Clear the 3D preview (called when a card is deselected)
+func _clear_preview() -> void:
+	if _preview_model_root and is_instance_valid(_preview_model_root):
+		_preview_model_root.queue_free()
+		_preview_model_root = null
+	_preview_current_id = ""
+	if _preview_empty_lbl:
+		_preview_empty_lbl.visible = true
+	var stats_panel = _preview_viewport.get_meta("stats_panel", null) as PanelContainer if _preview_viewport else null
+	if stats_panel:
+		stats_panel.visible = false
 
 
 func _create_role_column(role_info: Dictionary, slot_index: int) -> VBoxContainer:
@@ -234,8 +500,7 @@ func _create_role_column(role_info: Dictionary, slot_index: int) -> VBoxContaine
 	var header_label = Label.new()
 	header_label.text = "%s %s" % [role_info["icon"], role_info["name"]]
 	header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header_label.add_theme_font_size_override("font_size", 18)
-	header_label.add_theme_color_override("font_color", role_info["color"])
+	UITheme.style_label(header_label, 18, role_info["color"], true)
 	var header_margin = MarginContainer.new()
 	header_margin.add_theme_constant_override("margin_top", 8)
 	header_margin.add_theme_constant_override("margin_bottom", 8)
@@ -302,35 +567,31 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 	# Name label
 	var name_label = Label.new()
 	name_label.text = display_name
-	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", role_color)
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(name_label, 14, role_color, true)
 	stats_vbox.add_child(name_label)
 	
 	# Mana cost
 	var mana_text = Label.new()
 	mana_text.text = "💎 %d Mana" % mana_cost
-	mana_text.add_theme_font_size_override("font_size", 11)
-	mana_text.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
 	mana_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(mana_text, 11, Color(0.6, 0.8, 1.0))
 	stats_vbox.add_child(mana_text)
 	
 	# Stats line
 	var stats_label = Label.new()
 	stats_label.text = "❤️%d ⚔️%d 🛡️%d 📍%d 🏃%d" % [hp, atk, def, range_val, speed]
-	stats_label.add_theme_font_size_override("font_size", 10)
-	stats_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 	stats_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(stats_label, 10, Color(0.8, 0.8, 0.8))
 	stats_vbox.add_child(stats_label)
 	
 	# Ability text (if any)
 	if ability_text != "":
 		var ability_label = Label.new()
 		ability_label.text = "✨ %s" % ability_text
-		ability_label.add_theme_font_size_override("font_size", 9)
-		ability_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
 		ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ability_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		UITheme.style_label(ability_label, 9, Color(1.0, 0.9, 0.5))
 		stats_vbox.add_child(ability_label)
 	
 	# Style
@@ -369,8 +630,7 @@ func _create_deck_display(parent: VBoxContainer) -> void:
 	
 	var deck_label = Label.new()
 	deck_label.text = "YOUR DECK: "
-	deck_label.add_theme_font_size_override("font_size", 18)
-	deck_label.add_theme_color_override("font_color", Color.WHITE)
+	UITheme.style_label(deck_label, 18, UITheme.C_WARM_WHITE, true)
 	deck_container.add_child(deck_label)
 	
 	var role_colors = [COLOR_GROUND_TANK, COLOR_AIR_HYBRID, COLOR_RANGED_MAGIC, COLOR_FLEX]
@@ -390,8 +650,7 @@ func _create_deck_display(parent: VBoxContainer) -> void:
 		slot_label.text = "Empty"
 		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		slot_label.add_theme_font_size_override("font_size", 14)
-		slot_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		UITheme.style_label(slot_label, 14, UITheme.C_DIM)
 		
 		var slot_margin = MarginContainer.new()
 		slot_margin.add_theme_constant_override("margin_left", 10)
@@ -406,8 +665,7 @@ func _create_deck_display(parent: VBoxContainer) -> void:
 	# Mana total
 	mana_label = Label.new()
 	mana_label.text = "  💎 0 / 22 Mana"
-	mana_label.add_theme_font_size_override("font_size", 18)
-	mana_label.add_theme_color_override("font_color", COLOR_VALID)
+	UITheme.style_label(mana_label, 18, COLOR_VALID)
 	deck_container.add_child(mana_label)
 
 
@@ -421,14 +679,7 @@ func _create_footer(parent: VBoxContainer) -> void:
 	var cancel_button = Button.new()
 	cancel_button.text = "❌ CANCEL"
 	cancel_button.custom_minimum_size = Vector2(150, 50)
-	cancel_button.add_theme_font_size_override("font_size", 18)
-	
-	var cancel_style = StyleBoxFlat.new()
-	cancel_style.bg_color = COLOR_INVALID.darkened(0.5)
-	cancel_style.border_color = COLOR_INVALID
-	cancel_style.set_border_width_all(2)
-	cancel_style.set_corner_radius_all(8)
-	cancel_button.add_theme_stylebox_override("normal", cancel_style)
+	UITheme.apply_hud_button(cancel_button, COLOR_INVALID, 18)
 	cancel_button.pressed.connect(_on_cancel_pressed)
 	footer.add_child(cancel_button)
 	
@@ -436,22 +687,8 @@ func _create_footer(parent: VBoxContainer) -> void:
 	confirm_button = Button.new()
 	confirm_button.text = "✅ CONFIRM DECK"
 	confirm_button.custom_minimum_size = Vector2(200, 50)
-	confirm_button.add_theme_font_size_override("font_size", 18)
 	confirm_button.disabled = true
-	
-	var confirm_style = StyleBoxFlat.new()
-	confirm_style.bg_color = COLOR_VALID.darkened(0.5)
-	confirm_style.border_color = COLOR_VALID
-	confirm_style.set_border_width_all(2)
-	confirm_style.set_corner_radius_all(8)
-	confirm_button.add_theme_stylebox_override("normal", confirm_style)
-	
-	var confirm_disabled = StyleBoxFlat.new()
-	confirm_disabled.bg_color = Color(0.2, 0.2, 0.2)
-	confirm_disabled.border_color = Color(0.4, 0.4, 0.4)
-	confirm_disabled.set_border_width_all(2)
-	confirm_disabled.set_corner_radius_all(8)
-	confirm_button.add_theme_stylebox_override("disabled", confirm_disabled)
+	UITheme.apply_hud_button(confirm_button, COLOR_VALID, 18)
 	
 	confirm_button.pressed.connect(_on_confirm_pressed)
 	footer.add_child(confirm_button)
@@ -459,21 +696,11 @@ func _create_footer(parent: VBoxContainer) -> void:
 
 func _create_info_badge(text: String, color: Color) -> PanelContainer:
 	var badge = PanelContainer.new()
-	var badge_style = StyleBoxFlat.new()
-	badge_style.bg_color = color.darkened(0.7)
-	badge_style.border_color = color.darkened(0.3)
-	badge_style.set_border_width_all(1)
-	badge_style.set_corner_radius_all(6)
-	badge_style.content_margin_left = 10
-	badge_style.content_margin_right = 10
-	badge_style.content_margin_top = 4
-	badge_style.content_margin_bottom = 4
-	badge.add_theme_stylebox_override("panel", badge_style)
+	badge.add_theme_stylebox_override("panel", UITheme.section_panel(color))
 	
 	var label = Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", color)
+	UITheme.style_label(label, 12, color)
 	badge.add_child(label)
 	
 	return badge
@@ -497,6 +724,9 @@ func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
 	player_id = for_player_id
 	selected_deck = ["", "", "", ""]
 	is_visible_ui = true
+
+	# Clear any previous card preview from the last player's selection
+	_clear_preview()
 	
 	# Update title to show which player is selecting
 	var player_color = Color(0.2, 0.5, 1.0) if player_id == 0 else Color(1.0, 0.3, 0.2)
@@ -536,6 +766,7 @@ func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
 ## Hide the card selection UI
 func hide_selection() -> void:
 	is_visible_ui = false
+	_clear_preview()  # Free the 3D model from the SubViewport
 	
 	if selection_timer:
 		selection_timer.stop()
@@ -606,9 +837,13 @@ func _on_card_selected(card_id: String, slot_index: int) -> void:
 	if selected_deck[slot_index] == card_id:
 		# Deselect
 		selected_deck[slot_index] = ""
+		_clear_preview()
 	else:
 		# Select (replacing any previous selection in this slot)
 		selected_deck[slot_index] = card_id
+		# Show 3D preview for this card
+		var role_colors = [COLOR_GROUND_TANK, COLOR_AIR_HYBRID, COLOR_RANGED_MAGIC, COLOR_FLEX]
+		_show_character_preview(card_id, role_colors[slot_index])
 	
 	_update_deck_display()
 	_update_card_highlights()
@@ -742,8 +977,84 @@ func _on_confirm_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
-	hide_selection()
-	selection_canceled.emit()
+	_show_cancel_confirm()
+
+func _show_cancel_confirm() -> void:
+	var confirm_layer = CanvasLayer.new()
+	confirm_layer.layer = 150
+	
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = UITheme.C_OVERLAY_DIM
+	confirm_layer.add_child(bg)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	confirm_layer.add_child(center)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480, 240)
+	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
+	center.add_child(panel)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 24)
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "CANCEL DECK SELECTION"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, 24, UITheme.C_GOLD, true)
+	vbox.add_child(title)
+	
+	var msg = Label.new()
+	msg.text = "Are you sure you want to cancel deck selection? You will return to the main menu."
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(msg, 16, UITheme.C_WARM_WHITE)
+	vbox.add_child(msg)
+	
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 24)
+	vbox.add_child(btn_row)
+	
+	var yes_btn = Button.new()
+	yes_btn.text = "YES"
+	yes_btn.custom_minimum_size = Vector2(160, 50)
+	yes_btn.pivot_offset = Vector2(80, 25)
+	yes_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	UITheme.apply_menu_button(yes_btn, 18)
+	yes_btn.pressed.connect(func():
+		_is_showing_confirm = false
+		confirm_layer.queue_free()
+		hide_selection()
+		selection_canceled.emit()
+	)
+	btn_row.add_child(yes_btn)
+	
+	var no_btn = Button.new()
+	no_btn.text = "NO"
+	no_btn.custom_minimum_size = Vector2(160, 50)
+	no_btn.pivot_offset = Vector2(80, 25)
+	no_btn.process_mode = Node.PROCESS_MODE_ALWAYS
+	UITheme.apply_menu_button(no_btn, 18)
+	no_btn.pressed.connect(func():
+		_is_showing_confirm = false
+		confirm_layer.queue_free()
+	)
+	btn_row.add_child(no_btn)
+	
+	_is_showing_confirm = true
+	add_child(confirm_layer)
 
 
 # =============================================================================
@@ -751,7 +1062,7 @@ func _on_cancel_pressed() -> void:
 # =============================================================================
 
 func _input(event: InputEvent) -> void:
-	if not is_visible_ui:
+	if not is_visible_ui or _is_showing_confirm:
 		return
 	
 	if event is InputEventKey and event.pressed:

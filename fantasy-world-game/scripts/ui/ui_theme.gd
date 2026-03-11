@@ -328,3 +328,105 @@ static func make_separator() -> HSeparator:
 	sep.add_theme_stylebox_override("separator", st)
 	sep.add_theme_constant_override("separation", 2)
 	return sep
+
+
+# =============================================================================
+# IN-GAME HUD / OVERLAY STYLE HELPERS
+# =============================================================================
+
+## Colours used by in-game HUD elements (darker, less opaque than menu panels)
+const C_HUD_BG      = Color(0.06, 0.05, 0.04, 0.92)
+const C_HUD_BORDER  = Color(0.40, 0.34, 0.24, 0.80)
+const C_OVERLAY_DIM = Color(0.00, 0.00, 0.00, 0.75)
+
+## Semi-transparent panel for in-game HUD elements (top bar, side panels, etc.)
+static func hud_panel(border_col: Color = C_HUD_BORDER) -> StyleBoxFlat:
+	var s = StyleBoxFlat.new()
+	s.bg_color     = C_HUD_BG
+	s.border_color = border_col
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(8)
+	s.content_margin_left   = 12
+	s.content_margin_right  = 12
+	s.content_margin_top    = 8
+	s.content_margin_bottom = 8
+	return s
+
+## Full-screen overlay panel for dialogs/combat (centred, with shadow)
+static func overlay_panel(accent: Color = C_GOLD) -> StyleBoxFlat:
+	var s = StyleBoxFlat.new()
+	s.bg_color     = Color(0.05, 0.04, 0.03, 0.96)
+	s.border_color = accent.darkened(0.3)
+	s.set_border_width_all(3)
+	s.set_corner_radius_all(16)
+	s.shadow_color = Color(0, 0, 0, 0.55)
+	s.shadow_size  = 12
+	s.content_margin_left   = 20
+	s.content_margin_right  = 20
+	s.content_margin_top    = 16
+	s.content_margin_bottom = 16
+	return s
+
+## Section panel inside an overlay (attacker panel, defender panel, etc.)
+static func section_panel(accent: Color) -> StyleBoxFlat:
+	var s = StyleBoxFlat.new()
+	s.bg_color     = accent.darkened(0.75)
+	s.border_color = accent.darkened(0.35)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(10)
+	s.content_margin_left   = 10
+	s.content_margin_right  = 10
+	s.content_margin_top    = 8
+	s.content_margin_bottom = 8
+	return s
+
+## Compact button for in-game HUD actions (move, attack, mine, etc.)
+static func hud_action_button(_accent: Color) -> void:
+	# caller should pass the button; this is kept for symmetry
+	pass  # Use apply_hud_button() instead
+
+## Apply HUD action button styling (compact, dark, accent-bordered)
+static func apply_hud_button(btn: Button, accent: Color, size: int = 13) -> void:
+	var normal_s = StyleBoxFlat.new()
+	normal_s.bg_color     = Color(0.10, 0.09, 0.08, 0.90)
+	normal_s.border_color = accent.darkened(0.40)
+	normal_s.set_border_width_all(1)
+	normal_s.set_corner_radius_all(6)
+	normal_s.content_margin_left   = 8
+	normal_s.content_margin_right  = 8
+	normal_s.content_margin_top    = 6
+	normal_s.content_margin_bottom = 6
+	btn.add_theme_stylebox_override("normal", normal_s)
+
+	var hover_s = normal_s.duplicate()
+	hover_s.bg_color     = accent.darkened(0.60)
+	hover_s.border_color = accent
+	hover_s.set_border_width_all(2)
+	btn.add_theme_stylebox_override("hover", hover_s)
+
+	var pressed_s = normal_s.duplicate()
+	pressed_s.bg_color     = accent.darkened(0.50)
+	pressed_s.border_color = C_GOLD
+	pressed_s.set_border_width_all(2)
+	btn.add_theme_stylebox_override("pressed", pressed_s)
+
+	var disabled_s = normal_s.duplicate()
+	disabled_s.bg_color     = Color(0.08, 0.07, 0.06, 0.55)
+	disabled_s.border_color = Color(0.20, 0.18, 0.16, 0.40)
+	disabled_s.set_border_width_all(1)
+	btn.add_theme_stylebox_override("disabled", disabled_s)
+
+	style_button_text(btn, size)
+
+## Apply Cinzel font and colour to any Label — convenience for in-game use
+static func style_hud_label(lbl: Label, size: int, col: Color = C_WARM_WHITE) -> void:
+	style_label(lbl, size, col)
+
+## Dark background ColorRect for full-screen overlays (combat, dice, etc.)
+static func make_overlay_bg() -> ColorRect:
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = C_OVERLAY_DIM
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	return bg
+

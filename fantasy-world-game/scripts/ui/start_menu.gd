@@ -7,8 +7,10 @@ class_name StartMenu
 extends Control
 
 # Preload sub-screens
-const SettingsMenuScene = preload("res://scripts/ui/settings_menu.gd")
-const LobbyUIScene      = preload("res://scripts/ui/lobby_ui.gd")
+const SettingsMenuScene      = preload("res://scripts/ui/settings_menu.gd")
+const LobbyUIScene           = preload("res://scripts/ui/lobby_ui.gd")
+const PlayModeMenuScene      = preload("res://scripts/ui/menus/play_mode_menu.gd")
+const CreateLocalMatchScene  = preload("res://scripts/ui/menus/create_local_match_menu.gd")
 
 # =============================================================================
 # SIGNALS
@@ -178,8 +180,8 @@ func _build_buttons(parent: Control) -> void:
 	parent.add_child(_btn_container)
 
 	# 7 buttons — order and labels match the UI template exactly
-	_make_btn("PLAY GAME",          true).pressed.connect(_on_play_pressed)
-	_make_btn("ONLINE MULTIPLAYER", false).pressed.connect(_on_multiplayer_pressed)
+	_make_btn("PLAY",               true).pressed.connect(_on_play_pressed)
+	_make_btn("MULTIPLAYER",        false).pressed.connect(_on_multiplayer_pressed)
 	_make_btn("THE ARCHIVES",       false).pressed.connect(_on_archives_pressed)
 	_make_btn("TUTORIAL",           false).pressed.connect(_on_tutorial_pressed)
 	_make_btn("SETTINGS",           false).pressed.connect(_on_settings_pressed)
@@ -373,7 +375,7 @@ func _get_canvas_root(layer: CanvasLayer) -> Control:
 
 func _on_play_pressed() -> void:
 	play_pressed.emit()
-	_play_transition_to_game()
+	_open_play_mode_screen()
 
 func _on_multiplayer_pressed() -> void:
 	multiplayer_pressed.emit()
@@ -430,6 +432,106 @@ func _on_lobby_cancelled() -> void:
 
 func _on_mp_game_starting() -> void:
 	_lobby_ui = null
+
+
+# =============================================================================
+# PLAY MODE FLOW  (Play → Mode Select → Local Match Setup → Game)
+# =============================================================================
+
+func _open_play_mode_screen() -> void:
+	var mode_menu = PlayModeMenuScene.new()
+	mode_menu.quick_play_pressed.connect(_on_quick_play_pressed)
+	mode_menu.custom_match_pressed.connect(_on_custom_match_pressed)
+	mode_menu.achievements_pressed.connect(_on_achievements_pressed)
+	mode_menu.back_pressed.connect(_close_sub_screen)
+	_open_sub_screen(mode_menu)
+
+
+func _on_quick_play_pressed() -> void:
+	# Skip config — start game with default settings
+	if _sub_screen:
+		_sub_screen.queue_free()
+		_sub_screen = null
+	var default_settings = {
+		"custom_mode": false,
+		"environment": 0,
+		"terrain_height": true,
+		"turn_timer": 60,
+		"combat_mode": 0,
+		"combat_speed": 1.0,
+		"starting_gold": 100,
+		"npc_activity": true,
+		"bounty_system": true,
+	}
+	print("[StartMenu] Quick Play with defaults: %s" % str(default_settings))
+	_play_transition_to_game()
+
+
+func _on_custom_match_pressed() -> void:
+	# Close the play mode screen and open the custom match config
+	if _sub_screen:
+		_sub_screen.queue_free()
+		_sub_screen = null
+	var match_menu = CreateLocalMatchScene.new()
+	match_menu.start_match.connect(_on_local_match_start)
+	match_menu.back_pressed.connect(_on_local_match_back)
+	_sub_screen = match_menu
+	match_menu.layer = 20
+	add_child(match_menu)
+	var ctrl = _get_canvas_root(match_menu)
+	if ctrl:
+		ctrl.modulate.a = 0.0
+		var tw = create_tween()
+		tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(ctrl, "modulate:a", 1.0, 0.35)
+
+
+func _on_achievements_pressed() -> void:
+	# Close play mode screen and show achievements
+	if _sub_screen:
+		_sub_screen.queue_free()
+		_sub_screen = null
+	_open_achievements_screen()
+
+
+func _open_achievements_screen() -> void:
+	var layer = CanvasLayer.new()
+	var root  = _make_fullscreen_root(layer)
+	var content = _make_page_content(root, "ACHIEVEMENTS", 600, 480)
+
+	var desc = Label.new()
+	desc.text = (
+		"Your accomplishments and milestones in Fantasy World!\n\n" +
+		"Achievements will track:\n\n" +
+		"  \u2022 Combat milestones (First Blood, 100 Kills, etc.)\n" +
+		"  \u2022 Strategic mastery (Win without losing a troop, etc.)\n" +
+		"  \u2022 Exploration rewards (Visit all biomes, etc.)\n" +
+		"  \u2022 Collection goals (Use every troop, etc.)\n" +
+		"  \u2022 Challenge runs (Win in under 10 turns, etc.)")
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(desc, 16, UITheme.C_WARM_WHITE)
+	content.add_child(desc)
+
+	_add_back_button(root, func():
+		if _sub_screen:
+			_sub_screen.queue_free()
+			_sub_screen = null
+		_open_play_mode_screen()
+	)
+	_open_sub_screen(layer)
+
+
+func _on_local_match_back() -> void:
+	# Go back from custom match config to play mode selection
+	if _sub_screen:
+		_sub_screen.queue_free()
+		_sub_screen = null
+	_open_play_mode_screen()
+
+
+func _on_local_match_start(settings: Dictionary) -> void:
+	print("[StartMenu] Starting custom match with settings: %s" % str(settings))
+	# TODO: Pass settings to the game scene for configuration
 	_play_transition_to_game()
 
 

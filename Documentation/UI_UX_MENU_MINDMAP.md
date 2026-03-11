@@ -45,8 +45,8 @@ flowchart LR
     MainMenu --> MenuLayout["Layout: Title (top-center) + Centered Button Stack"]
     MenuLayout --> MenuTitle["FANTASY WORLD\nTHE BOARD GAME\n(Logo / Display Font, top-center)"]
     MenuLayout --> MenuButtons["7 Primary Buttons (stacked, trapezoidal style)"]
-    MenuButtons --> BtnPlay["PLAY GAME"]
-    MenuButtons --> BtnOnlineMP["ONLINE MULTIPLAYER"]
+    MenuButtons --> BtnPlay["PLAY"]
+    MenuButtons --> BtnMP["MULTIPLAYER"]
     MenuButtons --> BtnArchives["THE ARCHIVES"]
     MenuButtons --> BtnTutorial["TUTORIAL"]
     MenuButtons --> BtnSettings["SETTINGS"]
@@ -65,39 +65,49 @@ flowchart LR
     WelcomeModal --> QuickSettings["Quick Settings (Volume, Display)"]
 
     %% ========================================================================
-    %% PLAY GAME — LOCAL MATCH FLOW
+    %% PLAY — MODE SELECTION
     %% ========================================================================
-    MainMenu --> PlayGame["PLAY GAME"]
-    PlayGame --> CreateLocalMatch["Create Local Match"]
-    PlayGame --> LoadGame["Load Saved Game 🔮"]
+    MainMenu --> PlayMenu["PLAY"]
+    PlayMenu --> QuickPlay["QUICK PLAY\n(Default rules, random map)"]
+    PlayMenu --> CustomMatch["CUSTOM MATCH\n(Open match config)"]
+    PlayMenu --> VSBot["VS BOT / AI 🔮"]
+    PlayMenu --> StoryMode["STORY MODE 🔮"]
+    PlayMenu --> Achievements["ACHIEVEMENTS\n(Track milestones)"]
+    PlayMenu --> LoadGame["Load Saved Game 🔮"]
     LoadGame --> SaveSlotList["Save Slot List"]
     SaveSlotList --> SelectSlot["Select Save → Resume Match"]
 
-    %% --- Create Local Match Screen ---
-    CreateLocalMatch --> CLM_Layout["Layout: Logo + 'CREATE LOCAL MATCH' Header"]
-    CLM_Layout --> CLM_ModeTabs["Mode Tabs: [ DEFAULT MODE ] / [ CUSTOM MODE ]"]
-    CLM_ModeTabs --> CLM_Default["Default Mode: Preset Values (no sliders shown)"]
-    CLM_ModeTabs --> CLM_Custom["Custom Mode: 3 Panels Side-By-Side"]
+    QuickPlay --> QP_DeckSelect["Deck Selection → Dice Roll → Game"]
 
-    CLM_Custom --> CLM_Panel_World["Panel 1 — WORLD & ATMOSPHERE"]
-    CLM_Panel_World --> CLM_Env["Environment: Dropdown (Battlefield Tent / Cozy Tavern / ...)"]
-    CLM_Panel_World --> CLM_Terrain["Terrain Height: Slider + Die Button (Bumpy / Flat / ...)"]
-    CLM_Panel_World --> CLM_Seed["World Seed: Text Input + Randomise Die Button"]
+    %% --- Custom Match Config Screen ---
+    CustomMatch --> CM_Layout["Layout: Logo + 'CUSTOM MATCH' Header"]
 
-    CLM_Custom --> CLM_Panel_Rules["Panel 2 — ON THE RULEBOOK"]
-    CLM_Panel_Rules --> CLM_Timer["Turn Timer: Slider (1m / 2m / 3m / 5m) + Die"]
-    CLM_Panel_Rules --> CLM_Combat["Combat Complexity: Slider (Standard / Simplified) + Die"]
-    CLM_Panel_Rules --> CLM_StartRes["Starting Resources: Gold Slider (50–300g) + Die"]
+    CM_Layout --> CM_Panel_World["Panel 1 — WORLD & ATMOSPHERE"]
+    CM_Panel_World --> CM_Env["Environment: Dropdown (Random / Cozy Tavern / ...)"]
+    CM_Panel_World --> CM_Terrain["Terrain Height Variation: Toggle"]
 
-    CLM_Custom --> CLM_Panel_Adv["Panel 3 — ADVANCED MECHANICS"]
-    CLM_Panel_Adv --> CLM_NPC["NPC Activity: Slider (0–25%) + Die"]
-    CLM_Panel_Adv --> CLM_Bounty["Bounty System: Toggle (On / Off) + Die"]
+    CM_Layout --> CM_Panel_Rules["Panel 2 — ON THE RULEBOOK"]
+    CM_Panel_Rules --> CM_Timer["Turn Timer: Dropdown (30s / 60s / 90s / 120s / No Timer)"]
+    CM_Panel_Rules --> CM_Combat["Combat Complexity: Dropdown (Enhanced / Simple)"]
+    CM_Panel_Rules --> CM_Speed["Combat Speed: Dropdown (0.5× / 1× / 1.5× / 2×)"]
+    CM_Panel_Rules --> CM_StartRes["Starting Gold: Dropdown (50 / 100 / 200 / 500)"]
 
-    CLM_Layout --> CLM_StartBtn["START MATCH Button — Bottom Center"]
-    CLM_Layout --> CLM_Back["BACK Button — Bottom Left"]
+    CM_Layout --> CM_Panel_Adv["Panel 3 — ADVANCED MECHANICS"]
+    CM_Panel_Adv --> CM_NPC["NPC Encounters: Toggle"]
+    CM_Panel_Adv --> CM_Bounty["Aggression Bounty System: Toggle"]
 
-    %% Match Prep (same for both local and hosted multiplayer)
-    CreateLocalMatch --> MatchSetup["Match Setup"]
+    CM_Layout --> CM_StartBtn["START MATCH Button — Bottom Center"]
+    CM_Layout --> CM_Back["BACK Button — Bottom Left"]
+
+    %% --- Achievements Screen (Coming Soon) ---
+    Achievements --> AchieveCombat["Combat Milestones"]
+    Achievements --> AchieveStrategy["Strategic Mastery"]
+    Achievements --> AchieveExplore["Exploration Rewards"]
+    Achievements --> AchieveCollect["Collection Goals"]
+    Achievements --> AchieveChallenge["Challenge Runs"]
+
+    %% Match Prep (same for both local and hosted/online multiplayer)
+    CustomMatch --> MatchSetup["Match Setup"]
     MatchSetup --> DeckBuilding["Deck Selection Phase"]
     DeckBuilding --> DeckTimer["30-Second Selection Timer"]
     DeckBuilding --> SimultaneousPick["Simultaneous Selection (Both Players)"]
@@ -144,7 +154,7 @@ flowchart LR
     %% ========================================================================
     %% IN-GAME VIEW — HUD
     %% ========================================================================
-    CreateLocalMatch --> InGamePlay["In-Game View"]
+    CustomMatch --> InGamePlay["In-Game View"]
     InGamePlay --> HUD["Heads-Up Display"]
     HUD --> BottomBar["Bottom Bar - 4 Troop Cards"]
     BottomBar --> CardArtThumb["Card Art Thumbnail"]
@@ -440,11 +450,11 @@ flowchart LR
     %% ========================================================================
     %% ONLINE MULTIPLAYER
     %% ========================================================================
-    MainMenu --> OnlineMultiplayer["ONLINE MULTIPLAYER"]
+    MainMenu --> OnlineMultiplayer["MULTIPLAYER"]
 
     %% --- Online Multiplayer Lobby Screen ---
-    OnlineMultiplayer --> MP_Lobby["Screen: ONLINE MULTIPLAYER LOBBY"]
-    MP_Lobby --> MP_Layout["Layout: Logo + 'ONLINE MULTIPLAYER LOBBY' Header"]
+    OnlineMultiplayer --> MP_Lobby["Screen: MULTIPLAYER"]
+    MP_Lobby --> MP_Layout["Layout: Logo + 'MULTIPLAYER' Header"]
     MP_Layout --> MP_LeftPanel["Left Panel — JOIN GAME"]
     MP_LeftPanel --> MP_RoomCode["Enter Room Code: [ _ _ _ - _ _ _ ]"]
     MP_LeftPanel --> MP_JoinBtn["JOIN Button"]
@@ -596,19 +606,19 @@ flowchart LR
     Tab_Controls --> Ctrl_ConfirmEnd["CONFIRM BEFORE ENDING TURN: Toggle"]
     Tab_Controls --> Ctrl_Keybinds["KEYBINDING CUSTOMIZATION: List ⏳"]
 
-    Tab_Gameplay --> GP_Timer["TURN TIMER: 1 / 2 / 3 / 5 min"]
     Tab_Gameplay --> GP_AutoEnd["AUTO-END TURN WHEN NO ACTIONS: Toggle"]
     Tab_Gameplay --> GP_DmgNums["SHOW DAMAGE NUMBERS: Toggle"]
     Tab_Gameplay --> GP_CombatAnims["SHOW COMBAT ANIMATIONS: Toggle"]
-    Tab_Gameplay --> GP_CombatSpeed["COMBAT SPEED: Slider (0.5x – 2x)"]
     Tab_Gameplay --> GP_Cutscene["CUTSCENE TOGGLE: On / Off"]
     Tab_Gameplay --> GP_CutsceneSpd["CUTSCENE SPEED: Full / Fast / Skip"]
     Tab_Gameplay --> GP_BiomeTip["SHOW BIOME TOOLTIPS: Toggle"]
     Tab_Gameplay --> GP_Hints["SHOW CONTEXTUAL HINTS: Toggle"]
     Tab_Gameplay --> GP_AI["AI LEVEL: Easy / Normal / Hard"]
-    Tab_Gameplay --> GP_CombatMode["COMBAT MODE: Standard / Simplified"]
     Tab_Gameplay --> GP_SmoothZoom["SMOOTH SCROLLING ZOOM: Toggle"]
     Tab_Gameplay --> GP_AutoSave["AUTO-SAVE FREQUENCY 🔮"]
+    %% NOTE: Turn Timer, Combat Speed, and Combat Mode are now
+    %% match-level settings configured in the Custom Match screen,
+    %% not personal preferences in Settings.
 
     Settings_Layout --> Settings_Apply["APPLY CHANGES Button — Bottom Center"]
     Settings_Layout --> Settings_Back["BACK Button — Bottom Left"]

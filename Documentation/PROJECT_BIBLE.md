@@ -1618,6 +1618,7 @@ These are the **most impactful** sounds — prioritize these first:
 | **Save/Load System** | JSON format, `user://saves/`, auto-save every 5 turns | Medium | 🟢 Low |
 | **Additional Environments** | Castle throne room, forest clearing, mountain fortress, cave, battlefield tent | Low each | 🟢 Low |
 | **Mobile Port** | Touch controls and mobile optimization | Very High | 🟢 Low |
+| **Ranked Competitive System** | Ranked matchmaking with persistent character progression (see Ideas section below) | Very High | 🟢 Low |
 
 ### Out of Scope for MVP
 
@@ -1625,6 +1626,43 @@ These are the **most impactful** sounds — prioritize these first:
 - Gambling/mini-games
 - Treasure chests
 - Card shop system
+
+### 💡 Ideas & Long-Term Vision
+
+#### Ranked Competitive System with Upgradable Characters 🔮🔮🔮
+
+> **Timeline**: Very far future — requires online multiplayer to be rock solid, substantial player base, and balance tuning from many matches.
+
+**Concept**: A ranked matchmaking ladder where players compete in online 1v1 matches to climb tiers, earning persistent cross-match rewards that permanently upgrade their characters.
+
+**Rank Tiers** (example):
+| Tier | Name | Icon |
+|------|------|------|
+| 1 | Peasant | 🪵 |
+| 2 | Squire | 🗡️ |
+| 3 | Knight | ⚔️ |
+| 4 | Baron | 🏰 |
+| 5 | Duke | 👑 |
+| 6 | King | 🏆 |
+| 7 | Legend | ⭐ |
+
+**Upgradable "All-Around" Characters**:
+- Each troop can be permanently upgraded using ranked currency earned from wins
+- Upgrades improve **all stats slightly** (+2% HP, +1 ATK, +1 DEF per rank tier unlocked)
+- Upgrades are **cosmetic + minor stat** — keeps balance fair while rewarding dedication
+- Visual progression: upgraded characters get fancier armor, glowing effects, unique skins
+- Each character has an independent upgrade track — players invest in their favorites
+
+**Ranked Currency** ("Glory"):
+- Win = +25 Glory, Loss = +5 Glory (you always progress, winners progress faster)
+- Upgrade costs scale: Tier 1 → 50 Glory, Tier 2 → 150 Glory, Tier 3 → 400 Glory, etc.
+- Season resets: Ranks reset every season, but character upgrades are permanent
+
+**Key Design Principles**:
+- **Not pay-to-win**: All upgrades are earned through gameplay only
+- **Small stat edges**: Upgrades give a slight edge, not an overwhelming advantage
+- **Cosmetic-heavy**: The real reward is looking awesome on the battlefield
+- **Seasonal freshness**: Rank resets keep the ladder competitive
 
 ---
 

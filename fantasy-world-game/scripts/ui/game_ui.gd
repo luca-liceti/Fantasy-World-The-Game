@@ -114,10 +114,8 @@ func _create_top_bar() -> void:
 	top_bar.custom_minimum_size = Vector2(0, 50)
 	main_container.add_child(top_bar)
 	
-	# Style
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.15, 0.9)
-	top_bar.add_theme_stylebox_override("panel", style)
+	# Style — UITheme HUD panel
+	top_bar.add_theme_stylebox_override("panel", UITheme.hud_panel())
 	
 	var hbox = HBoxContainer.new()
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -126,8 +124,7 @@ func _create_top_bar() -> void:
 	# Turn indicator
 	turn_label = Label.new()
 	turn_label.text = "TURN 1"
-	turn_label.add_theme_font_size_override("font_size", 20)
-	turn_label.add_theme_color_override("font_color", Color.WHITE)
+	UITheme.style_label(turn_label, 20, UITheme.C_WARM_WHITE, true)
 	hbox.add_child(turn_label)
 	
 	# Spacer
@@ -138,8 +135,7 @@ func _create_top_bar() -> void:
 	# Current player
 	current_player_label = Label.new()
 	current_player_label.text = "PLAYER 1's TURN"
-	current_player_label.add_theme_font_size_override("font_size", 24)
-	current_player_label.add_theme_color_override("font_color", PLAYER1_COLOR)
+	UITheme.style_label(current_player_label, 24, PLAYER1_COLOR, true)
 	hbox.add_child(current_player_label)
 	
 	# Spacer
@@ -150,8 +146,7 @@ func _create_top_bar() -> void:
 	# Timer
 	timer_label = Label.new()
 	timer_label.text = "⏱ 60s"
-	timer_label.add_theme_font_size_override("font_size", 20)
-	timer_label.add_theme_color_override("font_color", Color.WHITE)
+	UITheme.style_label(timer_label, 20, UITheme.C_WARM_WHITE)
 	hbox.add_child(timer_label)
 
 
@@ -163,15 +158,8 @@ func _create_quick_action_panel() -> void:
 	quick_action_panel.custom_minimum_size = Vector2(130, 260)
 	main_container.add_child(quick_action_panel)
 	
-	# Style - sleek dark panel with subtle glow effect
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.12, 0.95)
-	style.border_color = Color(0.3, 0.4, 0.6, 0.8)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
-	style.shadow_color = Color(0.2, 0.3, 0.5, 0.3)
-	style.shadow_size = 4
-	quick_action_panel.add_theme_stylebox_override("panel", style)
+	# Style — UITheme HUD panel with subtle gold border
+	quick_action_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(UITheme.C_GOLD.darkened(0.5)))
 	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.add_theme_constant_override("separation", 6)
@@ -180,9 +168,8 @@ func _create_quick_action_panel() -> void:
 	# Header
 	var header = Label.new()
 	header.text = "⚡ ACTIONS"
-	header.add_theme_font_size_override("font_size", 12)
-	header.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(header, 12, UITheme.C_GOLD)
 	main_vbox.add_child(header)
 	
 	# Action buttons container
@@ -219,36 +206,9 @@ func _create_quick_action_button(text: String, hotkey: String, color: Color) -> 
 	else:
 		button.text = text
 	button.custom_minimum_size = Vector2(110, 36)
-	button.add_theme_font_size_override("font_size", 11)
 	
-	# Style - compact modern buttons
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = color.darkened(0.6)
-	normal_style.border_color = color.darkened(0.3)
-	normal_style.set_border_width_all(1)
-	normal_style.set_corner_radius_all(6)
-	button.add_theme_stylebox_override("normal", normal_style)
-	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = color.darkened(0.4)
-	hover_style.border_color = color
-	hover_style.set_border_width_all(1)
-	hover_style.set_corner_radius_all(6)
-	button.add_theme_stylebox_override("hover", hover_style)
-	
-	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = color.darkened(0.7)
-	pressed_style.border_color = color.darkened(0.4)
-	pressed_style.set_border_width_all(1)
-	pressed_style.set_corner_radius_all(6)
-	button.add_theme_stylebox_override("pressed", pressed_style)
-	
-	var disabled_style = StyleBoxFlat.new()
-	disabled_style.bg_color = Color(0.15, 0.15, 0.18, 0.6)
-	disabled_style.border_color = Color(0.2, 0.2, 0.25)
-	disabled_style.set_border_width_all(1)
-	disabled_style.set_corner_radius_all(6)
-	button.add_theme_stylebox_override("disabled", disabled_style)
+	# Style — UITheme HUD button with accent colour
+	UITheme.apply_hud_button(button, color, 11)
 	
 	action_container.add_child(button)
 	return button
@@ -282,12 +242,7 @@ func _create_player_panel(title: String, color: Color) -> PanelContainer:
 	var panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(150, 150)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.15, 0.85)
-	style.border_color = color
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.hud_panel(color))
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
@@ -296,30 +251,26 @@ func _create_player_panel(title: String, color: Color) -> PanelContainer:
 	# Title
 	var title_label = Label.new()
 	title_label.text = title
-	title_label.add_theme_font_size_override("font_size", 18)
-	title_label.add_theme_color_override("font_color", color)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title_label, 18, color, true)
 	vbox.add_child(title_label)
 	
 	# Gold
 	var gold_label = Label.new()
 	gold_label.text = "💰 150 Gold"
-	gold_label.add_theme_font_size_override("font_size", 14)
-	gold_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	UITheme.style_label(gold_label, 14, UITheme.C_GOLD)
 	vbox.add_child(gold_label)
 	
 	# XP
 	var xp_label = Label.new()
 	xp_label.text = "⭐ 0 XP"
-	xp_label.add_theme_font_size_override("font_size", 14)
-	xp_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	UITheme.style_label(xp_label, 14, Color(0.6, 0.8, 1.0))
 	vbox.add_child(xp_label)
 	
 	# Mine count
 	var mine_label = Label.new()
 	mine_label.text = "⛏️ 0/5 Mines"
-	mine_label.add_theme_font_size_override("font_size", 14)
-	mine_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	UITheme.style_label(mine_label, 14, UITheme.C_GOLD)
 	vbox.add_child(mine_label)
 	
 	return panel
@@ -333,15 +284,11 @@ func _create_info_panel() -> void:
 	info_panel.visible = false
 	main_container.add_child(info_panel)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.15, 0.15, 0.2, 0.9)
-	style.set_corner_radius_all(8)
-	info_panel.add_theme_stylebox_override("panel", style)
+	info_panel.add_theme_stylebox_override("panel", UITheme.hud_panel())
 	
 	info_label = Label.new()
 	info_label.text = ""
-	info_label.add_theme_font_size_override("font_size", 14)
-	info_label.add_theme_color_override("font_color", Color.WHITE)
+	UITheme.style_label(info_label, 14, UITheme.C_WARM_WHITE)
 	info_panel.add_child(info_label)
 
 
@@ -353,17 +300,11 @@ func _create_selected_troop_panel() -> void:
 	selected_troop_panel.visible = false
 	main_container.add_child(selected_troop_panel)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.15, 0.9)
-	style.border_color = Color(0.5, 0.5, 0.6)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	selected_troop_panel.add_theme_stylebox_override("panel", style)
+	selected_troop_panel.add_theme_stylebox_override("panel", UITheme.hud_panel())
 	
 	selected_troop_label = Label.new()
 	selected_troop_label.text = ""
-	selected_troop_label.add_theme_font_size_override("font_size", 14)
-	selected_troop_label.add_theme_color_override("font_color", Color.WHITE)
+	UITheme.style_label(selected_troop_label, 14, UITheme.C_WARM_WHITE)
 	selected_troop_panel.add_child(selected_troop_label)
 
 
@@ -375,15 +316,8 @@ func _create_troop_cards_panel() -> void:
 	troop_cards_panel.custom_minimum_size = Vector2(500, 160)
 	main_container.add_child(troop_cards_panel)
 	
-	# Style with a more premium look
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.06, 0.1, 0.95)
-	style.border_color = Color(0.5, 0.4, 0.3, 0.9) # Warm gold-ish border
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
-	style.shadow_color = Color(0.0, 0.0, 0.0, 0.4)
-	style.shadow_size = 6
-	troop_cards_panel.add_theme_stylebox_override("panel", style)
+	# Style — UITheme HUD panel with gold border
+	troop_cards_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(UITheme.C_GOLD.darkened(0.3)))
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
@@ -393,10 +327,8 @@ func _create_troop_cards_panel() -> void:
 	var header = Label.new()
 	header.name = "TroopCardHeader"
 	header.text = "🎴 YOUR TROOPS (Press 1-4)"
-	header.add_theme_font_size_override("font_size", 13)
-	header.add_theme_color_override("font_color", Color(0.9, 0.85, 0.7))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(header)
+	UITheme.style_label(header, 13, UITheme.C_GOLD)
 	
 	# Card container
 	troop_cards_container = HBoxContainer.new()
@@ -505,6 +437,10 @@ func update_turn(turn_number: int, current_player_id: int) -> void:
 	else:
 		current_player_label.text = "PLAYER 2's TURN"
 		current_player_label.add_theme_color_override("font_color", PLAYER2_COLOR)
+	
+	# Only show the active player's resource panel
+	player1_panel.visible = (current_player_id == 0)
+	player2_panel.visible = (current_player_id == 1)
 
 
 ## Update timer display
@@ -685,12 +621,7 @@ func _create_item_inventory_panel() -> void:
 	item_inventory_panel.custom_minimum_size = Vector2(200, 75)
 	main_container.add_child(item_inventory_panel)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.12, 0.9)
-	style.border_color = Color(0.5, 0.7, 0.4, 0.7)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	item_inventory_panel.add_theme_stylebox_override("panel", style)
+	item_inventory_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(Color(0.5, 0.7, 0.4, 0.7)))
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
@@ -700,9 +631,8 @@ func _create_item_inventory_panel() -> void:
 	var header = Label.new()
 	header.text = "🎒 ITEMS (0/3)"
 	header.name = "ItemHeader"
-	header.add_theme_font_size_override("font_size", 11)
-	header.add_theme_color_override("font_color", Color(0.5, 0.7, 0.4))
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(header, 11, Color(0.5, 0.7, 0.4))
 	vbox.add_child(header)
 	
 	# Item slots row
@@ -724,10 +654,9 @@ func _create_item_inventory_panel() -> void:
 		
 		var slot_label = Label.new()
 		slot_label.text = "Empty"
-		slot_label.add_theme_font_size_override("font_size", 9)
-		slot_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
 		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		UITheme.style_label(slot_label, 9, Color(0.4, 0.4, 0.5))
 		slot_panel.add_child(slot_label)
 		
 		slots_row.add_child(slot_panel)
@@ -815,10 +744,9 @@ func show_toast(message: String, color: Color = Color(0.3, 0.6, 1.0), duration: 
 	
 	var label = Label.new()
 	label.text = message
-	label.add_theme_font_size_override("font_size", 13)
-	label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95))
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(label, 13, Color(0.9, 0.9, 0.95))
 	toast.add_child(label)
 	
 	toast_container.add_child(toast)
@@ -890,12 +818,7 @@ func _show_keyboard_overlay() -> void:
 	panel.position = Vector2(-200, -170)
 	keyboard_overlay.add_child(panel)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.05, 0.1, 0.95)
-	style.border_color = Color(0.4, 0.6, 1.0, 0.6)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(Color(0.4, 0.6, 1.0)))
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 25)
@@ -912,12 +835,10 @@ func _show_keyboard_overlay() -> void:
 	var title = Label.new()
 	title.text = "🎮  KEYBOARD SHORTCUTS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override("font_color", Color(0.4, 0.6, 1.0))
+	UITheme.style_label(title, 18, UITheme.C_GOLD, true)
 	vbox.add_child(title)
 	
-	var sep = HSeparator.new()
-	sep.modulate = Color(1, 1, 1, 0.2)
+	var sep = UITheme.make_separator()
 	vbox.add_child(sep)
 	
 	# Shortcut entries
@@ -941,23 +862,20 @@ func _show_keyboard_overlay() -> void:
 		var key_lbl = Label.new()
 		key_lbl.text = entry[0]
 		key_lbl.custom_minimum_size = Vector2(80, 0)
-		key_lbl.add_theme_font_size_override("font_size", 13)
-		key_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.6))
 		key_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		UITheme.style_label(key_lbl, 13, UITheme.C_GOLD)
 		row.add_child(key_lbl)
 		
 		# Separator dot
 		var dot = Label.new()
 		dot.text = "•"
-		dot.add_theme_font_size_override("font_size", 13)
-		dot.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
+		UITheme.style_label(dot, 13, UITheme.C_DIM)
 		row.add_child(dot)
 		
 		# Action
 		var action_lbl = Label.new()
 		action_lbl.text = entry[1]
-		action_lbl.add_theme_font_size_override("font_size", 13)
-		action_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
+		UITheme.style_label(action_lbl, 13, UITheme.C_WARM_WHITE)
 		row.add_child(action_lbl)
 		
 		vbox.add_child(row)

@@ -288,6 +288,11 @@ func load_settings() -> void:
 	settings_loaded.emit()
 
 
+func discard_changes() -> void:
+	load_settings()
+	_apply_all_settings()
+	print("Settings changes discarded")
+
 func save_settings() -> void:
 	# Save each section
 	for section in settings.keys():
