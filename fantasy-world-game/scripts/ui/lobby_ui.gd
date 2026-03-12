@@ -520,7 +520,6 @@ func _on_join_pressed() -> void:
 
 func _on_back_pressed() -> void:
 	lobby_cancelled.emit()
-	queue_free()
 
 func _on_connect_pressed() -> void:
 	var address = _ip_input.text.strip_edges()
@@ -594,3 +593,19 @@ func _on_all_players_ready() -> void:
 		if _start_btn: _start_btn.disabled = false
 		_status_lbl.text = "All players ready — start the game!"
 		_status_lbl.add_theme_color_override("font_color", UITheme.C_GOLD)
+
+# =============================================================================
+# INPUT
+# =============================================================================
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if current_state == LobbyState.MODE_SELECT:
+			_on_back_pressed()
+			get_viewport().set_input_as_handled()
+		elif current_state == LobbyState.JOINING or current_state == LobbyState.CONNECTING:
+			_show_mode_selection()
+			get_viewport().set_input_as_handled()
+		elif current_state == LobbyState.IN_LOBBY:
+			_on_leave_pressed()
+			get_viewport().set_input_as_handled()
