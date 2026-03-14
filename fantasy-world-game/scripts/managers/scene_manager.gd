@@ -181,27 +181,46 @@ func _fade_in() -> void:
 # INSTANT SCENE LOADING (for initial load)
 # =============================================================================
 
-## Load initial scene without transition (called on game start)
+## Load initial scene using background threaded loading to avoid freezing the frame on default_clear_color
 func load_initial_scene(scene_path: String) -> void:
 	var scene_name = scene_path.get_file().get_basename()
+	print("[SceneManager] Displaying fast loading background...")
+
+	# Immediately show the loading background image to cover the empty Godot blue screen
+	var loading_bg = TextureRect.new()
+	loading_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_bg.texture = load("res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png")
+	loading_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	loading_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	add_child(loading_bg)
+
+	# Wait two frames to guarantee Godot renders the loading_bg onto the window instead of dark blue
+	await get_tree().process_frame
+	await get_tree().process_frame
 	
-	print("[SceneManager] Loading initial scene: %s" % scene_name)
+	print("[SceneManager] Loading initial scene asynchronously: %s" % scene_name)
 	
-	var packed_scene = load(scene_path) as PackedScene
-	if not packed_scene:
+	ResourceLoader.load_threaded_request(scene_path)
+	
+	# Wait until threaded loading completes
+	while ResourceLoader.load_threaded_get_status(scene_path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		await get_tree().process_frame
+
+	if ResourceLoader.load_threaded_get_status(scene_path) != ResourceLoader.THREAD_LOAD_LOADED:
 		push_error("[SceneManager] Failed to load initial scene: %s" % scene_path)
 		return
-	
+		
+	var packed_scene = ResourceLoader.load_threaded_get(scene_path) as PackedScene
 	current_scene = packed_scene.instantiate()
-	if not current_scene:
-		push_error("[SceneManager] Failed to instantiate initial scene: %s" % scene_path)
-		return
 	
 	add_child(current_scene)
 	current_scene_name = scene_name
 	
 	# Wait for scene to be ready
 	await get_tree().process_frame
+	
+	# Cleanup loading bg
+	loading_bg.queue_free()
 	
 	print("[SceneManager] Initial scene loaded: %s" % scene_name)
 

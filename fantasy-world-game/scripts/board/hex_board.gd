@@ -9,6 +9,7 @@ extends Node3D
 # =============================================================================
 signal tile_selected(tile: HexTile)
 signal tile_hovered(tile: HexTile)
+signal board_generated
 
 # =============================================================================
 # PROPERTIES - BOARD SIZE
@@ -99,6 +100,78 @@ func generate_board() -> void:
 	_setup_spawn_positions()
 	
 	print("Board generation complete!")
+
+
+## Generate the board asynchronously (yields per chunk to prevent frame drops)
+func generate_board_async() -> void:
+	_clear_board()
+	
+	# Generate all hex coordinates for the board
+	all_coordinates = HexCoordinates.generate_hexagonal_board(board_radius)
+	
+	print("Generating board asynchronously with %d hexes" % all_coordinates.size())
+	
+	# Generate biomes and heights for the board
+	var biome_generator = BiomeGenerator.new()
+	var generation_data = biome_generator.generate_biomes(all_coordinates)
+	
+	# Extract biome and height maps (store biome_map as instance variable)
+	biome_map = generation_data.get("biomes", {})
+	height_map = generation_data.get("heights", {})
+	
+	# Quantize height map to 0.25 unit steps to prevent micro-clipping
+	for key in height_map:
+		height_map[key] = snappedf(height_map[key], 0.25)
+	
+	# Print debug info
+	biome_generator.print_distribution(biome_map)
+	biome_generator.print_adjacency_violations(all_coordinates, biome_map)
+	
+	await get_tree().process_frame
+	
+	# Create hex tiles with initial setup
+	var count = 0
+	for coord in all_coordinates:
+		var key = coord._to_key()
+		var biome = biome_map.get(key, Biomes.Type.PLAINS)
+		var height = height_map.get(key, 0.0)
+		_create_tile(coord, biome, height)
+		
+		count += 1
+		if count % 30 == 0:
+			await get_tree().process_frame
+	
+	# VERTEX-BASED DISPLACEMENT SYSTEM
+	# Generate vertex heights based on biome interpolation
+	_generate_vertex_heights()
+	await get_tree().process_frame
+	
+	# Second pass: update tile meshes with vertex heights
+	count = 0
+	for key in tiles:
+		var tile: HexTile = tiles[key]
+		var coord: HexCoordinates = tile.coordinates
+		
+		# Get vertex heights for this tile's 6 corners
+		var vertex_heights: Array[float] = []
+		for i in range(6):
+			var vertex_pos = _get_vertex_world_position(coord, i)
+			var vertex_key = _vertex_position_to_key(vertex_pos)
+			var vertex_height = vertex_map.get(vertex_key, 0.0)
+			vertex_heights.append(vertex_height)
+		
+		# Update the tile mesh with these vertex heights
+		tile.update_mesh_with_vertex_heights(vertex_heights)
+		
+		count += 1
+		if count % 30 == 0:
+			await get_tree().process_frame
+	
+	# Set up spawn positions
+	_setup_spawn_positions()
+	
+	print("Async board generation complete!")
+	board_generated.emit()
 
 
 ## Clear existing board

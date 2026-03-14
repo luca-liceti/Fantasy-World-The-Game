@@ -75,7 +75,7 @@ var defender_stat: int = 0
 func _ready() -> void:
 	layer = 100 # Above game UI
 	_create_ui()
-	hide_dice()
+	hide_immediate()
 
 
 func _create_ui() -> void:

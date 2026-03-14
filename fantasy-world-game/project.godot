@@ -18,6 +18,8 @@ config/name="Fantasy World Game"
 config/description="A fantasy strategy board game with hexagonal tiles, troops, and turn-based combat."
 run/main_scene="res://scenes/game_root.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
+boot_splash/bg_color=Color(0.2, 0.2, 0.2, 1)
+boot_splash/image="res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png"
 config/icon="res://icon.svg"
 
 [autoload]

@@ -36,13 +36,13 @@ const C_PANEL_FILL   = Color(0.06, 0.05, 0.04, 0.92)  # Semi-transparent panel f
 # GEOMETRY CONSTANTS  (all spacing is a multiple of 8 px)
 # =============================================================================
 # Primary menu buttons  (the pointed banner)
-const BTN_W         = 360   # px
-const BTN_H         = 64    # px  (taller for breathing room around text)
-const BTN_FONT_SIZE = 20    # pt
+const BTN_W         = 440   # px
+const BTN_H         = 34    # px  (taller for breathing room around text)
+const BTN_FONT_SIZE = 16    # pt
 
 # Secondary / action buttons  (smaller, same texture)
 const BTN_SM_W      = 220
-const BTN_SM_H      = 52
+const BTN_SM_H      = 38
 const BTN_SM_FONT   = 17
 
 # Input boxes
@@ -51,8 +51,8 @@ const INPUT_FONT    = 16
 
 # Panel title font
 const TITLE_FONT    = 42    # Screen header size (e.g. "SETTINGS")
-const LOGO_W        = 960   # Logo image max width (matches reference screenshot)
-const LOGO_H        = 340   # Logo image max height (matches reference screenshot)
+const LOGO_W        = 720   # Logo image max width (matches reference screenshot)
+const LOGO_H        = 255   # Logo image max height (matches reference screenshot)
 
 # 9-slice inset sizes for each texture (pixels from edge that contain the
 # non-stretchable art — pointed tips, border corners, etc.)
@@ -153,8 +153,8 @@ static func btn_normal() -> StyleBoxTexture:
 	s.texture_margin_bottom = SLICE_BTN_V
 	s.content_margin_left   = SLICE_BTN + 12
 	s.content_margin_right  = SLICE_BTN + 12
-	s.content_margin_top    = SLICE_BTN_V + 10
-	s.content_margin_bottom = SLICE_BTN_V + 10
+	s.content_margin_top    = SLICE_BTN_V + 2
+	s.content_margin_bottom = SLICE_BTN_V + 2
 	# Prevent the stylebox from ever expanding the button's layout size
 	s.expand_margin_left   = 0
 	s.expand_margin_right  = 0
@@ -172,8 +172,8 @@ static func btn_hover() -> StyleBoxTexture:
 	s.texture_margin_bottom = SLICE_BTN_V
 	s.content_margin_left   = SLICE_BTN + 12
 	s.content_margin_right  = SLICE_BTN + 12
-	s.content_margin_top    = SLICE_BTN_V + 10
-	s.content_margin_bottom = SLICE_BTN_V + 10
+	s.content_margin_top    = SLICE_BTN_V + 2
+	s.content_margin_bottom = SLICE_BTN_V + 2
 	# Prevent the stylebox from ever expanding the button's layout size
 	s.expand_margin_left   = 0
 	s.expand_margin_right  = 0

@@ -165,7 +165,7 @@ func _build_logo(parent: Control) -> void:
 
 	# Centre-top anchor
 	_logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 16)
+	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 120)
 	_logo.modulate.a = 0.0
 	parent.add_child(_logo)
 
@@ -174,9 +174,9 @@ func _build_buttons(parent: Control) -> void:
 	_btn_container.name = "ButtonContainer"
 	_btn_container.set_anchors_preset(Control.PRESET_CENTER)
 	_btn_container.custom_minimum_size = Vector2(UITheme.BTN_W, 0)
-	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, -30)
+	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, -40)
 	_btn_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	_btn_container.add_theme_constant_override("separation", 6)
+	_btn_container.add_theme_constant_override("separation", -2)
 	parent.add_child(_btn_container)
 
 	# 7 buttons — order and labels match the UI template exactly
@@ -237,7 +237,7 @@ func _play_intro() -> void:
 
 	# Logo fades in + gentle upward settle
 	_intro_tween.tween_property(_logo, "modulate:a", 1.0, 1.0)
-	_intro_tween.parallel().tween_property(_logo, "position:y", 16.0, 1.0).from(40.0)
+	_intro_tween.parallel().tween_property(_logo, "position:y", 120.0, 1.0).from(144.0)
 
 	# Buttons cascade in left-to-right
 	var buttons = _btn_container.get_children()
@@ -597,35 +597,79 @@ func _open_coming_soon(title: String, description: String) -> void:
 # =============================================================================
 
 func _open_quit_confirm() -> void:
-	var layer = CanvasLayer.new()
-	var root  = _make_fullscreen_root(layer)
-	var content = _make_page_content(root, "QUIT GAME", 480, 320)
-
+	var confirm_layer = CanvasLayer.new()
+	confirm_layer.layer = 150
+	
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = UITheme.C_OVERLAY_DIM
+	confirm_layer.add_child(bg)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	confirm_layer.add_child(center)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480, 240)
+	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
+	center.add_child(panel)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 24)
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "QUIT GAME"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, 24, UITheme.C_GOLD, true)
+	vbox.add_child(title)
+	
 	var msg = Label.new()
 	msg.text = "Are you sure you want to exit Fantasy World?"
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UITheme.style_label(msg, 16, UITheme.C_WARM_WHITE)
-	content.add_child(msg)
-
-	var spacer = Control.new()
-	spacer.custom_minimum_size = Vector2(0, 16)
-	content.add_child(spacer)
-
-	var row = HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 24)
-	content.add_child(row)
-
-	var yes_btn = _make_action_btn("YES — EXIT")
-	yes_btn.pressed.connect(func(): get_tree().quit())
-	row.add_child(yes_btn)
-
-	var no_btn = _make_action_btn("NO — BACK")
-	no_btn.pressed.connect(func(): _close_sub_screen())
-	row.add_child(no_btn)
-
-	_open_sub_screen(layer)
+	vbox.add_child(msg)
+	
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 24)
+	vbox.add_child(btn_row)
+	
+	var yes_btn = Button.new()
+	yes_btn.text = "YES"
+	yes_btn.custom_minimum_size = Vector2(160, 50)
+	yes_btn.pivot_offset = Vector2(80, 25)
+	UITheme.apply_menu_button(yes_btn, 18)
+	yes_btn.pressed.connect(func():
+		confirm_layer.queue_free()
+		get_tree().quit()
+	)
+	yes_btn.button_down.connect(func(): _on_btn_press(yes_btn))
+	yes_btn.button_up.connect(func(): _on_btn_release(yes_btn))
+	btn_row.add_child(yes_btn)
+	
+	var no_btn = Button.new()
+	no_btn.text = "NO"
+	no_btn.custom_minimum_size = Vector2(160, 50)
+	no_btn.pivot_offset = Vector2(80, 25)
+	UITheme.apply_menu_button(no_btn, 18)
+	no_btn.pressed.connect(func():
+		confirm_layer.queue_free()
+	)
+	no_btn.button_down.connect(func(): _on_btn_press(no_btn))
+	no_btn.button_up.connect(func(): _on_btn_release(no_btn))
+	btn_row.add_child(no_btn)
+	
+	add_child(confirm_layer)
 
 
 # =============================================================================

@@ -29,6 +29,7 @@ var combat_resolution_ui: Node # Enhanced combat resolution display
 var is_selecting_decks: bool = false
 var current_selecting_player: int = 0
 var player_decks: Array[Array] = [[], []] # Stores selected decks for both players
+var board_generation_complete: bool = false
 
 # =============================================================================
 # CAMERA SETTINGS
@@ -116,7 +117,7 @@ const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 # DEBUG FLAGS - Set these to skip game phases during development
 # =============================================================================
 const DEBUG_SKIP_DECK_SELECTION := false # Skip deck selection and use default decks
-const DEBUG_SKIP_FIRST_MOVE_DICE := true # Skip the first move dice roll animation
+const DEBUG_SKIP_FIRST_MOVE_DICE := false # Skip the first move dice roll animation
 const DEBUG_DEFAULT_DECK: Array[String] = ["knight", "archer", "cleric", "stone_giant"] # Default deck when skipping
 
 # =============================================================================
@@ -135,7 +136,7 @@ func _ready() -> void:
 	if hex_board:
 		# Ensure board is at origin so BOARD_LIFT (1.0) is accurate world height
 		hex_board.position.y = 0.0
-		_generate_board()
+		# Board generation is deferred to run concurrently
 	else:
 		push_error("HexBoard node not found!")
 	
@@ -144,6 +145,10 @@ func _ready() -> void:
 	
 	# Start test game
 	_start_test_game()
+
+	# Start concurrent board generation
+	if hex_board:
+		_generate_board_concurrently()
 	
 	print("Game initialization complete!")
 	print("")
@@ -219,8 +224,8 @@ func _setup_camera_system() -> void:
 	print("Camera system initialized (CharacterBody3D collision, radius=%.2f)" % CAMERA_COLLISION_SPHERE_RADIUS)
 
 
-func _generate_board() -> void:
-	hex_board.generate_board()
+func _generate_board_concurrently() -> void:
+	await hex_board.generate_board_async()
 	hex_board.print_board_stats()
 	
 	# Connect board signals
@@ -251,7 +256,12 @@ func _generate_board() -> void:
 		# Add lighting for standalone board setup
 		_setup_board_lighting()
 	
-	print("Board generated successfully!")
+	print("Board generated successfully (concurrently)!")
+	board_generation_complete = true
+	
+	# If players already finished deck selection, proceed now
+	if decks_confirmed and not game_started:
+		_proceed_to_first_move()
 
 
 func _setup_board_lighting() -> void:
@@ -435,7 +445,15 @@ func _finalize_game_start() -> void:
 	decks_confirmed = true
 	
 	print("=== FINALIZE GAME START ===")
-	print("Both players have selected decks - showing first move roll...")
+	
+	if board_generation_complete:
+		_proceed_to_first_move()
+	else:
+		print("Waiting for background board generation to complete...")
+
+## Proceed after board generation and deck selection are both done
+func _proceed_to_first_move() -> void:
+	print("Both players have selected decks and board is ready - showing first move roll...")
 	
 	# DEBUG: Check what CanvasLayers exist
 	print("DEBUG: Checking all CanvasLayers...")

@@ -27,8 +27,17 @@ var current_hex: Node = null
 var is_active: bool = true
 
 ## Visual components
-var mesh_instance: MeshInstance3D
+var current_model: Node3D = null
 var team_color: Color = Color.WHITE
+var click_area: Area3D # Input detection for clicking the mine directly
+
+const MINE_MODELS = [
+	preload("res://assets/models/mines/gold_mine_lvl_1_still.glb"),
+	preload("res://assets/models/mines/gold_mine_lvl_2_still.glb"),
+	preload("res://assets/models/mines/gold_mine_lvl_3_still.glb"),
+	preload("res://assets/models/mines/gold_mine_lvl_4_still.glb"),
+	preload("res://assets/models/mines/gold_mine_lvl_5_still.glb")
+]
 
 
 # =============================================================================
@@ -36,7 +45,9 @@ var team_color: Color = Color.WHITE
 # =============================================================================
 
 func _ready() -> void:
-	_create_placeholder_visual()
+	_setup_collision()
+	_update_visual()
+	_create_click_area()
 
 
 ## Initialize the mine
@@ -48,7 +59,13 @@ func initialize(player_id: int, hex: Node) -> void:
 	
 	# Set position
 	if hex:
-		position = hex.position + Vector3(0, 0.05, 0)
+		var surface_height: float = 0.0
+		if hex.has_method("get_surface_height"):
+			surface_height = hex.get_surface_height()
+		elif "tile_height" in hex:
+			surface_height = hex.tile_height + 0.05
+			
+		position = hex.position + Vector3(0, surface_height, 0)
 		
 		# Register with hex
 		if hex.has_method("set_occupant"):
@@ -189,24 +206,8 @@ static func _check_mine_distance(hex: Node, player: Player, hex_board: Node) -> 
 # VISUAL
 # =============================================================================
 
-## Create placeholder visual
-func _create_placeholder_visual() -> void:
-	mesh_instance = MeshInstance3D.new()
-	add_child(mesh_instance)
-	
-	# Create a small box as placeholder
-	var box = BoxMesh.new()
-	box.size = Vector3(0.4, 0.3, 0.4)
-	mesh_instance.mesh = box
-	mesh_instance.position.y = 0.15  # Half height above ground
-	
-	# Material with gold color
-	var material = StandardMaterial3D.new()
-	material.albedo_color = Color(0.9, 0.75, 0.2)  # Gold color
-	material.metallic = 0.8
-	material.roughness = 0.3
-	mesh_instance.material_override = material
-	
+## Setup camera collision
+func _setup_collision() -> void:
 	# --- Camera collision (Layer 16) ---
 	var cam_body = StaticBody3D.new()
 	cam_body.name = "CameraCollision"
@@ -224,10 +225,49 @@ func _create_placeholder_visual() -> void:
 
 ## Update visual based on level
 func _update_visual() -> void:
-	if mesh_instance and mesh_instance.mesh:
-		# Scale up slightly based on level
-		var scale_factor = 1.0 + (level - 1) * 0.1
-		mesh_instance.scale = Vector3(scale_factor, scale_factor, scale_factor)
+	if current_model:
+		current_model.queue_free()
+		remove_child(current_model)
+		current_model = null
+		
+	var model_index = clamp(level - 1, 0, 4)
+	if MINE_MODELS[model_index]:
+		current_model = MINE_MODELS[model_index].instantiate()
+		
+		# Apply a vertical offset because the 3D model's origin is centered, causing it to clip below the tile.
+		current_model.position.y = 0.4 
+		
+		add_child(current_model)
+		_fix_model_materials(current_model)
+		# Optionally apply team color if needed on model instances here
+
+
+## Fix common GLB material artifacts: removes unintended transparency, shimmer,
+## and ghosting caused by AI-generated models baking incorrect PBR values.
+func _fix_model_materials(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mesh_inst := node as MeshInstance3D
+		if mesh_inst.mesh:
+			var surface_count = mesh_inst.mesh.get_surface_count()
+			for i in range(surface_count):
+				var mat: Material = mesh_inst.get_surface_override_material(i)
+				if mat == null:
+					mat = mesh_inst.mesh.surface_get_material(i)
+				if mat == null:
+					continue
+				
+				if mat is BaseMaterial3D:
+					var fixed: BaseMaterial3D = mat.duplicate() as BaseMaterial3D
+					fixed.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+					fixed.cull_mode = BaseMaterial3D.CULL_BACK
+					fixed.metallic = 0.0
+					fixed.metallic_specular = 0.0
+					fixed.emission_enabled = false
+					fixed.roughness = 1.0
+					mesh_inst.set_surface_override_material(i, fixed)
+	
+	for child in node.get_children():
+		_fix_model_materials(child)
 
 
 # =============================================================================
@@ -259,3 +299,50 @@ func from_dict(data: Dictionary) -> void:
 	
 	# Note: hex position needs to be restored by GameManager
 	_update_visual()
+
+
+# =============================================================================
+# INPUT HANDLING (Mine click redirection)
+# =============================================================================
+
+## Create an invisible cylinder around the mine to capture mouse clicks,
+## forwarding them to the hex tile underneath.
+func _create_click_area() -> void:
+	if click_area: return
+	
+	click_area = Area3D.new()
+	click_area.name = "MineClickArea"
+	click_area.collision_layer = 1 # Layer 1 — same as hex tile mouse picking
+	click_area.collision_mask = 0
+	
+	var col_shape = CollisionShape3D.new()
+	var cylinder = CylinderShape3D.new()
+	cylinder.radius = 0.8
+	cylinder.height = 3.5
+	col_shape.shape = cylinder
+	col_shape.position.y = 1.75
+	
+	click_area.add_child(col_shape)
+	add_child(click_area)
+	
+	# Connect signals to forward to current_hex
+	click_area.input_event.connect(_on_click_area_input_event)
+	click_area.mouse_entered.connect(_on_click_area_mouse_entered)
+	click_area.mouse_exited.connect(_on_click_area_mouse_exited)
+
+
+func _on_click_area_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if current_hex and current_hex.has_method("on_mouse_clicked"):
+				current_hex.on_mouse_clicked()
+
+
+func _on_click_area_mouse_entered() -> void:
+	if current_hex and current_hex.has_method("on_mouse_entered"):
+		current_hex.on_mouse_entered()
+
+
+func _on_click_area_mouse_exited() -> void:
+	if current_hex and current_hex.has_method("on_mouse_exited"):
+		current_hex.on_mouse_exited()

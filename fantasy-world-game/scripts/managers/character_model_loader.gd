@@ -107,7 +107,7 @@ const MODEL_Y_OFFSETS: Dictionary = {
 	
 	# Ground-based models (minY≈0): feet already at origin, no lift needed
 	"dark_magic_wizard": 0.0, # Sits on ground plane natively
-	"dark_blood_dragon": 1.25, # minY≈-0.28 normalized → 0.28 * 4.5 ≈ 1.25 lift
+	"dark_blood_dragon": 2.25, # minY≈-0.28 normalized → 0.28 * 4.5 ≈ 1.25 lift
 }
 
 # =============================================================================
@@ -134,7 +134,7 @@ const MODEL_ROTATIONS: Dictionary = {
 	"elven_archer": 180.0,
 	
 	# X-axis wide models - wingspan extends along X, face along Z
-	"dark_blood_dragon": 90.0, # Wide along X, rotate to face -Z
+	"dark_blood_dragon": 180.0, # Wide along X, rotate to face -Z
 	"sky_serpent": 270.0, # Wide along X, flipped to face correct direction
 	
 	# Square-ish models - native orientation already correct
