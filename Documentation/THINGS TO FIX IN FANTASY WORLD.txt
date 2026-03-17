@@ -1,9 +1,0 @@
-BUGS
-4- fix strange biome generation lines and clumps.
-
-
-THINGS TO ADD TO PLAN
-1- add loading screen.
-2- add setting to customize hexagon border line thickness for tile visibility.
-3- continue host game page creation.
-4- add save game feature.
