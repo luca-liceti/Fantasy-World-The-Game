@@ -56,6 +56,10 @@ $RECYCLE.BIN/
 *.sln.docstates
 .vs/
 
+# Other IDE
+.specstory
+.cursorindexingignore
+
 # -----------------------------------------------------------------------------
 # Build Artifacts & Exports
 # (Godot export output — not source, not needed in version control)
@@ -69,3 +73,6 @@ dist/
 # (Older engine version copies — not source, not needed in version control)
 # -----------------------------------------------------------------------------
 fantasy-world-game-(4.5)/
+
+# Other
+.stfolder
