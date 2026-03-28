@@ -1743,6 +1743,7 @@ This PROJECT_BIBLE.md consolidates the following documentation files:
 | 1.10 | 2026-03-11 | **BUGFIX: Combat UI Flash** (`dice_ui.gd`): Fixed an issue where the combat dice UI would briefly flash on the screen when first clicking "Play". The `_ready` function now uses `hide_immediate()` instead of playing the 0.2s fade-out animation. |
 | 1.11 | 2026-03-11 | **BUGFIX: First Turn Dice Roll Enabled** (`main.gd`): Set `DEBUG_SKIP_FIRST_MOVE_DICE` back to `false` so the dice roll properly plays after deck selection. |
 | 1.12 | 2026-03-12 | **NEW FEATURE: Animated Loading Screen** (`loading_screen.tscn`, `loading_screen.gd`, `project.godot`): Created a dedicated animated loading screen that replaces the static background color on boot. Utilizes Godot's background loading feature to load the main scene asynchronously with a progress bar and status text, fading out smoothly into the game's menu. |
+| 1.13 | 2026-03-22 | **BUGFIX: Deck Selection Title Centering** (`card_selection_ui.gd`): Replaced `HBoxContainer` with `MarginContainer` in the header layout to ensure the "SELECT YOUR DECK" title remains perfectly centered horizontally, regardless of the timer's width on the right side. |
 
 ---
 

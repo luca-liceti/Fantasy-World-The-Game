@@ -53,7 +53,6 @@ var _logo:           TextureRect   = null
 var _btn_container:  VBoxContainer = null
 var _version_label:  Label         = null
 
-var _vignette:       ColorRect     = null
 var _intro_tween:    Tween         = null
 var _menu_layer:     CanvasLayer   = null   # holds logo + buttons
 var _menu_root:      Control       = null   # root Control inside _menu_layer (animatable)
@@ -73,7 +72,6 @@ func _ready() -> void:
 
 	_load_bg_textures()
 	_build_bg_layer()          # always-visible background
-	_build_vignette()
 	_build_menu_layer()        # logo + buttons on top
 	_play_intro()
 
@@ -119,17 +117,6 @@ func _build_bg_layer() -> void:
 		_bg_next.modulate.a = 0.0
 		_bg_layer.add_child(_bg_next)
 
-func _build_vignette() -> void:
-	# Vignette sits above the BG layer but below everything else
-	var vlayer = CanvasLayer.new()
-	vlayer.layer = 1
-	add_child(vlayer)
-
-	_vignette = ColorRect.new()
-	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_vignette.color = UITheme.C_SCREEN_DIM
-	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vlayer.add_child(_vignette)
 
 
 # =============================================================================
@@ -676,12 +663,22 @@ func _open_quit_confirm() -> void:
 # SHARED SUB-SCREEN BUILDERS
 # =============================================================================
 
-## Creates a full-screen Control on the given CanvasLayer
+## Creates a full-screen Control on the given CanvasLayer.
+## Includes a semi-transparent dark backdrop for legibility over the
+## revolving cinematic backgrounds.
 func _make_fullscreen_root(layer: CanvasLayer) -> Control:
 	var root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
+
+	# Dark scrim for legibility over the revolving backgrounds
+	var scrim = ColorRect.new()
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.0, 0.0, 0.0, 0.55)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(scrim)
+
 	return root
 
 ## Creates the standard page layout:

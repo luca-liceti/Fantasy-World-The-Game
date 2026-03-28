@@ -184,18 +184,9 @@ func _fade_in() -> void:
 ## Load initial scene using background threaded loading to avoid freezing the frame on default_clear_color
 func load_initial_scene(scene_path: String) -> void:
 	var scene_name = scene_path.get_file().get_basename()
-	print("[SceneManager] Displaying fast loading background...")
-
-	# Immediately show the loading background image to cover the empty Godot blue screen
-	var loading_bg = TextureRect.new()
-	loading_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	loading_bg.texture = load("res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png")
-	loading_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	loading_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	add_child(loading_bg)
-
-	# Wait two frames to guarantee Godot renders the loading_bg onto the window instead of dark blue
-	await get_tree().process_frame
+	print("[SceneManager] Preparing scene load...")
+	
+	# Wait one frame to guarantee Godot renders the default clear color onto the window
 	await get_tree().process_frame
 	
 	print("[SceneManager] Loading initial scene asynchronously: %s" % scene_name)
@@ -219,8 +210,7 @@ func load_initial_scene(scene_path: String) -> void:
 	# Wait for scene to be ready
 	await get_tree().process_frame
 	
-	# Cleanup loading bg
-	loading_bg.queue_free()
+	
 	
 	print("[SceneManager] Initial scene loaded: %s" % scene_name)
 

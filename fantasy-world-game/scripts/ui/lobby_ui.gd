@@ -89,6 +89,13 @@ func _build_ui() -> void:
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 
+	# Dark scrim for legibility over the revolving backgrounds
+	var scrim = ColorRect.new()
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.0, 0.0, 0.0, 0.55)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(scrim)
+
 	_build_logo()
 	_build_page_title()
 	_build_panels()

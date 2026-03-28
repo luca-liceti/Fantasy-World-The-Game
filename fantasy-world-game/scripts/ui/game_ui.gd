@@ -33,21 +33,18 @@ var place_mine_button: Button
 var upgrade_button: Button
 var end_turn_button: Button
 
-# Side panels
-var player1_panel: PanelContainer
-var player2_panel: PanelContainer
-var p1_gold_label: Label
-var p1_xp_label: Label
-var p2_gold_label: Label
-var p2_xp_label: Label
-
-# Info panel
-var info_panel: PanelContainer
-var info_label: Label
+# Side panels — REMOVED (resources moved to top bar)
+# Mine count labels — REMOVED (will be mine cards in hand later)
 
 # Selected troop info
 var selected_troop_panel: PanelContainer
-var selected_troop_label: Label
+var selected_troop_label: Label  # Kept for backward compat (name header)
+var _troop_hp_bar: ProgressBar
+var _troop_hp_label: Label
+var _troop_atk_label: Label
+var _troop_def_label: Label
+var _troop_range_label: Label
+var _troop_speed_label: Label
 
 # Troop cards panel (shows current player's troops)
 var troop_cards_panel: PanelContainer
@@ -59,9 +56,13 @@ var troop_card_art_rects: Array[TextureRect] = [] # Card art thumbnails in HUD
 var item_inventory_panel: PanelContainer
 var item_slot_labels: Array[Label] = []
 
-# Mine count labels
-var p1_mine_label: Label
-var p2_mine_label: Label
+# Top bar resource labels (active player)
+var top_gold_label: Label
+var top_xp_label: Label
+
+# Info panel
+var info_panel: PanelContainer
+var info_label: Label
 
 # Toast notification system
 var toast_container: VBoxContainer
@@ -99,7 +100,6 @@ func _create_ui() -> void:
 	add_child(main_container)
 	
 	_create_top_bar()
-	_create_side_panels()
 	_create_info_panel()
 	_create_selected_troop_panel()
 	_create_troop_cards_panel()
@@ -119,31 +119,50 @@ func _create_top_bar() -> void:
 	
 	var hbox = HBoxContainer.new()
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 0)
 	top_bar.add_child(hbox)
 	
-	# Turn indicator
+	# LEFT SIDE: Player resources
+	var res_hbox = HBoxContainer.new()
+	res_hbox.add_theme_constant_override("separation", 16)
+	hbox.add_child(res_hbox)
+	
+	top_gold_label = Label.new()
+	top_gold_label.text = "💰 150"
+	UITheme.style_label(top_gold_label, 16, UITheme.C_GOLD, true)
+	res_hbox.add_child(top_gold_label)
+	
+	top_xp_label = Label.new()
+	top_xp_label.text = "⭐ 0"
+	UITheme.style_label(top_xp_label, 16, Color(0.6, 0.8, 1.0), true)
+	res_hbox.add_child(top_xp_label)
+	
+	# Expanding spacer pushes center content to the middle
+	var spacer_left = Control.new()
+	spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer_left)
+	
+	# CENTER: Turn + Player
 	turn_label = Label.new()
 	turn_label.text = "TURN 1"
 	UITheme.style_label(turn_label, 20, UITheme.C_WARM_WHITE, true)
 	hbox.add_child(turn_label)
 	
-	# Spacer
-	var spacer1 = Control.new()
-	spacer1.custom_minimum_size = Vector2(50, 0)
-	hbox.add_child(spacer1)
+	var spacer_mid = Control.new()
+	spacer_mid.custom_minimum_size = Vector2(24, 0)
+	hbox.add_child(spacer_mid)
 	
-	# Current player
 	current_player_label = Label.new()
 	current_player_label.text = "PLAYER 1's TURN"
 	UITheme.style_label(current_player_label, 24, PLAYER1_COLOR, true)
 	hbox.add_child(current_player_label)
 	
-	# Spacer
-	var spacer2 = Control.new()
-	spacer2.custom_minimum_size = Vector2(50, 0)
-	hbox.add_child(spacer2)
+	# Expanding spacer pushes timer to the right
+	var spacer_right = Control.new()
+	spacer_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer_right)
 	
-	# Timer
+	# RIGHT SIDE: Timer
 	timer_label = Label.new()
 	timer_label.text = "⏱ 60s"
 	UITheme.style_label(timer_label, 20, UITheme.C_WARM_WHITE)
@@ -214,66 +233,10 @@ func _create_quick_action_button(text: String, hotkey: String, color: Color) -> 
 	return button
 
 
-func _create_side_panels() -> void:
-	# Player 1 panel (left side)
-	player1_panel = _create_player_panel("PLAYER 1", PLAYER1_COLOR)
-	player1_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-	player1_panel.position = Vector2(10, -75)
-	main_container.add_child(player1_panel)
-	
-	var p1_vbox = player1_panel.get_child(0)
-	p1_gold_label = p1_vbox.get_child(1)
-	p1_xp_label = p1_vbox.get_child(2)
-	p1_mine_label = p1_vbox.get_child(3)
-	
-	# Player 2 panel (right side)
-	player2_panel = _create_player_panel("PLAYER 2", PLAYER2_COLOR)
-	player2_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	player2_panel.position = Vector2(-160, -75)
-	main_container.add_child(player2_panel)
-	
-	var p2_vbox = player2_panel.get_child(0)
-	p2_gold_label = p2_vbox.get_child(1)
-	p2_xp_label = p2_vbox.get_child(2)
-	p2_mine_label = p2_vbox.get_child(3)
+# Side panels removed — resources now in top bar
 
 
-func _create_player_panel(title: String, color: Color) -> PanelContainer:
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(150, 150)
-	
-	panel.add_theme_stylebox_override("panel", UITheme.hud_panel(color))
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	panel.add_child(vbox)
-	
-	# Title
-	var title_label = Label.new()
-	title_label.text = title
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(title_label, 18, color, true)
-	vbox.add_child(title_label)
-	
-	# Gold
-	var gold_label = Label.new()
-	gold_label.text = "💰 150 Gold"
-	UITheme.style_label(gold_label, 14, UITheme.C_GOLD)
-	vbox.add_child(gold_label)
-	
-	# XP
-	var xp_label = Label.new()
-	xp_label.text = "⭐ 0 XP"
-	UITheme.style_label(xp_label, 14, Color(0.6, 0.8, 1.0))
-	vbox.add_child(xp_label)
-	
-	# Mine count
-	var mine_label = Label.new()
-	mine_label.text = "⛏️ 0/5 Mines"
-	UITheme.style_label(mine_label, 14, UITheme.C_GOLD)
-	vbox.add_child(mine_label)
-	
-	return panel
+# _create_player_panel removed — resources now in top bar
 
 
 func _create_info_panel() -> void:
@@ -295,17 +258,84 @@ func _create_info_panel() -> void:
 func _create_selected_troop_panel() -> void:
 	selected_troop_panel = PanelContainer.new()
 	selected_troop_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	selected_troop_panel.position = Vector2(10, -180)
-	selected_troop_panel.custom_minimum_size = Vector2(200, 100)
+	selected_troop_panel.position = Vector2(10, -220)
+	selected_troop_panel.custom_minimum_size = Vector2(220, 160)
 	selected_troop_panel.visible = false
 	main_container.add_child(selected_troop_panel)
 	
 	selected_troop_panel.add_theme_stylebox_override("panel", UITheme.hud_panel())
 	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	selected_troop_panel.add_child(vbox)
+	
+	# Name + Level header
 	selected_troop_label = Label.new()
 	selected_troop_label.text = ""
-	UITheme.style_label(selected_troop_label, 14, UITheme.C_WARM_WHITE)
-	selected_troop_panel.add_child(selected_troop_label)
+	selected_troop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	UITheme.style_label(selected_troop_label, 16, UITheme.C_GOLD, true)
+	vbox.add_child(selected_troop_label)
+	
+	# HP Bar — ProgressBar with label overlay
+	var hp_container = Control.new()
+	hp_container.custom_minimum_size = Vector2(200, 18)
+	vbox.add_child(hp_container)
+	
+	_troop_hp_bar = ProgressBar.new()
+	_troop_hp_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_troop_hp_bar.min_value = 0
+	_troop_hp_bar.max_value = 100
+	_troop_hp_bar.value = 100
+	_troop_hp_bar.show_percentage = false
+	# Style the bar background
+	var bar_bg_style = StyleBoxFlat.new()
+	bar_bg_style.bg_color = Color(0.15, 0.08, 0.08, 0.9)
+	bar_bg_style.set_corner_radius_all(4)
+	_troop_hp_bar.add_theme_stylebox_override("background", bar_bg_style)
+	# Style the bar fill
+	var bar_fill_style = StyleBoxFlat.new()
+	bar_fill_style.bg_color = Color(0.2, 0.85, 0.3) # Green — will be updated dynamically
+	bar_fill_style.set_corner_radius_all(4)
+	_troop_hp_bar.add_theme_stylebox_override("fill", bar_fill_style)
+	hp_container.add_child(_troop_hp_bar)
+	
+	# HP label (overlaid on the bar)
+	_troop_hp_label = Label.new()
+	_troop_hp_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_troop_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_troop_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_troop_hp_label.text = "HP 100 / 100"
+	UITheme.style_hud_label(_troop_hp_label, 11, Color.WHITE)
+	hp_container.add_child(_troop_hp_label)
+	
+	# Separator
+	var sep = HSeparator.new()
+	sep.add_theme_color_override("separator", Color(0.3, 0.3, 0.4, 0.4))
+	vbox.add_child(sep)
+	
+	# Stats grid: 2×2 layout
+	var stats_grid = GridContainer.new()
+	stats_grid.columns = 2
+	stats_grid.add_theme_constant_override("h_separation", 16)
+	stats_grid.add_theme_constant_override("v_separation", 4)
+	vbox.add_child(stats_grid)
+	
+	_troop_atk_label = _make_stat_label("⚔️ ATK: 0")
+	stats_grid.add_child(_troop_atk_label)
+	_troop_def_label = _make_stat_label("🛡️ DEF: 0")
+	stats_grid.add_child(_troop_def_label)
+	_troop_range_label = _make_stat_label("🎯 RNG: 0")
+	stats_grid.add_child(_troop_range_label)
+	_troop_speed_label = _make_stat_label("👟 SPD: 0")
+	stats_grid.add_child(_troop_speed_label)
+
+
+func _make_stat_label(text: String) -> Label:
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.custom_minimum_size = Vector2(90, 0)
+	UITheme.style_hud_label(lbl, 12, UITheme.C_WARM_WHITE)
+	return lbl
 
 
 func _create_troop_cards_panel() -> void:
@@ -342,6 +372,8 @@ func _create_troop_cards_panel() -> void:
 		troop_card_buttons.append(card_slot["button"])
 		troop_card_art_rects.append(card_slot["art_rect"])
 		troop_cards_container.add_child(card_slot["container"])
+
+	# --- snip: keep existing _create_troop_card_slot below ---
 
 
 func _create_troop_card_slot(slot_index: int) -> Dictionary:
@@ -437,10 +469,6 @@ func update_turn(turn_number: int, current_player_id: int) -> void:
 	else:
 		current_player_label.text = "PLAYER 2's TURN"
 		current_player_label.add_theme_color_override("font_color", PLAYER2_COLOR)
-	
-	# Only show the active player's resource panel
-	player1_panel.visible = (current_player_id == 0)
-	player2_panel.visible = (current_player_id == 1)
 
 
 ## Update timer display
@@ -458,14 +486,17 @@ func update_timer(seconds_remaining: float) -> void:
 		timer_label.add_theme_color_override("font_color", Color.WHITE)
 
 
-## Update player resources
+## Update player resources (shown in top bar for the active player)
 func update_player_resources(player_id: int, gold: int, xp: int) -> void:
-	if player_id == 0:
-		p1_gold_label.text = "💰 %d Gold" % gold
-		p1_xp_label.text = "⭐ %d XP" % xp
-	else:
-		p2_gold_label.text = "💰 %d Gold" % gold
-		p2_xp_label.text = "⭐ %d XP" % xp
+	# Only update top bar for the active player
+	var active_id = 0
+	if get_parent() and get_parent().get_parent(): # walk up to main
+		var main_node = get_parent().get_parent()
+		if main_node.has_method("get") and main_node.game_manager and main_node.game_manager.turn_manager:
+			active_id = main_node.game_manager.turn_manager.get_active_player_id()
+	if player_id == active_id:
+		top_gold_label.text = "💰 %d" % gold
+		top_xp_label.text = "⭐ %d" % xp
 
 
 ## Update action button states
@@ -487,21 +518,41 @@ func hide_info() -> void:
 	info_panel.visible = false
 
 
-## Show selected troop info
+## Show selected troop info with visual HP bar and stat labels
 func show_selected_troop(troop: Troop) -> void:
 	if troop == null:
 		selected_troop_panel.visible = false
 		return
 	
 	selected_troop_panel.visible = true
-	var info = """
-%s (Lv.%d)
-HP: %d / %d
-ATK: %d | DEF: %d
-Range: %d | Speed: %d
-""" % [troop.display_name, troop.level, troop.current_hp, troop.max_hp,
-       troop.current_atk, troop.current_def, troop.current_range, troop.current_speed]
-	selected_troop_label.text = info.strip_edges()
+	
+	# Name + Level header
+	selected_troop_label.text = "%s  Lv.%d" % [troop.display_name, troop.level]
+	
+	# HP bar
+	var hp_pct = (float(troop.current_hp) / float(troop.max_hp)) * 100.0 if troop.max_hp > 0 else 0.0
+	_troop_hp_bar.value = hp_pct
+	_troop_hp_label.text = "HP  %d / %d" % [troop.current_hp, troop.max_hp]
+	
+	# Dynamic bar color: green → yellow → red
+	var bar_color: Color
+	if hp_pct > 60.0:
+		bar_color = Color(0.2, 0.85, 0.3)  # Green
+	elif hp_pct > 30.0:
+		bar_color = Color(0.9, 0.75, 0.15) # Yellow
+	else:
+		bar_color = Color(0.9, 0.2, 0.15)  # Red
+	
+	var fill_style = StyleBoxFlat.new()
+	fill_style.bg_color = bar_color
+	fill_style.set_corner_radius_all(4)
+	_troop_hp_bar.add_theme_stylebox_override("fill", fill_style)
+	
+	# Stat labels
+	_troop_atk_label.text = "⚔️ ATK: %d" % troop.current_atk
+	_troop_def_label.text = "🛡️ DEF: %d" % troop.current_def
+	_troop_range_label.text = "🎯 RNG: %d" % troop.current_range
+	_troop_speed_label.text = "👟 SPD: %d" % troop.current_speed
 
 
 ## Hide selected troop info
@@ -694,12 +745,9 @@ func update_item_inventory(items: Array) -> void:
 # MINE COUNT
 # =============================================================================
 
-## Update mine count for a player
-func update_mine_count(player_id: int, mine_count: int) -> void:
-	if player_id == 0:
-		p1_mine_label.text = "⛏️ %d/5 Mines" % mine_count
-	else:
-		p2_mine_label.text = "⛏️ %d/5 Mines" % mine_count
+## Update mine count for a player (no-op — mine cards feature pending)
+func update_mine_count(_player_id: int, _mine_count: int) -> void:
+	pass # Will be replaced by mine cards in the troop hand
 
 
 # =============================================================================

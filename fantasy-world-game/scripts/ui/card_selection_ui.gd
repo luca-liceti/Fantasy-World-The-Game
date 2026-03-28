@@ -156,27 +156,24 @@ func _create_ui() -> void:
 
 
 func _create_header(parent: VBoxContainer) -> void:
-	var header_box = HBoxContainer.new()
-	header_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	var header_box = MarginContainer.new()
 	parent.add_child(header_box)
 	
 	# Title
 	title_label = Label.new()
 	title_label.text = "⚔️ SELECT YOUR DECK ⚔️"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UITheme.style_label(title_label, 32, UITheme.C_GOLD_BRIGHT, true)
 	header_box.add_child(title_label)
-	
-	# Spacer
-	var spacer = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_box.add_child(spacer)
 	
 	# Timer
 	timer_label = Label.new()
 	timer_label.text = "⏱ 30s"
 	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	timer_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UITheme.style_label(timer_label, 24, Color.YELLOW)
 	header_box.add_child(timer_label)
 	

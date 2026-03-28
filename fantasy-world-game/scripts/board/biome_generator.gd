@@ -1,14 +1,19 @@
-## Biome Generator - Unified Noise System
+## Biome Generator - Voronoi Seed + Noise Hybrid
 ## ============================================================================
 ## 
-## Generates coherent biome regions using a SINGLE noise source for
-## large, contiguous blob-shaped biome regions with perfect distribution.
+## Generates coherent biome regions using scattered biome seed points
+## combined with noise-based distance warping for organic, blob-shaped
+## biome regions with natural boundaries.
 ##
-## FEATURES:
-## - Single master noise value per tile → large organic blobs
-## - Strict percentile-based biome assignment → exact 14% per biome
-## - Height variation based on biome type
-## - Forbidden neighbor cleanup for climate logic
+## APPROACH:
+##   1. Place N random seed-points across the board (≥2 per biome)
+##   2. Each tile measures warped-distance to every seed
+##   3. The closest seed determines the tile's biome → natural Voronoi blobs
+##   4. Noise warps distances so boundaries are irregular (not straight)
+##   5. Cleanup passes remove isolated single tiles and fix forbidden adjacencies
+##
+## This avoids the contour-band artefacts of percentile-based single-noise
+## approaches while still producing large, contiguous, organic-looking regions.
 ##
 class_name BiomeGenerator
 extends RefCounted
@@ -34,29 +39,25 @@ const TILE_VARIANCE: int = 8
 const MAX_TILES_PER_BIOME: int = 99
 
 ## Height scale for terrain (world units)
-## Controls the overall vertical scale of terrain variation
-const HEIGHT_SCALE: float = 0.5 # Visible peaks and valleys
+const HEIGHT_SCALE: float = 0.5
 
 ## Maximum allowed height difference between adjacent tiles
-## Higher value = steeper transitions allowed
-const MAX_HEIGHT_DIFFERENCE: float = 0.15 # Allow visible but smooth slopes
+const MAX_HEIGHT_DIFFERENCE: float = 0.15
 
 ## Number of smoothing passes for height blending
-const SMOOTHING_PASSES: int = 3 # Less smoothing to preserve terrain variation
+const SMOOTHING_PASSES: int = 3
 
 ## Number of cleanup passes to remove isolated tiles
 const CLEANUP_PASSES: int = 5
 
-## ==========================================================================
-## UNIFIED NOISE CONFIGURATION
-## ==========================================================================
-## Single FastNoiseLite instance with low frequency for LARGE contiguous blobs
-const MASTER_NOISE_FREQUENCY: float = 0.012  # Slightly higher for more varied regions
-const MASTER_NOISE_OCTAVES: int = 4  # Higher octaves for natural crinkly edges
+## Number of seed points placed per biome (more = smaller, more distributed regions)
+const SEEDS_PER_BIOME: int = 3
 
-## Domain warp strength - how much the sample coordinates are displaced
-## Higher = more organic/twisted biome shapes, lower = smoother blobs
-const DOMAIN_WARP_STRENGTH: float = 8.0
+## Noise warp amplitude applied to seed distances (higher = more irregular edges)
+const DISTANCE_WARP_AMP: float = 3.5
+
+## Noise frequency for distance warping
+const DISTANCE_WARP_FREQ: float = 0.06
 
 
 # =============================================================================
@@ -77,15 +78,14 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _coord_lookup: Dictionary = {} # "q,r" -> HexCoordinates for O(1) lookup
 var _valid_adjacencies: Dictionary = {} # BiomeType -> [allowed neighbor types]
 
-## Single unified noise generator for biome assignment
-var _master_noise: FastNoiseLite
-
-## Domain warp noise - displaces sample coordinates for organic biome shapes
-## This breaks up the straight contour-line banding into irregular blobs
-var _domain_warp_noise: FastNoiseLite
+## Noise for warping seed distances (creates irregular boundaries)
+var _warp_noise: FastNoiseLite
 
 ## Terrain detail noise for micro-variation within biomes
 var _terrain_detail_noise: FastNoiseLite
+
+## Master noise for height variation within biomes
+var _master_noise: FastNoiseLite
 
 # Board dimensions (calculated during generation)
 var _board_radius: float = 11.0
@@ -110,94 +110,230 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	_board_radius = _calculate_board_radius(coordinates)
 	
 	# ==========================================================================
-	# STEP 1: Generate SINGLE Master Value per tile using unified noise source
-	# This is the key to creating large, contiguous biome blobs
+	# STEP 1: Scatter seed points across the board
+	# Place SEEDS_PER_BIOME random points for each biome type
 	# ==========================================================================
-	var master_values: Array[float] = []
-	var tile_master_map: Dictionary = {} # key -> master noise value
+	var all_biomes: Array = Biomes.Type.values()
+	
+	# Collect pixel positions of every tile for random selection
+	var pixel_positions: Array[Vector2] = []
+	var coord_keys: Array[String] = []
+	for coord in coordinates:
+		pixel_positions.append(coord.to_pixel(1.0))
+		coord_keys.append(coord._to_key())
+	
+	# Place seed points -- pick random board positions for each biome
+	var seeds: Array[Dictionary] = [] # [{pos: Vector2, biome: Type}, ...]
+	
+	# Shuffle biome order so there's no fixed spatial pattern
+	var shuffled_biomes: Array = all_biomes.duplicate()
+	_shuffle_array(shuffled_biomes)
+	
+	for biome in shuffled_biomes:
+		for _i in range(SEEDS_PER_BIOME):
+			# Pick a random tile position (with some jitter beyond the tile)
+			var idx = _rng.randi_range(0, pixel_positions.size() - 1)
+			var base_pos = pixel_positions[idx]
+			# Add jitter so seeds of the same biome don't stack on the same tile
+			var jitter = Vector2(
+				_rng.randf_range(-2.0, 2.0),
+				_rng.randf_range(-2.0, 2.0)
+			)
+			seeds.append({"pos": base_pos + jitter, "biome": biome})
+	
+	# Spread seeds apart using Lloyd relaxation (1 pass) so they don't clump
+	seeds = _lloyd_relax_seeds(seeds, pixel_positions)
+	
+	# ==========================================================================
+	# STEP 2: Assign each tile to nearest seed (warped Voronoi)
+	# Noise warps the distance metric so boundaries look organic
+	# ==========================================================================
+	var biome_map: Dictionary = {}
 	var height_map: Dictionary = {}
 	
 	for coord in coordinates:
 		var key: String = coord._to_key()
 		var pixel = coord.to_pixel(1.0)
 		
-		# DOMAIN WARPING: Displace the sample coordinates using a second noise source
-		# This twists and warps the biome boundaries from straight contour lines
-		# into organic, irregular blob shapes - like real terrain biomes
-		var warp_x = _domain_warp_noise.get_noise_2d(pixel.x, pixel.y) * DOMAIN_WARP_STRENGTH
-		var warp_y = _domain_warp_noise.get_noise_2d(pixel.x + 31.7, pixel.y + 17.3) * DOMAIN_WARP_STRENGTH
-		var warped_x = pixel.x + warp_x
-		var warped_y = pixel.y + warp_y
+		# Find the closest seed with distance warped by noise
+		var best_dist: float = INF
+		var best_biome: Biomes.Type = Biomes.Type.PLAINS
 		
-		# UNIFIED NOISE: Sample at warped coordinates for organic blob shapes
-		var master_value = (_master_noise.get_noise_2d(warped_x, warped_y) + 1.0) * 0.5
-		tile_master_map[key] = master_value
-		master_values.append(master_value)
+		for seed_data in seeds:
+			var raw_dist = pixel.distance_to(seed_data["pos"])
+			
+			# Warp distance using noise to create irregular, organic boundaries
+			# The warp noise is sampled at a point between tile and seed
+			var mid = (pixel + seed_data["pos"]) * 0.5
+			var warp = _warp_noise.get_noise_2d(mid.x, mid.y) * DISTANCE_WARP_AMP
+			var warped_dist = raw_dist + warp
+			
+			if warped_dist < best_dist:
+				best_dist = warped_dist
+				best_biome = seed_data["biome"]
 		
-		# Height derived from master noise + detail noise for micro-variation
-		var base_height = master_value  # Use same noise for consistent terrain
+		biome_map[key] = best_biome
+		
+		# Height: use master noise with biome-based ranges
+		var base_noise = (_master_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
 		var detail = (_terrain_detail_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-		var combined_height = base_height * 0.8 + detail * 0.2
-		
-		# Apply island falloff so edges are lower
-		combined_height = _apply_island_falloff(coord, combined_height)
-		height_map[key] = combined_height
+		var combined = base_noise * 0.8 + detail * 0.2
+		combined = _apply_island_falloff(coord, combined)
+		height_map[key] = combined
 	
-	# ==========================================================================
-	# STEP 2: STRICT PERCENTILE MAPPING
-	# Sort all master values and calculate thresholds for each 14% band
-	# This guarantees PERFECT distribution while keeping organic blob shapes
-	# ==========================================================================
-	master_values.sort()
-	var total_tiles = master_values.size()
-	var tiles_per_biome = total_tiles / NUM_BIOMES  # ~56 for 397 tiles / 7 biomes
-	
-	# Calculate the exact threshold values at each percentile boundary
-	# Bottom 14% gets biome 0, next 14% gets biome 1, etc.
-	var thresholds: Array[float] = []
-	for i in range(1, NUM_BIOMES):
-		var percentile_index = min(i * tiles_per_biome, total_tiles - 1)
-		thresholds.append(master_values[percentile_index])
-	
-	print("Biome thresholds (14%% boundaries): ", thresholds)
-	
-	# ==========================================================================
-	# STEP 3: Assign biomes using strict percentile thresholds
-	# Each tile's biome is determined by where its master value falls
-	# ==========================================================================
-	var biome_map: Dictionary = {}
-	
-	for key in tile_master_map:
-		var master_val = tile_master_map[key]
-		biome_map[key] = _master_value_to_biome(master_val, thresholds)
-	
-	# DEBUG: Print distribution after percentile assignment
-	print("Distribution after strict percentile mapping:")
+	# DEBUG: Print distribution after Voronoi assignment
+	print("Distribution after Voronoi seed assignment:")
 	_print_biome_distribution(biome_map)
 	
 	# ==========================================================================
-	# STEP 4: DISABLED - Post-processing was destroying the even distribution
-	# The percentile method inherently creates valid natural patterns
+	# STEP 3: REBALANCE DISTRIBUTION
+	# Trim boundary tiles from over-represented biomes and give them to
+	# under-represented neighbors. This keeps shapes organic (only boundary
+	# tiles move) while enforcing roughly equal distribution.
 	# ==========================================================================
-	# biome_map = _fix_adjacency_violations(coordinates, biome_map)
-	# biome_map = _smooth_biomes_by_neighbors(coordinates, biome_map)
+	var target_per_biome: int = TOTAL_TILES / NUM_BIOMES  # ~56
+	var tolerance: int = 8  # Allow ±8 tiles from target (~±2%)
+	var max_rebalance_iters: int = 200  # Safety cap
+	
+	for _iter in range(max_rebalance_iters):
+		var counts = _count_biomes(biome_map)
+		
+		# Find the most over-represented biome
+		var worst_over: Biomes.Type = Biomes.Type.PLAINS
+		var worst_over_excess: int = 0
+		for biome in Biomes.Type.values():
+			var excess = counts.get(biome, 0) - (target_per_biome + tolerance)
+			if excess > worst_over_excess:
+				worst_over_excess = excess
+				worst_over = biome
+		
+		# If no biome exceeds tolerance, we're balanced
+		if worst_over_excess <= 0:
+			break
+		
+		# Find boundary tiles of the over-represented biome
+		# (tiles that have at least one neighbor of a different biome)
+		var boundary_tiles: Array[String] = []
+		for coord in coordinates:
+			var key: String = coord._to_key()
+			if biome_map[key] != worst_over:
+				continue
+			var neighbors = _get_valid_neighbors(coord)
+			for nb in neighbors:
+				var nkey = nb._to_key()
+				if nkey in biome_map and biome_map[nkey] != worst_over:
+					boundary_tiles.append(key)
+					break
+		
+		if boundary_tiles.is_empty():
+			break  # Can't trim further without breaking contiguity
+		
+		# Find the most under-represented biome
+		var best_under: Biomes.Type = Biomes.Type.PLAINS
+		var worst_deficit: int = 0
+		for biome in Biomes.Type.values():
+			var deficit = (target_per_biome - tolerance) - counts.get(biome, 0)
+			if deficit > worst_deficit:
+				worst_deficit = deficit
+				best_under = biome
+		
+		# Reassign one boundary tile to the most under-represented neighbor biome
+		# Prefer tiles that actually border the under-represented biome
+		var reassigned: bool = false
+		for bkey in boundary_tiles:
+			var bcoord = _coord_lookup[bkey]
+			var neighbors = _get_valid_neighbors(bcoord)
+			for nb in neighbors:
+				var nkey = nb._to_key()
+				if nkey in biome_map and biome_map[nkey] == best_under:
+					biome_map[bkey] = best_under
+					reassigned = true
+					break
+			if reassigned:
+				break
+		
+		# If we couldn't find a tile bordering the most-needed biome,
+		# reassign to ANY under-represented neighbor biome instead
+		if not reassigned:
+			for bkey in boundary_tiles:
+				var bcoord = _coord_lookup[bkey]
+				var neighbors = _get_valid_neighbors(bcoord)
+				for nb in neighbors:
+					var nkey = nb._to_key()
+					if nkey in biome_map:
+						var nb_biome = biome_map[nkey]
+						if nb_biome != worst_over and counts.get(nb_biome, 0) < target_per_biome:
+							biome_map[bkey] = nb_biome
+							reassigned = true
+							break
+				if reassigned:
+					break
+		
+		if not reassigned:
+			break  # No valid reassignment possible
+	
+	print("Distribution after rebalancing:")
+	_print_biome_distribution(biome_map)
+	
+	# ==========================================================================
+	# STEP 4: Cleanup — remove isolated tiles and fix forbidden adjacencies
+	# An isolated tile has NO same-biome neighbors → reassign to majority neighbor
+	# ==========================================================================
+	for _pass in range(CLEANUP_PASSES):
+		var changed: bool = false
+		for coord in coordinates:
+			var key: String = coord._to_key()
+			var current: Biomes.Type = biome_map[key]
+			var neighbors = _get_valid_neighbors(coord)
+			
+			# Count neighbor biomes
+			var neighbor_counts: Dictionary = {}
+			for nb in neighbors:
+				var nkey = nb._to_key()
+				if nkey in biome_map:
+					var nb_biome = biome_map[nkey]
+					neighbor_counts[nb_biome] = neighbor_counts.get(nb_biome, 0) + 1
+			
+			var same_count = neighbor_counts.get(current, 0)
+			
+			# If tile is isolated (0 same-biome neighbors) or nearly isolated (1)
+			# reassign it to the most common neighbor biome
+			if same_count <= 1 and neighbor_counts.size() > 0:
+				var best_biome: Biomes.Type = current
+				var best_count: int = 0
+				for nb_biome in neighbor_counts:
+					if neighbor_counts[nb_biome] > best_count:
+						best_count = neighbor_counts[nb_biome]
+						best_biome = nb_biome
+				if best_biome != current:
+					biome_map[key] = best_biome
+					changed = true
+		
+		if not changed:
+			break
+	
+	# ==========================================================================
+	# STEP 5: Fix forbidden adjacency violations
+	# If a tile borders a forbidden neighbor, try to change it to a compatible biome
+	# ==========================================================================
+	biome_map = _fix_forbidden_adjacencies(coordinates, biome_map)
 	
 	# DEBUG: Final distribution
-	print("Final distribution:")
+	print("Final distribution after cleanup:")
 	_print_biome_distribution(biome_map)
 	
 	# ==========================================================================
-	# STEP 5: Adjust heights based on final biome assignments
+	# STEP 6: Adjust heights based on final biome assignments
 	# ==========================================================================
 	height_map = _adjust_heights_for_biomes(coordinates, biome_map, height_map)
 	
-	# STEP 6: Smooth height transitions between neighbors
+	# STEP 7: Smooth height transitions between neighbors
 	height_map = _smooth_heights(coordinates, height_map)
 	
-	# STEP 7: Enforce maximum height difference between adjacent tiles
+	# STEP 8: Enforce maximum height difference between adjacent tiles
 	height_map = _enforce_max_height_difference(coordinates, height_map)
 	
-	# STEP 8: Apply final HEIGHT_SCALE
+	# STEP 9: Apply final HEIGHT_SCALE
 	for key in height_map:
 		height_map[key] = height_map[key] * HEIGHT_SCALE
 	
@@ -207,12 +343,103 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	}
 
 
+# =============================================================================
+# SEED RELAXATION (Lloyd's algorithm — 1 pass)
+# Moves each seed toward the centroid of its Voronoi cell
+# Spreads seeds more evenly across the board
+# =============================================================================
+
+func _lloyd_relax_seeds(seeds: Array[Dictionary], all_positions: Array[Vector2]) -> Array[Dictionary]:
+	# Assign each position to the nearest seed
+	var cell_sums: Array[Vector2] = []
+	var cell_counts: Array[int] = []
+	cell_sums.resize(seeds.size())
+	cell_counts.resize(seeds.size())
+	for i in range(seeds.size()):
+		cell_sums[i] = Vector2.ZERO
+		cell_counts[i] = 0
+	
+	for pos in all_positions:
+		var best_i: int = 0
+		var best_d: float = INF
+		for i in range(seeds.size()):
+			var d = pos.distance_squared_to(seeds[i]["pos"])
+			if d < best_d:
+				best_d = d
+				best_i = i
+		cell_sums[best_i] += pos
+		cell_counts[best_i] += 1
+	
+	# Move seeds toward centroid (blend 50% to avoid extreme movement)
+	var relaxed: Array[Dictionary] = []
+	for i in range(seeds.size()):
+		var new_pos: Vector2
+		if cell_counts[i] > 0:
+			var centroid = cell_sums[i] / cell_counts[i]
+			new_pos = seeds[i]["pos"].lerp(centroid, 0.5)
+		else:
+			new_pos = seeds[i]["pos"]
+		relaxed.append({"pos": new_pos, "biome": seeds[i]["biome"]})
+	
+	return relaxed
+
+
+# =============================================================================
+# FORBIDDEN ADJACENCY FIX
+# =============================================================================
+
+func _fix_forbidden_adjacencies(coordinates: Array[HexCoordinates], biome_map: Dictionary) -> Dictionary:
+	var result = biome_map.duplicate()
+	
+	for _pass in range(3):
+		var changed: bool = false
+		for coord in coordinates:
+			var key: String = coord._to_key()
+			var current: Biomes.Type = result[key]
+			var neighbors = _get_valid_neighbors(coord)
+			
+			var has_violation: bool = false
+			var neighbor_counts: Dictionary = {}
+			
+			for nb in neighbors:
+				var nkey = nb._to_key()
+				if nkey in result:
+					var nb_biome = result[nkey]
+					neighbor_counts[nb_biome] = neighbor_counts.get(nb_biome, 0) + 1
+					if _is_forbidden_pair(current, nb_biome):
+						has_violation = true
+			
+			if has_violation:
+				# Find the most common neighbor biome that is NOT forbidden with any neighbor
+				var best_biome: Biomes.Type = current
+				var best_count: int = -1
+				for candidate_biome in neighbor_counts:
+					if neighbor_counts[candidate_biome] > best_count:
+						# Check if this candidate would cause new violations
+						var valid: bool = true
+						for nb in neighbors:
+							var nkey = nb._to_key()
+							if nkey in result:
+								if _is_forbidden_pair(candidate_biome, result[nkey]):
+									valid = false
+									break
+						if valid:
+							best_count = neighbor_counts[candidate_biome]
+							best_biome = candidate_biome
+				
+				if best_biome != current:
+					result[key] = best_biome
+					changed = true
+		
+		if not changed:
+			break
+	
+	return result
+
+
 ## Map master value to biome using pre-calculated percentile thresholds
-## This ensures each biome gets exactly ~14% of tiles while preserving noise patterns
+## (Kept for compatibility — not used by the Voronoi approach)
 func _master_value_to_biome(master_val: float, thresholds: Array[float]) -> Biomes.Type:
-	# Biomes ordered from lowest to highest master value
-	# SWAMP (lowest) -> PLAINS -> FOREST -> HILLS -> WASTES -> ASHLANDS -> PEAKS (highest)
-	# This ordering creates natural elevation flow
 	if master_val < thresholds[0]:
 		return Biomes.Type.SWAMP
 	elif master_val < thresholds[1]:
@@ -244,43 +471,35 @@ func _print_biome_distribution(biome_map: Dictionary) -> void:
 
 
 # =============================================================================
-# NOISE SETUP - UNIFIED SINGLE SOURCE
+# NOISE SETUP
 # =============================================================================
 
 func _setup_noise() -> void:
 	var base_seed = _rng.randi()
 	
-	# ==========================================================================
-	# MASTER NOISE - Single unified source for biome determination
-	# Type: SIMPLEX_SMOOTH for natural organic patterns
-	# Frequency: 0.012 (low) → creates large contiguous biome blobs
-	# ==========================================================================
+	# Distance warp noise — warps Voronoi cell boundaries for organic shapes
+	_warp_noise = FastNoiseLite.new()
+	_warp_noise.seed = base_seed + 7777
+	_warp_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_warp_noise.frequency = DISTANCE_WARP_FREQ
+	_warp_noise.fractal_octaves = 3
+	_warp_noise.fractal_lacunarity = 2.0
+	_warp_noise.fractal_gain = 0.5
+	
+	# Master noise for height variation
 	_master_noise = FastNoiseLite.new()
 	_master_noise.seed = base_seed
 	_master_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_master_noise.frequency = MASTER_NOISE_FREQUENCY  # 0.012
-	_master_noise.fractal_octaves = MASTER_NOISE_OCTAVES
+	_master_noise.frequency = 0.012
+	_master_noise.fractal_octaves = 4
 	_master_noise.fractal_lacunarity = 2.0
 	_master_noise.fractal_gain = 0.5
 	
-	# ==========================================================================
-	# DOMAIN WARP NOISE - Displaces sample coordinates to break up linear bands
-	# Uses a different seed and higher frequency to create irregular warping
-	# The warp makes biome boundaries look like real terrain instead of contours
-	# ==========================================================================
-	_domain_warp_noise = FastNoiseLite.new()
-	_domain_warp_noise.seed = base_seed + 7777
-	_domain_warp_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_domain_warp_noise.frequency = 0.05  # Higher freq = more irregular warping
-	_domain_warp_noise.fractal_octaves = 3
-	_domain_warp_noise.fractal_lacunarity = 2.0
-	_domain_warp_noise.fractal_gain = 0.5
-	
-	# Terrain detail noise - Higher frequency for micro-variation within biomes
+	# Terrain detail noise for micro-variation within biomes
 	_terrain_detail_noise = FastNoiseLite.new()
 	_terrain_detail_noise.seed = base_seed + 3000
 	_terrain_detail_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_terrain_detail_noise.frequency = MASTER_NOISE_FREQUENCY * 4.0  # Higher freq for detail
+	_terrain_detail_noise.frequency = 0.048
 	_terrain_detail_noise.fractal_octaves = 2
 	_terrain_detail_noise.fractal_lacunarity = 2.0
 	_terrain_detail_noise.fractal_gain = 0.4
@@ -290,40 +509,31 @@ func _setup_noise() -> void:
 # HEIGHT ADJUSTMENT
 # =============================================================================
 
-## Adjust heights based on biome type - Minecraft style fixed heights per biome
-## Heights are in normalized 0-1 range (HEIGHT_SCALE applied later)
+## Adjust heights based on biome type
 func _adjust_heights_for_biomes(coordinates: Array[HexCoordinates], biome_map: Dictionary, _height_map: Dictionary) -> Dictionary:
 	var new_heights: Dictionary = {}
 	
-	# Biome height ranges for more natural variation
-	# Peaks are ALWAYS the highest, other biomes have elevation ranges
 	var biome_height_ranges: Dictionary = {
-		Biomes.Type.SWAMP: [0.0, 0.15], # Low, near water level
-		Biomes.Type.PLAINS: [0.1, 0.3], # Low to mid flat land
-		Biomes.Type.FOREST: [0.2, 0.45], # Mid elevation forests
-		Biomes.Type.WASTES: [0.15, 0.4], # Variable desert elevations
-		Biomes.Type.ASHLANDS: [0.3, 0.65], # Volcanic, can be high
-		Biomes.Type.HILLS: [0.4, 0.75], # Higher elevations
-		Biomes.Type.PEAKS: [0.6, 0.9], # Highest elevations, snow peaks
+		Biomes.Type.SWAMP: [0.0, 0.15],
+		Biomes.Type.PLAINS: [0.1, 0.3],
+		Biomes.Type.FOREST: [0.2, 0.45],
+		Biomes.Type.WASTES: [0.15, 0.4],
+		Biomes.Type.ASHLANDS: [0.3, 0.65],
+		Biomes.Type.HILLS: [0.4, 0.75],
+		Biomes.Type.PEAKS: [0.6, 0.9],
 	}
 	
 	for coord in coordinates:
 		var key: String = coord._to_key()
 		var biome: Biomes.Type = biome_map.get(key, Biomes.Type.PLAINS)
 		
-		# Get height range for this biome
 		var height_range: Array = biome_height_ranges.get(biome, [0.1, 0.25])
 		var base_height: float = height_range[0]
 		var max_height: float = height_range[1]
 		
-		# Use the master noise to vary within the biome's range
 		var pixel = coord.to_pixel(1.0)
 		var elevation_factor = (_master_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-		
-		# Add some micro-variation using detail noise
 		var detail_noise = (_terrain_detail_noise.get_noise_2d(pixel.x, pixel.y) + 1.0) * 0.5
-		
-		# Combine elevation and detail for natural variation within biome range
 		var height_variation = elevation_factor * 0.7 + detail_noise * 0.3
 		var final_height = base_height + (max_height - base_height) * height_variation
 		
@@ -335,14 +545,12 @@ func _adjust_heights_for_biomes(coordinates: Array[HexCoordinates], biome_map: D
 		var biome: Biomes.Type = biome_map.get(key, Biomes.Type.PLAINS)
 		
 		if biome == Biomes.Type.PEAKS:
-			# Find the highest neighbor that's not a peak
 			var max_neighbor_height: float = 0.0
 			for neighbor in _get_valid_neighbors(coord):
 				var nkey: String = neighbor._to_key()
 				if nkey in new_heights and biome_map.get(nkey, Biomes.Type.PLAINS) != Biomes.Type.PEAKS:
 					max_neighbor_height = max(max_neighbor_height, new_heights[nkey])
 			
-			# Ensure this peak is at least 0.12 units higher than the highest neighbor
 			if new_heights[key] <= max_neighbor_height:
 				new_heights[key] = max_neighbor_height + 0.12
 	
@@ -353,7 +561,6 @@ func _adjust_heights_for_biomes(coordinates: Array[HexCoordinates], biome_map: D
 # TERRAIN SMOOTHING AND ISLAND FALLOFF
 # =============================================================================
 
-## Calculate the board radius from coordinates
 func _calculate_board_radius(coordinates: Array[HexCoordinates]) -> float:
 	var max_dist: float = 0.0
 	for coord in coordinates:
@@ -362,23 +569,14 @@ func _calculate_board_radius(coordinates: Array[HexCoordinates]) -> float:
 	return max_dist
 
 
-## Apply island-style falloff to height based on distance from center
-## Creates a natural landmass shape with lower edges
 func _apply_island_falloff(coord: HexCoordinates, height: float) -> float:
 	var distance_from_center = sqrt(pow(coord.q, 2) + pow(coord.r, 2) + coord.q * coord.r)
 	var normalized_distance = distance_from_center / _board_radius if _board_radius > 0 else 0.0
-	
-	# Smooth falloff curve (plateau in center, drops at edges)
-	# Using smoothstep-like curve for natural transition
 	var falloff = 1.0 - pow(normalized_distance, 2.5)
 	falloff = clampf(falloff, 0.0, 1.0)
-	
-	# Apply falloff - center keeps height, edges reduced
 	return height * (0.3 + falloff * 0.7)
 
 
-## Smooth heights by blending with neighbor averages
-## Multiple passes for increasingly smooth terrain
 func _smooth_heights(coordinates: Array[HexCoordinates], height_map: Dictionary) -> Dictionary:
 	var new_heights: Dictionary = height_map.duplicate()
 	
@@ -399,7 +597,6 @@ func _smooth_heights(coordinates: Array[HexCoordinates], height_map: Dictionary)
 			
 			if neighbor_count > 0:
 				var neighbor_avg: float = neighbor_sum / neighbor_count
-				# Blend 40% current + 60% neighbor average for stronger smoothing
 				pass_heights[key] = current_height * 0.4 + neighbor_avg * 0.6
 		
 		new_heights = pass_heights
@@ -407,11 +604,9 @@ func _smooth_heights(coordinates: Array[HexCoordinates], height_map: Dictionary)
 	return new_heights
 
 
-## Enforce maximum height difference between adjacent tiles
-## Prevents cliff-like jumps for natural terrain transitions
 func _enforce_max_height_difference(coordinates: Array[HexCoordinates], height_map: Dictionary) -> Dictionary:
 	var new_heights: Dictionary = height_map.duplicate()
-	var max_iterations: int = 10 # Safety limit
+	var max_iterations: int = 10
 	
 	for _iteration in range(max_iterations):
 		var changed: bool = false
@@ -429,7 +624,6 @@ func _enforce_max_height_difference(coordinates: Array[HexCoordinates], height_m
 				var diff: float = abs(current_height - neighbor_height)
 				
 				if diff > MAX_HEIGHT_DIFFERENCE:
-					# Pull both heights toward their average
 					var avg: float = (current_height + neighbor_height) / 2.0
 					var target_diff: float = MAX_HEIGHT_DIFFERENCE * 0.9
 					
@@ -503,6 +697,15 @@ func _get_valid_neighbors(coord: HexCoordinates) -> Array[HexCoordinates]:
 		if neighbor._to_key() in _coord_lookup:
 			result.append(neighbor)
 	return result
+
+
+## Fisher-Yates shuffle for arrays
+func _shuffle_array(arr: Array) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j = _rng.randi_range(0, i)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
 
 
 # =============================================================================

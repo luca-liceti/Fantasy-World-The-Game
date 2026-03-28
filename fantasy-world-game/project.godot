@@ -18,8 +18,7 @@ config/name="Fantasy World Game"
 config/description="A fantasy strategy board game with hexagonal tiles, troops, and turn-based combat."
 run/main_scene="res://scenes/game_root.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
-boot_splash/bg_color=Color(0.2, 0.2, 0.2, 1)
-boot_splash/image="res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png"
+boot_splash/bg_color=Color(0, 0, 0, 1)
 config/icon="res://icon.svg"
 
 [autoload]
@@ -105,4 +104,4 @@ select_troop_4={
 [rendering]
 
 anti_aliasing/quality/msaa_3d=2
-environment/defaults/default_clear_color=Color(0.05, 0.08, 0.15, 1)
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)

@@ -61,6 +61,13 @@ func _build_ui() -> void:
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 
+	# Dark scrim for legibility over the revolving backgrounds
+	var scrim = ColorRect.new()
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.color = Color(0.0, 0.0, 0.0, 0.55)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(scrim)
+
 	# Logo
 	var sub_logo_scale = 0.50
 	var lw = UITheme.LOGO_W * sub_logo_scale

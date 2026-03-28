@@ -24,6 +24,7 @@ var card_selection_ui: Node # CardSelectionUI
 var first_move_dice_ui: FirstMoveDiceUI # UI for initial turn order roll
 var combat_selection_ui: CombatSelectionUI # Enhanced combat UI for move/stance selection
 var combat_resolution_ui: Node # Enhanced combat resolution display
+var terrain_loading_screen: CanvasLayer = null # Loading screen during terrain generation
 
 # Deck selection state
 var is_selecting_decks: bool = false
@@ -46,10 +47,10 @@ const CAMERA_TRANSITION_SPEED: float = 3.0 # Smooth camera movement speed
 const CAMERA_COLLISION_SPHERE_RADIUS: float = 0.3 # Physical camera body radius
 const CAMERA_COLLISION_LAYER: int = 1 << 15 # Physics Layer 16 (0-indexed bit 15)
 
-var camera_distance: float = 35.0 # Current zoom distance (start zoomed out)
+var camera_distance: float = 25.0 # Current zoom distance (closer for immersive view)
 var _camera_body_initialized: bool = false # First-frame teleport flag
 var camera_yaw: float = 0.0 # Horizontal rotation (Y-axis)
-var camera_pitch: float = 45.0 # Vertical rotation (X-axis), start at 45° down
+var camera_pitch: float = 35.0 # Vertical rotation (X-axis), lower for grounded view
 
 var is_rotating: bool = false # Is right-click drag active?
 var is_panning_mouse: bool = false # Is middle-click drag active?
@@ -68,9 +69,9 @@ enum CameraView {
 
 var current_view: CameraView = CameraView.OVERVIEW
 var target_focus_point: Vector3 = Vector3.ZERO
-var target_distance: float = 35.0
+var target_distance: float = 25.0
 var target_yaw: float = 0.0
-var target_pitch: float = 45.0
+var target_pitch: float = 35.0
 var is_camera_transitioning: bool = false
 
 # Smooth transition variables
@@ -82,14 +83,22 @@ var start_yaw: float = 0.0
 var start_pitch: float = 45.0
 var is_player_switch_transition: bool = false # Special cinematic transition
 
+# Combat camera — saved state to restore after combat ends
+var _pre_combat_focus: Vector3 = Vector3.ZERO
+var _pre_combat_distance: float = 25.0
+var _pre_combat_yaw: float = 0.0
+var _pre_combat_pitch: float = 35.0
+var _pre_combat_view: CameraView = CameraView.OVERVIEW
+var _in_combat_camera: bool = false
+
 # View preset definitions: {distance, pitch, yaw_offset from base position}
 # yaw_offset: 0 = directly behind player, positive = rotate right, negative = rotate left
 const VIEW_PRESETS: Dictionary = {
-	"OVERVIEW": {"distance": 35.0, "pitch": 45.0, "yaw_offset": 0.0},
-	"TACTICAL": {"distance": 20.0, "pitch": 50.0, "yaw_offset": 0.0},
-	"TROOP_FOCUS": {"distance": 10.0, "pitch": 35.0, "yaw_offset": 15.0},
-	"TOP_DOWN": {"distance": 40.0, "pitch": 85.0, "yaw_offset": 0.0},
-	"CINEMATIC": {"distance": 15.0, "pitch": 20.0, "yaw_offset": 25.0}
+	"OVERVIEW": {"distance": 25.0, "pitch": 35.0, "yaw_offset": 0.0},
+	"TACTICAL": {"distance": 16.0, "pitch": 40.0, "yaw_offset": 0.0},
+	"TROOP_FOCUS": {"distance": 8.0, "pitch": 25.0, "yaw_offset": 15.0},
+	"TOP_DOWN": {"distance": 35.0, "pitch": 85.0, "yaw_offset": 0.0},
+	"CINEMATIC": {"distance": 12.0, "pitch": 15.0, "yaw_offset": 25.0}
 }
 
 const VIEW_NAMES: Array[String] = ["Overview", "Tactical", "Troop Focus", "Top-Down", "Cinematic"]
@@ -136,19 +145,15 @@ func _ready() -> void:
 	if hex_board:
 		# Ensure board is at origin so BOARD_LIFT (1.0) is accurate world height
 		hex_board.position.y = 0.0
-		# Board generation is deferred to run concurrently
+		# Board generation is deferred to _finalize_game_start() (after deck selection)
 	else:
 		push_error("HexBoard node not found!")
 	
 	# Create game UI
 	_setup_game_ui()
 	
-	# Start test game
+	# Start test game (deck selection — board generation deferred until after)
 	_start_test_game()
-
-	# Start concurrent board generation
-	if hex_board:
-		_generate_board_concurrently()
 	
 	print("Game initialization complete!")
 	print("")
@@ -256,12 +261,12 @@ func _generate_board_concurrently() -> void:
 		# Add lighting for standalone board setup
 		_setup_board_lighting()
 	
-	print("Board generated successfully (concurrently)!")
+	print("Board generated successfully!")
 	board_generation_complete = true
 	
-	# If players already finished deck selection, proceed now
-	if decks_confirmed and not game_started:
-		_proceed_to_first_move()
+	# Generation is always triggered from _finalize_game_start, so proceed now
+	_hide_terrain_loading_screen()
+	_proceed_to_first_move()
 
 
 func _setup_board_lighting() -> void:
@@ -439,20 +444,158 @@ func _on_deck_selection_canceled() -> void:
 		get_tree().change_scene_to_file("res://scenes/ui/start_menu.tscn")
 
 
-## Finalize game start after both players selected decks
+## Finalize game start after both players selected decks.
+## Board generation is DEFERRED to here so deck selection loads instantly.
 func _finalize_game_start() -> void:
 	is_selecting_decks = false
 	decks_confirmed = true
 	
 	print("=== FINALIZE GAME START ===")
 	
-	if board_generation_complete:
-		_proceed_to_first_move()
+	# Hide deck selection immediately
+	if card_selection_ui:
+		card_selection_ui.hide_immediate()
+	
+	# Show the terrain loading screen, then start board + environment generation
+	_show_terrain_loading_screen()
+	
+	if hex_board:
+		_generate_board_concurrently()
 	else:
-		print("Waiting for background board generation to complete...")
+		push_error("HexBoard node not found — cannot generate board!")
+
+
+# =============================================================================
+# TERRAIN GENERATION LOADING SCREEN
+# =============================================================================
+
+## Build and display the terrain loading screen
+func _show_terrain_loading_screen() -> void:
+	if terrain_loading_screen:
+		return # Already showing
+	
+	terrain_loading_screen = CanvasLayer.new()
+	terrain_loading_screen.name = "TerrainLoadingScreen"
+	terrain_loading_screen.layer = 50 # Above card selection and game UI
+	add_child(terrain_loading_screen)
+	
+	# Fullscreen root
+	var root = Control.new()
+	root.name = "LoadingRoot"
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP # Block all input
+	terrain_loading_screen.add_child(root)
+	
+	# Dark background
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.03, 0.03, 0.05, 0.92)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(bg)
+	
+	# Center container
+	var center = VBoxContainer.new()
+	center.set_anchors_preset(Control.PRESET_CENTER)
+	center.custom_minimum_size = Vector2(600, 300)
+	center.position = Vector2(-300, -150)
+	center.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_theme_constant_override("separation", 24)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(center)
+	
+	# Logo (smaller)
+	var logo = TextureRect.new()
+	logo.texture = UITheme.tex_logo()
+	logo.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.custom_minimum_size = Vector2(360, 128)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(logo)
+	
+	# Separator
+	center.add_child(UITheme.make_separator())
+	
+	# Title
+	var title = Label.new()
+	title.name = "LoadingTitle"
+	title.text = "FORGING THE WORLD"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, 28, UITheme.C_GOLD, true)
+	center.add_child(title)
+	
+	# Status label
+	var status = Label.new()
+	status.name = "LoadingStatus"
+	status.text = "Generating terrain, biomes, and elevation..."
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(status, 16, UITheme.C_WARM_WHITE)
+	center.add_child(status)
+	
+	# Progress indicator — pulsing gold bar
+	var bar_container = CenterContainer.new()
+	bar_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(bar_container)
+	
+	var bar_bg = PanelContainer.new()
+	bar_bg.custom_minimum_size = Vector2(400, 8)
+	var bar_style = StyleBoxFlat.new()
+	bar_style.bg_color = Color(0.15, 0.13, 0.10, 0.80)
+	bar_style.set_corner_radius_all(4)
+	bar_bg.add_theme_stylebox_override("panel", bar_style)
+	bar_container.add_child(bar_bg)
+	
+	var bar_fill = ColorRect.new()
+	bar_fill.name = "LoadingBarFill"
+	bar_fill.custom_minimum_size = Vector2(40, 6)
+	bar_fill.color = UITheme.C_GOLD
+	bar_bg.add_child(bar_fill)
+	
+	# Subtle tip text
+	var tip = Label.new()
+	tip.text = "397 hexagonal tiles  •  7 biomes  •  Procedural elevation"
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(tip, 12, UITheme.C_DIM)
+	center.add_child(tip)
+	
+	# Fade in
+	root.modulate.a = 0.0
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(root, "modulate:a", 1.0, 0.4)
+	
+	# Pulsing bar animation
+	var bar_tw = create_tween()
+	bar_tw.set_loops()
+	bar_tw.tween_property(bar_fill, "custom_minimum_size:x", 398.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bar_tw.tween_property(bar_fill, "custom_minimum_size:x", 40.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	
+	print("[TerrainLoadingScreen] Shown")
+
+
+## Hide and free the terrain loading screen
+func _hide_terrain_loading_screen() -> void:
+	if not terrain_loading_screen:
+		return
+	
+	var screen = terrain_loading_screen
+	terrain_loading_screen = null
+	
+	# Find the root Control to animate fade-out
+	var root = screen.get_node_or_null("LoadingRoot")
+	if root:
+		var tw = create_tween()
+		tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(root, "modulate:a", 0.0, 0.35)
+		tw.tween_callback(screen.queue_free)
+	else:
+		screen.queue_free()
+	
+	print("[TerrainLoadingScreen] Hidden")
+
 
 ## Proceed after board generation and deck selection are both done
 func _proceed_to_first_move() -> void:
+	_hide_terrain_loading_screen()
 	print("Both players have selected decks and board is ready - showing first move roll...")
 	
 	# DEBUG: Check what CanvasLayers exist
@@ -1156,6 +1299,89 @@ func _set_camera_view(view: CameraView, smooth: bool = true) -> void:
 		)
 	
 	print("Camera view: %s" % VIEW_NAMES[view])
+
+
+## ==========================================================================
+## COMBAT CAMERA
+## ==========================================================================
+
+## Transition camera to a front-quarter combat view, framing both combatants.
+## Inspired by Mortal Kombat / fighting-game perspective.
+func _enter_combat_camera(attacker: Node, defender: Node) -> void:
+	if _in_combat_camera:
+		return
+	
+	# Save current camera state so we can restore after combat
+	_pre_combat_focus = focus_point
+	_pre_combat_distance = camera_distance
+	_pre_combat_yaw = camera_yaw
+	_pre_combat_pitch = camera_pitch
+	_pre_combat_view = current_view
+	_in_combat_camera = true
+	
+	# Get world positions of both combatants
+	var att_pos: Vector3 = attacker.global_position if attacker else Vector3.ZERO
+	var def_pos: Vector3 = defender.global_position if defender else Vector3.ZERO
+	
+	# Focus point: midpoint between attacker and defender
+	var midpoint = (att_pos + def_pos) * 0.5
+	
+	# Direction from attacker to defender (the combat axis)
+	var combat_axis = (def_pos - att_pos)
+	combat_axis.y = 0.0 # Project onto horizontal plane
+	if combat_axis.length() < 0.001:
+		combat_axis = Vector3.FORWARD
+	combat_axis = combat_axis.normalized()
+	
+	# Camera goes to the SIDE of the combat axis (front-quarter angle)
+	# Rotate the combat axis 55° to get a dramatic side view
+	var side_offset = 55.0 # degrees from combat axis
+	var yaw_rad = atan2(combat_axis.x, combat_axis.z) + deg_to_rad(side_offset)
+	var combat_yaw = rad_to_deg(yaw_rad)
+	
+	# Calculate appropriate distance based on combatant separation
+	var separation = att_pos.distance_to(def_pos)
+	var combat_distance = clampf(separation * 0.9 + 4.0, 6.0, 14.0)
+	
+	# Set targets for smooth transition
+	target_focus_point = midpoint + Vector3(0, 0.5, 0) # Slightly above ground
+	target_distance = combat_distance
+	target_yaw = combat_yaw
+	target_pitch = 22.0 # Low angle for dramatic ground-level framing
+	
+	# Initiate smooth transition
+	start_focus_point = focus_point
+	start_distance = camera_distance
+	start_yaw = camera_yaw
+	start_pitch = camera_pitch
+	transition_progress = 0.0
+	is_camera_transitioning = true
+	
+	print("[CombatCamera] Entering combat view — att=%s, def=%s, yaw=%.1f, dist=%.1f" % [
+		attacker.display_name, defender.display_name, combat_yaw, combat_distance])
+
+
+## Restore camera to the view it had before combat started
+func _exit_combat_camera() -> void:
+	if not _in_combat_camera:
+		return
+	_in_combat_camera = false
+	
+	# Restore saved state via smooth transition
+	target_focus_point = _pre_combat_focus
+	target_distance = _pre_combat_distance
+	target_yaw = _pre_combat_yaw
+	target_pitch = _pre_combat_pitch
+	current_view = _pre_combat_view
+	
+	start_focus_point = focus_point
+	start_distance = camera_distance
+	start_yaw = camera_yaw
+	start_pitch = camera_pitch
+	transition_progress = 0.0
+	is_camera_transitioning = true
+	
+	print("[CombatCamera] Restoring pre-combat view")
 
 
 ## Smart camera positioning when selecting a troop
@@ -1862,6 +2088,9 @@ func _on_combat_selection_started(attacker: Node, defender: Node) -> void:
 	print("=== ENHANCED COMBAT STARTED ===")
 	print("Attacker: %s vs Defender: %s" % [attacker.display_name, defender.display_name])
 	
+	# Transition camera to front-quarter combat view
+	_enter_combat_camera(attacker, defender)
+	
 	if not combat_selection_ui:
 		push_error("CombatSelectionUI not found!")
 		return
@@ -1956,6 +2185,9 @@ func _on_enhanced_combat_timeout() -> void:
 func _on_combat_resolved(result: Dictionary) -> void:
 	print("=== COMBAT RESOLVED ===")
 	print("Result: %s" % str(result))
+	
+	# Restore camera to pre-combat view
+	_exit_combat_camera()
 	
 	# Hide selection UI if still visible
 	if combat_selection_ui:
