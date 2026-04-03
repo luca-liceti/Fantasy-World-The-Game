@@ -38,7 +38,6 @@ var base_atk: int = 50
 var base_def: int = 50
 var base_range: int = 1
 var base_speed: int = 2
-var mana_cost: int = 5
 var range_type: CardData.RangeType = CardData.RangeType.MELEE
 var role: CardData.Role = CardData.Role.GROUND_TANK
 var ability: CardData.Ability = CardData.Ability.NONE
@@ -174,7 +173,6 @@ func initialize(card_id: String, player_id: int) -> void:
 	base_def = troop_data.get("def", 50)
 	base_range = troop_data.get("range", 1)
 	base_speed = troop_data.get("speed", 2)
-	mana_cost = troop_data.get("mana", 5)
 	range_type = troop_data.get("range_type", CardData.RangeType.MELEE)
 	role = troop_data.get("role", CardData.Role.GROUND_TANK)
 	ability = troop_data.get("ability", CardData.Ability.NONE)

@@ -55,7 +55,7 @@ func _create_fade_overlay() -> void:
 	fade_overlay = ColorRect.new()
 	fade_overlay.name = "FadeOverlay"
 	fade_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fade_overlay.color = Color(0.05, 0.08, 0.15, 0.0) # Match UI background, start transparent
+	fade_overlay.color = Color(0.0, 0.0, 0.0, 0.0) # Pure black, start transparent
 	fade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fade_canvas.add_child(fade_overlay)
 

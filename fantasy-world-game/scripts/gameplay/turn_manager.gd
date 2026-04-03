@@ -490,6 +490,46 @@ func perform_upgrade_troop(troop: Node) -> Dictionary:
 	return result
 
 
+## Validate and perform mine upgrade
+func perform_upgrade_mine(mine: Node) -> Dictionary:
+	if current_phase != Phase.PLAYER_TURN:
+		return {"success": false, "error": "Cannot upgrade during this phase"}
+	
+	var active_player = player_manager.get_active_player()
+	
+	if mine not in active_player.gold_mines:
+		return {"success": false, "error": "Mine does not belong to active player"}
+	
+	var current_level = mine.level if "level" in mine else 1
+	
+	if current_level >= GameConfig.MAX_TROOP_LEVEL:
+		return {"success": false, "error": "Mine is max level"}
+	
+	var next_level = current_level + 1
+	var gold_cost = GameConfig.MINE_UPGRADE_COSTS.get(next_level, 0)
+	
+	if not active_player.can_afford_gold(gold_cost):
+		return {"success": false, "error": "Not enough gold"}
+	
+	var result = {
+		"success": true,
+		"action": ActionType.UPGRADE_MINE,
+		"mine": mine,
+		"new_level": next_level,
+		"gold_cost": gold_cost
+	}
+	
+	# Record action
+	_record_action(ActionType.UPGRADE_MINE, {
+		"mine_id": mine.get_instance_id() if mine else -1,
+		"new_level": next_level
+	})
+	
+	action_performed.emit(active_player.player_id, "UPGRADE_MINE", result)
+	
+	return result
+
+
 ## Validate and perform item use (e.g., Phoenix Feather)
 func perform_use_item(troop: Node, item_id: String, target: Node = null) -> Dictionary:
 	if not can_troop_act(troop):

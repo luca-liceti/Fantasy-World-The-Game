@@ -69,7 +69,7 @@ func _build_ui() -> void:
 	_root.add_child(scrim)
 
 	# Logo
-	var sub_logo_scale = 0.50
+	var sub_logo_scale = 0.30
 	var lw = UITheme.LOGO_W * sub_logo_scale
 	var lh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
@@ -83,7 +83,7 @@ func _build_ui() -> void:
 	_root.add_child(logo)
 
 	# Page title
-	var title_top = lh + 32.0
+	var title_top = 160.0 # Standardized across sub-screens
 	var title = Label.new()
 	title.text = "SETTINGS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -97,11 +97,11 @@ func _build_ui() -> void:
 	var sep = UITheme.make_separator()
 	sep.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	sep.custom_minimum_size = Vector2(640, 4)
-	sep.position = Vector2(-320, title_top + 60)
+	sep.position = Vector2(-320, title_top + 64)
 	_root.add_child(sep)
 
 	# Tab row
-	var tab_top = title_top + 68.0
+	var tab_top = title_top + 76.0
 	_build_tab_row(tab_top)
 
 	# Content panel
@@ -129,14 +129,18 @@ func _build_ui() -> void:
 
 
 func _build_tab_row(top_y: float) -> void:
-	var total_w = TABS.size() * TAB_W + (TABS.size() - 1) * 4
+	# Use a CenterContainer wrapper anchored to the center top of the screen
+	# This avoids manual offset math and is much more reliable in Godot 4.
+	var holder = CenterContainer.new()
+	holder.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	holder.custom_minimum_size = Vector2(1000, TAB_H)
+	holder.position = Vector2(-500, top_y)
+	_root.add_child(holder)
+
 	var row = HBoxContainer.new()
 	row.name = "TabRow"
-	row.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	row.custom_minimum_size = Vector2(total_w, TAB_H)
-	row.position = Vector2(-total_w * 0.5, top_y)
 	row.add_theme_constant_override("separation", 4)
-	_root.add_child(row)
+	holder.add_child(row)
 
 	for tab_id in TABS:
 		var btn = Button.new()
@@ -344,6 +348,7 @@ func _add_toggle(path: String, label_text: String) -> void:
 	var cur = _get_val(path)
 	toggle.button_pressed = cur if cur != null else false
 	toggle.toggled.connect(func(v): _on_changed(path, v))
+	UITheme.connect_hover_sound(toggle)
 
 	row.add_child(toggle)
 	_setting_ctrls[path] = toggle
@@ -575,7 +580,7 @@ func _btn_press_anim(btn: Button) -> void:
 ## Release: pop back to normal size
 func _btn_release_anim(btn: Button) -> void:
 	var tw = create_tween()
-	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12)
 
 

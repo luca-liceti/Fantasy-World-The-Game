@@ -14,8 +14,7 @@ signal selection_canceled()
 # CONSTANTS
 # =============================================================================
 const MAX_DECK_SIZE: int = 4
-const MAX_MANA_COST: int = 22
-const SELECTION_TIME: float = 30.0 # 30 seconds to select
+const SELECTION_TIME: float = 60.0 # 60 seconds to select
 
 # Role slot indices
 enum RoleSlot {GROUND_TANK = 0, AIR_HYBRID = 1, RANGED_MAGIC = 2, FLEX = 3}
@@ -23,15 +22,15 @@ enum RoleSlot {GROUND_TANK = 0, AIR_HYBRID = 1, RANGED_MAGIC = 2, FLEX = 3}
 # =============================================================================
 # COLORS
 # =============================================================================
-const COLOR_GROUND_TANK = Color(0.7, 0.5, 0.3) # Brown/Bronze
-const COLOR_AIR_HYBRID = Color(0.4, 0.7, 0.9) # Sky Blue
-const COLOR_RANGED_MAGIC = Color(0.6, 0.3, 0.8) # Purple
-const COLOR_FLEX = Color(0.4, 0.8, 0.4) # Green
+static var COLOR_GROUND_TANK  = UITheme.C_ROLE_GROUND
+static var COLOR_AIR_HYBRID   = UITheme.C_ROLE_AIR
+static var COLOR_RANGED_MAGIC = UITheme.C_ROLE_MAGIC
+static var COLOR_FLEX         = UITheme.C_ROLE_FLEX
 
-const COLOR_BG = Color(0.05, 0.05, 0.1, 0.98)
-const COLOR_SELECTED = Color(1.0, 0.84, 0.0)
-const COLOR_VALID = Color(0.3, 0.9, 0.3)
-const COLOR_INVALID = Color(0.9, 0.3, 0.3)
+static var COLOR_BG           = UITheme.C_PANEL_FILL
+static var COLOR_SELECTED     = UITheme.C_GOLD
+static var COLOR_VALID        = Color(0.4, 0.8, 0.4)
+static var COLOR_INVALID      = Color(0.9, 0.3, 0.3)
 
 # =============================================================================
 # UI ELEMENTS
@@ -41,7 +40,6 @@ var overlay: ColorRect
 var main_panel: PanelContainer
 var title_label: Label
 var timer_label: Label
-var mana_label: Label
 
 # Card grid (4 columns for 4 roles)
 var card_columns: Array[VBoxContainer] = []
@@ -74,7 +72,6 @@ var _preview_model_root: Node3D = null  # Currently shown model
 var _preview_current_id: String = ""    # Card ID in the viewport
 var _preview_name_lbl: Label = null
 var _preview_role_lbl: Label = null
-var _preview_mana_lbl: Label = null
 var _preview_hp_lbl:   Label = null
 var _preview_atk_lbl:  Label = null
 var _preview_def_lbl:  Label = null
@@ -179,7 +176,7 @@ func _create_header(parent: VBoxContainer) -> void:
 	
 	# Instructions
 	var instructions = Label.new()
-	instructions.text = "Pick 1 card from each role. Your deck must cost ≤ 22 mana total."
+	instructions.text = "Pick 1 card from each role."
 	instructions.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UITheme.style_label(instructions, 16, UITheme.C_DIM)
 	parent.add_child(instructions)
@@ -250,7 +247,7 @@ func _create_preview_panel(parent: HBoxContainer) -> void:
 	var vp_style = StyleBoxFlat.new()
 	vp_style.bg_color      = Color(0.0, 0.0, 0.0, 0.0)  # Fully transparent
 	vp_style.border_color  = UITheme.C_GOLD.darkened(0.4)
-	vp_style.set_border_width_all(2)
+	vp_style.set_border_width_all(0)
 	vp_style.set_corner_radius_all(10)
 	vp_container.add_theme_stylebox_override("panel", vp_style)
 	outer.add_child(vp_container)
@@ -308,9 +305,9 @@ func _create_preview_panel(parent: HBoxContainer) -> void:
 	# ── Stats panel (below viewport) ──
 	var stats_panel = PanelContainer.new()
 	var stats_style = StyleBoxFlat.new()
-	stats_style.bg_color     = Color(0.07, 0.06, 0.05, 0.95)
+	stats_style.bg_color     = Color(0, 0, 0, 0)
 	stats_style.border_color = UITheme.C_GOLD.darkened(0.4)
-	stats_style.set_border_width_all(2)
+	stats_style.set_border_width_all(0)
 	stats_style.set_corner_radius_all(10)
 	stats_style.content_margin_left   = 14
 	stats_style.content_margin_right  = 14
@@ -323,7 +320,7 @@ func _create_preview_panel(parent: HBoxContainer) -> void:
 	stats_vbox.add_theme_constant_override("separation", 5)
 	stats_panel.add_child(stats_vbox)
 
-	# Name + mana row
+	# Name row
 	var name_row = HBoxContainer.new()
 	stats_vbox.add_child(name_row)
 
@@ -331,10 +328,6 @@ func _create_preview_panel(parent: HBoxContainer) -> void:
 	_preview_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UITheme.style_label(_preview_name_lbl, 16, UITheme.C_GOLD_BRIGHT, true)
 	name_row.add_child(_preview_name_lbl)
-
-	_preview_mana_lbl = Label.new()
-	UITheme.style_label(_preview_mana_lbl, 13, Color(0.6, 0.85, 1.0))
-	name_row.add_child(_preview_mana_lbl)
 
 	_preview_role_lbl = Label.new()
 	UITheme.style_label(_preview_role_lbl, 12, UITheme.C_DIM)
@@ -429,10 +422,9 @@ func _show_character_preview(card_id: String, role_color: Color) -> void:
 	else:
 		_preview_empty_lbl.visible = true
 
-	# Fill stats — CardData uses "name" and "mana", not "display_name" and "mana_cost"
+	# Fill stats
 	var card_data    = CardData.get_troop(card_id)
 	var display_name = card_data.get("name", card_id.replace("_", " ").capitalize())
-	var mana_cost    = card_data.get("mana", 0)
 	var hp           = card_data.get("hp", 0)
 	var atk          = card_data.get("atk", 0)
 	var def_val      = card_data.get("def", 0)
@@ -451,7 +443,6 @@ func _show_character_preview(card_id: String, role_color: Color) -> void:
 
 	_preview_name_lbl.text = display_name
 	_preview_name_lbl.add_theme_color_override("font_color", role_color)
-	_preview_mana_lbl.text  = "💎 %d" % mana_cost
 	_preview_role_lbl.text  = role_text
 	_preview_hp_lbl.text    = str(hp)
 	_preview_atk_lbl.text   = str(atk)
@@ -486,12 +477,7 @@ func _create_role_column(role_info: Dictionary, slot_index: int) -> VBoxContaine
 	
 	# Role header
 	var header_panel = PanelContainer.new()
-	var header_style = StyleBoxFlat.new()
-	header_style.bg_color = role_info["color"].darkened(0.5)
-	header_style.border_color = role_info["color"]
-	header_style.set_border_width_all(2)
-	header_style.set_corner_radius_all(8)
-	header_panel.add_theme_stylebox_override("panel", header_style)
+	header_panel.add_theme_stylebox_override("panel", UITheme.btn_normal())
 	column.add_child(header_panel)
 	
 	var header_label = Label.new()
@@ -499,8 +485,8 @@ func _create_role_column(role_info: Dictionary, slot_index: int) -> VBoxContaine
 	header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UITheme.style_label(header_label, 18, role_info["color"], true)
 	var header_margin = MarginContainer.new()
-	header_margin.add_theme_constant_override("margin_top", 8)
-	header_margin.add_theme_constant_override("margin_bottom", 8)
+	header_margin.add_theme_constant_override("margin_top", 4)
+	header_margin.add_theme_constant_override("margin_bottom", 4)
 	header_margin.add_child(header_label)
 	header_panel.add_child(header_margin)
 	
@@ -521,7 +507,6 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 	# Get card data
 	var card_data = CardData.get_troop(card_id)
 	var display_name = card_data.get("display_name", card_id.replace("_", " ").capitalize())
-	var mana_cost = card_data.get("mana_cost", 5)
 	var hp = card_data.get("hp", 100)
 	var atk = card_data.get("atk", 50)
 	var def = card_data.get("def", 50)
@@ -529,12 +514,21 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 	var speed = card_data.get("speed", 2)
 	var ability_text = card_data.get("ability_description", "")
 	
+	# Use a MarginContainer to ensure the content doesn't overlap the border
+	var margin_container = MarginContainer.new()
+	margin_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin_container.add_theme_constant_override("margin_left", 8)
+	margin_container.add_theme_constant_override("margin_right", 8)
+	margin_container.add_theme_constant_override("margin_top", 8)
+	margin_container.add_theme_constant_override("margin_bottom", 8)
+	margin_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(margin_container)
+	
 	# Use an HBoxContainer layout: [Card Art | Stats Text]
 	var hbox = HBoxContainer.new()
-	hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hbox.add_theme_constant_override("separation", 10)
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(hbox)
+	margin_container.add_child(hbox)
 	
 	# Card art thumbnail
 	var card_art = CharacterModelLoader.load_card_art(card_id)
@@ -568,13 +562,6 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 	UITheme.style_label(name_label, 14, role_color, true)
 	stats_vbox.add_child(name_label)
 	
-	# Mana cost
-	var mana_text = Label.new()
-	mana_text.text = "💎 %d Mana" % mana_cost
-	mana_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(mana_text, 11, Color(0.6, 0.8, 1.0))
-	stats_vbox.add_child(mana_text)
-	
 	# Stats line
 	var stats_label = Label.new()
 	stats_label.text = "❤️%d ⚔️%d 🛡️%d 📍%d 🏃%d" % [hp, atk, def, range_val, speed]
@@ -592,28 +579,9 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 		stats_vbox.add_child(ability_label)
 	
 	# Style
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.1, 0.1, 0.15)
-	normal_style.border_color = role_color.darkened(0.3)
-	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(8)
-	button.add_theme_stylebox_override("normal", normal_style)
+	UITheme.apply_hud_button(button, role_color, 14)
 	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color(0.15, 0.15, 0.2)
-	hover_style.border_color = role_color
-	hover_style.set_border_width_all(3)
-	hover_style.set_corner_radius_all(8)
-	button.add_theme_stylebox_override("hover", hover_style)
-	
-	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = role_color.darkened(0.6)
-	pressed_style.border_color = COLOR_SELECTED
-	pressed_style.set_border_width_all(3)
-	pressed_style.set_corner_radius_all(8)
-	button.add_theme_stylebox_override("pressed", pressed_style)
-	
-	# Connect signal
+	# Connect signals
 	button.pressed.connect(_on_card_selected.bind(card_id, slot_index))
 	
 	return button
@@ -635,13 +603,7 @@ func _create_deck_display(parent: VBoxContainer) -> void:
 	for i in range(4):
 		var slot = PanelContainer.new()
 		slot.custom_minimum_size = Vector2(150, 50)
-		
-		var slot_style = StyleBoxFlat.new()
-		slot_style.bg_color = Color(0.15, 0.15, 0.2)
-		slot_style.border_color = role_colors[i].darkened(0.3)
-		slot_style.set_border_width_all(2)
-		slot_style.set_corner_radius_all(6)
-		slot.add_theme_stylebox_override("panel", slot_style)
+		slot.add_theme_stylebox_override("panel", UITheme.section_panel(role_colors[i]))
 		
 		var slot_label = Label.new()
 		slot_label.text = "Empty"
@@ -659,13 +621,6 @@ func _create_deck_display(parent: VBoxContainer) -> void:
 		deck_slots.append(slot)
 		deck_slot_labels.append(slot_label)
 	
-	# Mana total
-	mana_label = Label.new()
-	mana_label.text = "  💎 0 / 22 Mana"
-	UITheme.style_label(mana_label, 18, COLOR_VALID)
-	deck_container.add_child(mana_label)
-
-
 func _create_footer(parent: VBoxContainer) -> void:
 	var footer = HBoxContainer.new()
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -674,18 +629,18 @@ func _create_footer(parent: VBoxContainer) -> void:
 	
 	# Cancel button
 	var cancel_button = Button.new()
-	cancel_button.text = "❌ CANCEL"
-	cancel_button.custom_minimum_size = Vector2(150, 50)
-	UITheme.apply_hud_button(cancel_button, COLOR_INVALID, 18)
+	cancel_button.text = "CANCEL"
+	cancel_button.custom_minimum_size = Vector2(144, 50)
+	UITheme.apply_menu_button(cancel_button, 18)
 	cancel_button.pressed.connect(_on_cancel_pressed)
 	footer.add_child(cancel_button)
 	
 	# Confirm button
 	confirm_button = Button.new()
-	confirm_button.text = "✅ CONFIRM DECK"
-	confirm_button.custom_minimum_size = Vector2(200, 50)
+	confirm_button.text = "CONFIRM DECK"
+	confirm_button.custom_minimum_size = Vector2(192, 50)
 	confirm_button.disabled = true
-	UITheme.apply_hud_button(confirm_button, COLOR_VALID, 18)
+	UITheme.apply_menu_button(confirm_button, 18)
 	
 	confirm_button.pressed.connect(_on_confirm_pressed)
 	footer.add_child(confirm_button)
@@ -744,20 +699,20 @@ func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
 	else:
 		timer_label.visible = false
 	
+	# Trigger background music if not already playing
+	if AudioManager and AudioManager.has_method("start_tavern_music"):
+		AudioManager.start_tavern_music()
+
 	# Show the root control (which contains overlay and main panel)
 	if root_control:
 		root_control.visible = true
 	
 	# Reset panel state before animation
 	main_panel.modulate.a = 0
-	main_panel.scale = Vector2(0.9, 0.9)
-	main_panel.pivot_offset = main_panel.size / 2
 	
 	# Animate entrance
 	current_tween = create_tween()
-	current_tween.set_parallel(true)
-	current_tween.tween_property(main_panel, "modulate:a", 1.0, 0.3)
-	current_tween.tween_property(main_panel, "scale", Vector2.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	current_tween.tween_property(main_panel, "modulate:a", 1.0, 1.0).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 
 
 ## Hide the card selection UI
@@ -817,11 +772,6 @@ func is_deck_valid() -> bool:
 	for card_id in selected_deck:
 		if card_id == "":
 			return false
-	
-	# Check mana cost
-	if _get_total_mana() > MAX_MANA_COST:
-		return false
-	
 	return true
 
 
@@ -836,6 +786,10 @@ func _on_card_selected(card_id: String, slot_index: int) -> void:
 		selected_deck[slot_index] = ""
 		_clear_preview()
 	else:
+		# Audio feedback
+		if AudioManager and AudioManager.has_method("play_card_pick"):
+			AudioManager.play_card_pick()
+			
 		# Select (replacing any previous selection in this slot)
 		selected_deck[slot_index] = card_id
 		# Show 3D preview for this card
@@ -856,32 +810,16 @@ func _update_deck_display() -> void:
 		if card_id != "":
 			var card_data = CardData.get_troop(card_id)
 			var display_name = card_data.get("display_name", card_id.replace("_", " ").capitalize())
-			var mana = card_data.get("mana_cost", 5)
-			deck_slot_labels[i].text = "%s (💎%d)" % [display_name, mana]
+			deck_slot_labels[i].text = display_name
 			deck_slot_labels[i].add_theme_color_override("font_color", role_colors[i])
 			
 			# Update slot border
-			var slot_style = deck_slots[i].get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-			slot_style.border_color = COLOR_SELECTED
-			deck_slots[i].add_theme_stylebox_override("panel", slot_style)
+			deck_slots[i].add_theme_stylebox_override("panel", UITheme.section_panel(COLOR_SELECTED))
 		else:
 			deck_slot_labels[i].text = "Empty"
-			deck_slot_labels[i].add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+			deck_slot_labels[i].add_theme_color_override("font_color", UITheme.C_DIM)
 			
-			var slot_style = deck_slots[i].get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-			slot_style.border_color = role_colors[i].darkened(0.3)
-			deck_slots[i].add_theme_stylebox_override("panel", slot_style)
-	
-	# Update mana display
-	var total_mana = _get_total_mana()
-	mana_label.text = "  💎 %d / %d Mana" % [total_mana, MAX_MANA_COST]
-	
-	if total_mana > MAX_MANA_COST:
-		mana_label.add_theme_color_override("font_color", COLOR_INVALID)
-	elif total_mana == MAX_MANA_COST:
-		mana_label.add_theme_color_override("font_color", Color.YELLOW)
-	else:
-		mana_label.add_theme_color_override("font_color", COLOR_VALID)
+			deck_slots[i].add_theme_stylebox_override("panel", UITheme.section_panel(role_colors[i]))
 	
 	# Update confirm button
 	confirm_button.disabled = not is_deck_valid()
@@ -901,34 +839,17 @@ func _update_card_highlights() -> void:
 			
 			# Update button style based on selection
 			if card_id == selected_id:
-				# Selected - golden border
-				var style = button.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+				# Selected - highlighted border and dark background
+				var style = UITheme.section_panel(role_colors[slot_index])
 				style.border_color = COLOR_SELECTED
-				style.border_width_left = 4
-				style.border_width_right = 4
-				style.border_width_top = 4
-				style.border_width_bottom = 4
-				style.bg_color = role_colors[slot_index].darkened(0.6)
+				style.set_border_width_all(3)
+				style.bg_color = role_colors[slot_index].darkened(0.7)
 				button.add_theme_stylebox_override("normal", style)
 				button.add_theme_color_override("font_color", COLOR_SELECTED)
 			else:
-				# Not selected - default style
-				var style = StyleBoxFlat.new()
-				style.bg_color = Color(0.1, 0.1, 0.15)
-				style.border_color = role_colors[slot_index].darkened(0.3)
-				style.set_border_width_all(2)
-				style.set_corner_radius_all(8)
-				button.add_theme_stylebox_override("normal", style)
+				# Not selected - default hud button style
+				UITheme.apply_hud_button(button, role_colors[slot_index], 14)
 				button.remove_theme_color_override("font_color")
-
-
-func _get_total_mana() -> int:
-	var total = 0
-	for card_id in selected_deck:
-		if card_id != "":
-			var card_data = CardData.get_troop(card_id)
-			total += card_data.get("mana_cost", 5)
-	return total
 
 
 func _on_timer_tick() -> void:

@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://physical_medieval_room"]
+[gd_scene load_steps=5 format=3 uid="uid://physical_medieval_room"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://c1xk5l8nvt2qr" path="res://scenes/board/hex_board.tscn" id="2_hex_board"]
 [ext_resource type="Script" path="res://scripts/environment/physical_room_builder.gd" id="3_room_builder"]
+[ext_resource type="Script" path="res://scripts/environment/tavern_lighting.gd" id="4_tavern_lighting"]
 
 ; =============================================================================
 ; FANTASY WORLD — MAIN GAME SCENE
@@ -85,6 +86,13 @@ shadow_enabled = false
 ; =============================================================================
 [node name="PhysicalRoom" type="Node3D" parent="."]
 script = ExtResource("3_room_builder")
+
+; Atmospheric lighting controller — apply() is called from PhysicalRoomBuilder
+; after the environment model is loaded.  Studio dev lights are kept visible
+; in the editor; they are hidden automatically at game runtime.
+[node name="TavernLighting" type="Node" parent="PhysicalRoom"]
+script = ExtResource("4_tavern_lighting")
+hide_dev_lights_in_game = true
 
 ; =============================================================================
 ; HEX BOARD — Game board (sits on top of the environment's table surface)

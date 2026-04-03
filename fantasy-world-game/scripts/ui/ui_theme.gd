@@ -12,8 +12,11 @@ const PATH_BTN_DEFAULT  = "res://assets/textures/ui/components/default_button.pn
 const PATH_BTN_HOVERED  = "res://assets/textures/ui/components/hovered_button.png"
 const PATH_BTN_DROPDOWN = "res://assets/textures/ui/components/button_dropdown.png"
 const PATH_INPUT_BOX    = "res://assets/textures/ui/components/input_box.png"
-const PATH_CONTENT_BOX  = "res://assets/textures/ui/components/content_box.png"
+const PATH_CONTENT_BOX  = "res://assets/textures/ui/components/menu_panel_border.png"
 const PATH_RANDOMIZE    = "res://assets/textures/ui/components/randomize_button.png"
+const PATH_SLIDER_H     = "res://assets/textures/ui/components/horizontal_bar.png"
+const PATH_SLIDER_V     = "res://assets/textures/ui/components/verticle_bar.png"
+const PATH_SLIDER_COMPS = "res://assets/textures/ui/components/slider_components.png"
 
 const PATH_LOGO         = "res://assets/textures/logo/fantasy-world-main-screen-logo.png"
 
@@ -30,13 +33,19 @@ const C_WARM_WHITE   = Color(0.72, 0.71, 0.68, 1.0)   # Tarnished silver body te
 const C_DIM          = Color(0.55, 0.52, 0.48, 0.80)  # Disabled / version label
 const C_SHADOW       = Color(0.00, 0.00, 0.00, 0.70)  # Drop shadow
 const C_SCREEN_DIM   = Color(0.00, 0.00, 0.00, 0.60)  # Background vignette tint — increased for readability
-const C_PANEL_FILL   = Color(0.06, 0.05, 0.04, 0.92)  # Semi-transparent panel fill — increased for readability
+const C_PANEL_FILL   = Color(0.0, 0.0, 0.0, 0.95)   # Pure black panel fill — high readability
+
+# Role / Type Colors (Thematic Medieval Palette)
+const C_ROLE_GROUND = Color("#912A2A") # Oxblood Red: Resilience, blood, and the frontline
+const C_ROLE_AIR    = Color("#5B7382") # Slate Blue: Storm clouds, cold steel, and mobility
+const C_ROLE_MAGIC  = Color("#664973") # Royal Amethyst: Arcane mystery and expensive dyes
+const C_ROLE_FLEX   = Color("#C29B40") # Aged Gold: Divinity, utility, and high value
 
 # =============================================================================
 # GEOMETRY CONSTANTS  (all spacing is a multiple of 8 px)
 # =============================================================================
 # Primary menu buttons  (the pointed banner)
-const BTN_W         = 440   # px
+const BTN_W         = 308   # px (reduced by 30% from original 440)
 const BTN_H         = 34    # px  (taller for breathing room around text)
 const BTN_FONT_SIZE = 16    # pt
 
@@ -51,18 +60,23 @@ const INPUT_FONT    = 16
 
 # Panel title font
 const TITLE_FONT    = 42    # Screen header size (e.g. "SETTINGS")
-const LOGO_W        = 720   # Logo image max width (matches reference screenshot)
-const LOGO_H        = 255   # Logo image max height (matches reference screenshot)
+const LOGO_W        = 1080  # Logo image max width (50% bigger than original 720)
+const LOGO_H        = 383   # Logo image max height (50% bigger than original 255)
 
 # 9-slice inset sizes for each texture (pixels from edge that contain the
 # non-stretchable art — pointed tips, border corners, etc.)
-const SLICE_BTN     = 40    # horizontal tip width preserved on both sides
-const SLICE_BTN_V   = 8     # vertical margin preserved top & bottom
-const SLICE_INPUT_H = 12    # input box corner inset
-const SLICE_INPUT_V = 8
-const SLICE_PANEL_H = 40    # content_box corner inset
-const SLICE_PANEL_V = 20    # content_box side/bottom border
-const PANEL_BANNER  = 80    # content_box banner header height in source texture
+const SLICE_BTN     = 60    # horizontal tip width preserved on both sides
+const SLICE_BTN_V   = 16    # vertical margin preserved top & bottom
+
+const SLICE_INPUT_H = 40    # display px protected on each horizontal edge (pointed tips)
+const SLICE_INPUT_V = 15    # display px protected on each vertical edge (top/bottom border rim)
+# Content margins are decoupled from slice so the box never collapses in narrow panels
+const INPUT_CONTENT_H = 14  # inner horizontal padding for text cursor
+const INPUT_CONTENT_V = 6   # inner vertical padding for text cursor
+
+const SLICE_PANEL_H = 48    # border thickness of the newly spliced bars
+const SLICE_PANEL_V = 48    # border thickness of the newly spliced bars
+const PANEL_BANNER  = 48    # top border length of the newly spliced bars
 
 # Content padding inside panels
 const PAD           = 24    # standard inner margin
@@ -102,6 +116,9 @@ static var _tex_input:    Texture2D = null
 static var _tex_content:  Texture2D = null
 static var _tex_random:   Texture2D = null
 static var _tex_logo:     Texture2D = null
+static var _tex_slider_h: Texture2D = null
+static var _tex_slider_v: Texture2D = null
+static var _tex_slider_comps: Texture2D = null
 
 static func tex_btn_default() -> Texture2D:
 	if _tex_btn_def == null and ResourceLoader.exists(PATH_BTN_DEFAULT):
@@ -132,6 +149,21 @@ static func tex_random() -> Texture2D:
 	if _tex_random == null and ResourceLoader.exists(PATH_RANDOMIZE):
 		_tex_random = load(PATH_RANDOMIZE)
 	return _tex_random
+
+static func tex_slider_h() -> Texture2D:
+	if _tex_slider_h == null and ResourceLoader.exists(PATH_SLIDER_H):
+		_tex_slider_h = load(PATH_SLIDER_H)
+	return _tex_slider_h
+
+static func tex_slider_v() -> Texture2D:
+	if _tex_slider_v == null and ResourceLoader.exists(PATH_SLIDER_V):
+		_tex_slider_v = load(PATH_SLIDER_V)
+	return _tex_slider_v
+
+static func tex_slider_comps() -> Texture2D:
+	if _tex_slider_comps == null and ResourceLoader.exists(PATH_SLIDER_COMPS):
+		_tex_slider_comps = load(PATH_SLIDER_COMPS)
+	return _tex_slider_comps
 
 static func tex_logo() -> Texture2D:
 	if _tex_logo == null and ResourceLoader.exists(PATH_LOGO):
@@ -207,18 +239,24 @@ static func dropdown_normal() -> StyleBoxTexture:
 	s.content_margin_bottom = SLICE_BTN_V + 2
 	return s
 
-## Text input / LineEdit
+## Text input / LineEdit — image is pre-cropped, scale uniformly with no 9-slicing
 static func input_normal() -> StyleBoxTexture:
 	var s = StyleBoxTexture.new()
 	s.texture = tex_input()
-	s.texture_margin_left   = SLICE_INPUT_H
-	s.texture_margin_right  = SLICE_INPUT_H
-	s.texture_margin_top    = SLICE_INPUT_V
-	s.texture_margin_bottom = SLICE_INPUT_V
-	s.content_margin_left   = SLICE_INPUT_H + 6
-	s.content_margin_right  = SLICE_INPUT_H + 6
-	s.content_margin_top    = SLICE_INPUT_V + 2
-	s.content_margin_bottom = SLICE_INPUT_V + 2
+	# No 9-slicing — the texture is already the correct shape, just let it scale to fit
+	s.texture_margin_left   = 0
+	s.texture_margin_right  = 0
+	s.texture_margin_top    = 0
+	s.texture_margin_bottom = 0
+	# Small content margins so the text cursor has breathing room from the edges
+	s.content_margin_left   = INPUT_CONTENT_H
+	s.content_margin_right  = INPUT_CONTENT_H
+	s.content_margin_top    = INPUT_CONTENT_V
+	s.content_margin_bottom = INPUT_CONTENT_V
+	s.expand_margin_left   = 0
+	s.expand_margin_right  = 0
+	s.expand_margin_top    = 0
+	s.expand_margin_bottom = 0
 	return s
 
 ## Focused input — same texture, gold modulate
@@ -252,6 +290,26 @@ static func fallback_btn_flat(col: Color = C_GOLD) -> StyleBoxFlat:
 	s.content_margin_right  = 20
 	s.content_margin_top    = 10
 	s.content_margin_bottom = 10
+	return s
+
+## Slider track (horizontal)
+static func slider_h() -> StyleBoxTexture:
+	var s = StyleBoxTexture.new()
+	s.texture = tex_slider_h()
+	s.texture_margin_left   = 8
+	s.texture_margin_right  = 8
+	s.texture_margin_top    = 0
+	s.texture_margin_bottom = 0
+	return s
+
+## Slider track (vertical)
+static func slider_v() -> StyleBoxTexture:
+	var s = StyleBoxTexture.new()
+	s.texture = tex_slider_v()
+	s.texture_margin_left   = 0
+	s.texture_margin_right  = 0
+	s.texture_margin_top    = 8
+	s.texture_margin_bottom = 8
 	return s
 
 
@@ -291,18 +349,33 @@ static func apply_menu_button(btn: Button, size: int = BTN_FONT_SIZE) -> void:
 	btn.add_theme_stylebox_override("disabled", btn_disabled())
 	btn.add_theme_stylebox_override("focus",    btn_hover())
 	style_button_text(btn, size)
+	connect_hover_sound(btn)
+
+## Flat hover/focus style for dropdowns — avoids the banner texture popping up on hover
+static func dropdown_hover() -> StyleBoxFlat:
+	var s = StyleBoxFlat.new()
+	s.bg_color     = Color(0.18, 0.15, 0.10, 0.85)
+	s.border_color = C_GOLD.darkened(0.2)
+	s.set_border_width_all(1)
+	s.content_margin_left   = SLICE_BTN + 4
+	s.content_margin_right  = SLICE_BTN + 48
+	s.content_margin_top    = SLICE_BTN_V + 2
+	s.content_margin_bottom = SLICE_BTN_V + 2
+	return s
 
 ## Full OptionButton / dropdown theme application
 static func apply_dropdown(opt: OptionButton, size: int = INPUT_FONT) -> void:
 	opt.add_theme_stylebox_override("normal",   dropdown_normal())
-	opt.add_theme_stylebox_override("hover",    btn_hover())
-	opt.add_theme_stylebox_override("pressed",  btn_pressed())
-	opt.add_theme_stylebox_override("focus",    btn_hover())
+	opt.add_theme_stylebox_override("hover",    dropdown_hover())
+	opt.add_theme_stylebox_override("pressed",  dropdown_hover())
+	opt.add_theme_stylebox_override("focus",    StyleBoxEmpty.new())
 	var f = font_regular()
 	if f:
 		opt.add_theme_font_override("font", f)
 	opt.add_theme_font_size_override("font_size", size)
 	opt.add_theme_color_override("font_color", C_WARM_WHITE)
+	opt.add_theme_color_override("font_hover_color", C_GOLD_BRIGHT)
+	connect_hover_sound(opt)
 
 ## Full LineEdit theme application
 static func apply_input(le: LineEdit, size: int = INPUT_FONT) -> void:
@@ -335,7 +408,7 @@ static func make_separator() -> HSeparator:
 # =============================================================================
 
 ## Colours used by in-game HUD elements (darker, less opaque than menu panels)
-const C_HUD_BG      = Color(0.06, 0.05, 0.04, 0.92)
+const C_HUD_BG      = Color(0.0, 0.0, 0.0, 0.95)
 const C_HUD_BORDER  = Color(0.40, 0.34, 0.24, 0.80)
 const C_OVERLAY_DIM = Color(0.00, 0.00, 0.00, 0.75)
 
@@ -352,15 +425,24 @@ static func hud_panel(border_col: Color = C_HUD_BORDER) -> StyleBoxFlat:
 	s.content_margin_bottom = 8
 	return s
 
+## Specialized style for the top bar (no top/side borders, no rounded corners)
+static func hud_bar_style(border_col: Color = C_HUD_BORDER) -> StyleBoxFlat:
+	var s = hud_panel(border_col)
+	s.set_corner_radius_all(0)
+	s.set_border_width(SIDE_TOP, 0)
+	s.set_border_width(SIDE_LEFT, 0)
+	s.set_border_width(SIDE_RIGHT, 0)
+	s.set_border_width(SIDE_BOTTOM, 2)
+	return s
+
 ## Full-screen overlay panel for dialogs/combat (centred, with shadow)
 static func overlay_panel(accent: Color = C_GOLD) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
-	s.bg_color     = Color(0.05, 0.04, 0.03, 0.96)
+	s.bg_color     = Color(0.0, 0.0, 0.0, 0.0)
 	s.border_color = accent.darkened(0.3)
-	s.set_border_width_all(3)
+	s.set_border_width_all(0)
 	s.set_corner_radius_all(16)
-	s.shadow_color = Color(0, 0, 0, 0.55)
-	s.shadow_size  = 12
+	s.shadow_size  = 0
 	s.content_margin_left   = 20
 	s.content_margin_right  = 20
 	s.content_margin_top    = 16
@@ -371,7 +453,7 @@ static func overlay_panel(accent: Color = C_GOLD) -> StyleBoxFlat:
 static func section_panel(accent: Color) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
 	s.bg_color     = accent.darkened(0.75)
-	s.border_color = accent.darkened(0.35)
+	s.border_color = C_GOLD.darkened(0.35)
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(10)
 	s.content_margin_left   = 10
@@ -389,8 +471,8 @@ static func hud_action_button(_accent: Color) -> void:
 static func apply_hud_button(btn: Button, accent: Color, size: int = 13) -> void:
 	var normal_s = StyleBoxFlat.new()
 	normal_s.bg_color     = Color(0.10, 0.09, 0.08, 0.90)
-	normal_s.border_color = accent.darkened(0.40)
-	normal_s.set_border_width_all(1)
+	normal_s.border_color = C_GOLD.darkened(0.5)
+	normal_s.set_border_width_all(2)
 	normal_s.set_corner_radius_all(6)
 	normal_s.content_margin_left   = 8
 	normal_s.content_margin_right  = 8
@@ -400,14 +482,14 @@ static func apply_hud_button(btn: Button, accent: Color, size: int = 13) -> void
 
 	var hover_s = normal_s.duplicate()
 	hover_s.bg_color     = accent.darkened(0.60)
-	hover_s.border_color = accent
-	hover_s.set_border_width_all(2)
+	hover_s.border_color = C_GOLD
+	hover_s.set_border_width_all(3)
 	btn.add_theme_stylebox_override("hover", hover_s)
 
 	var pressed_s = normal_s.duplicate()
 	pressed_s.bg_color     = accent.darkened(0.50)
-	pressed_s.border_color = C_GOLD
-	pressed_s.set_border_width_all(2)
+	pressed_s.border_color = C_GOLD_BRIGHT
+	pressed_s.set_border_width_all(3)
 	btn.add_theme_stylebox_override("pressed", pressed_s)
 
 	var disabled_s = normal_s.duplicate()
@@ -417,6 +499,7 @@ static func apply_hud_button(btn: Button, accent: Color, size: int = 13) -> void
 	btn.add_theme_stylebox_override("disabled", disabled_s)
 
 	style_button_text(btn, size)
+	connect_hover_sound(btn)
 
 ## Apply Cinzel font and colour to any Label — convenience for in-game use
 static func style_hud_label(lbl: Label, size: int, col: Color = C_WARM_WHITE) -> void:
@@ -429,4 +512,22 @@ static func make_overlay_bg() -> ColorRect:
 	bg.color = C_OVERLAY_DIM
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	return bg
+
+
+# =============================================================================
+# AUDIO HELPERS
+# =============================================================================
+
+## Safely connects a button's mouse_entered signal to the UI hover sound
+static func connect_hover_sound(btn: Button) -> void:
+	if not btn.mouse_entered.is_connected(_on_button_hover):
+		btn.mouse_entered.connect(_on_button_hover)
+
+static func _on_button_hover() -> void:
+	# Access AudioManager via root to ensure compatibility in static context
+	var root = Engine.get_main_loop().root if Engine.get_main_loop() else null
+	if root and root.has_node("AudioManager"):
+		var am = root.get_node("AudioManager")
+		if am.has_method("play_ui_hover"):
+			am.play_ui_hover()
 

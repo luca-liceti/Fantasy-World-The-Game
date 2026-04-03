@@ -54,7 +54,6 @@ const TROOPS: Dictionary = {
 		"range": 1,
 		"range_type": RangeType.MELEE,
 		"speed": 2,
-		"mana": 5,
 		"ability": Ability.NONE,
 		"ability_description": "",
 		"description": "A stalwart defender clad in heavy armor. Excels in holding the line.",
@@ -71,7 +70,6 @@ const TROOPS: Dictionary = {
 		"range": 1,
 		"range_type": RangeType.MELEE,
 		"speed": 1,
-		"mana": 8,
 		"ability": Ability.NONE,
 		"ability_description": "",
 		"description": "A towering colossus of living rock. Slow but nearly indestructible.",
@@ -88,7 +86,6 @@ const TROOPS: Dictionary = {
 		"range": 1,
 		"range_type": RangeType.MELEE,
 		"speed": 1,
-		"mana": 9,
 		"ability": Ability.MULTI_STRIKE,
 		"ability_description": "Multi-Strike: Attacks 2 adjacent enemies simultaneously.",
 		"description": "A fearsome beast with four snapping heads. Can attack multiple foes at once.",
@@ -109,7 +106,6 @@ const TROOPS: Dictionary = {
 		"range": 2,
 		"range_type": RangeType.AIR,
 		"speed": 4,
-		"mana": 8,
 		"ability": Ability.NONE,
 		"ability_description": "",
 		"description": "A corrupted dragon wreathed in dark flames. Dominates the skies.",
@@ -126,7 +122,6 @@ const TROOPS: Dictionary = {
 		"range": 2,
 		"range_type": RangeType.AIR,
 		"speed": 5,
-		"mana": 5,
 		"ability": Ability.NONE,
 		"ability_description": "",
 		"description": "A swift aerial predator. Lightning fast but fragile.",
@@ -143,7 +138,6 @@ const TROOPS: Dictionary = {
 		"range": 2,
 		"range_type": RangeType.HYBRID,
 		"speed": 4,
-		"mana": 6,
 		"ability": Ability.ANTI_AIR,
 		"ability_description": "Anti-Air: Can attack air units from ground or air.",
 		"description": "A warrior of ice who can fight in both realms. Versatile and balanced.",
@@ -164,7 +158,6 @@ const TROOPS: Dictionary = {
 		"range": 3,
 		"range_type": RangeType.MAGIC,
 		"speed": 2,
-		"mana": 4,
 		"ability": Ability.MAGIC,
 		"ability_description": "Magic: Ignores 25% of target's DEF. Can attack air units.",
 		"description": "A master of dark arts. Frail but devastating spell damage.",
@@ -181,7 +174,6 @@ const TROOPS: Dictionary = {
 		"range": 2,
 		"range_type": RangeType.MAGIC,
 		"speed": 2,
-		"mana": 7,
 		"ability": Ability.MAGIC,
 		"ability_description": "Magic: Ignores 25% of target's DEF. Can attack air units.",
 		"description": "A powerful demon from the shadow realm. High stats but expensive.",
@@ -198,7 +190,6 @@ const TROOPS: Dictionary = {
 		"range": 3,
 		"range_type": RangeType.RANGED,
 		"speed": 3,
-		"mana": 4,
 		"ability": Ability.ANTI_AIR_2X,
 		"ability_description": "Anti-Air 2x: Deals double damage to air units.",
 		"description": "A skilled marksman with unmatched accuracy. Aerial units beware.",
@@ -219,7 +210,6 @@ const TROOPS: Dictionary = {
 		"range": 2,
 		"range_type": RangeType.SUPPORT,
 		"speed": 2,
-		"mana": 5,
 		"ability": Ability.HEAL,
 		"ability_description": "Heal: Restores 35 HP to ally in range.",
 		"description": "A divine healer blessed by the heavens. Keeps allies fighting.",
@@ -236,7 +226,6 @@ const TROOPS: Dictionary = {
 		"range": 1,
 		"range_type": RangeType.MELEE,
 		"speed": 5,
-		"mana": 4,
 		"ability": Ability.NONE,
 		"ability_description": "",
 		"description": "A deadly glass cannon. Strikes fast and hard but can't take hits.",
@@ -253,7 +242,6 @@ const TROOPS: Dictionary = {
 		"range": 1,
 		"range_type": RangeType.MELEE,
 		"speed": 5,
-		"mana": 3,
 		"ability": Ability.DEATH_BURST,
 		"ability_description": "Death Burst: Deals 30 damage to all adjacent enemies on death.",
 		"description": "A suicidal demon. Cheap and explosive, literally.",
@@ -361,8 +349,6 @@ static func validate_deck(troop_ids: Array) -> Dictionary:
 		Role.FLEX_SUPPORT: 0
 	}
 	
-	var total_mana: int = 0
-	
 	for troop_id in troop_ids:
 		var troop = get_troop(troop_id)
 		if troop.is_empty():
@@ -370,7 +356,6 @@ static func validate_deck(troop_ids: Array) -> Dictionary:
 			continue
 		
 		roles_selected[troop["role"]] += 1
-		total_mana += troop["mana"]
 	
 	# Check role requirements
 	if roles_selected[Role.GROUND_TANK] != 1:
@@ -382,14 +367,9 @@ static func validate_deck(troop_ids: Array) -> Dictionary:
 	if roles_selected[Role.FLEX_SUPPORT] != 1:
 		errors.append("Must select exactly 1 Flex/Support")
 	
-	# Check mana limit
-	if total_mana > GameConfig.MAX_DECK_MANA:
-		errors.append("Total mana (" + str(total_mana) + ") exceeds maximum of " + str(GameConfig.MAX_DECK_MANA))
-	
 	return {
 		"valid": errors.is_empty(),
-		"errors": errors,
-		"total_mana": total_mana
+		"errors": errors
 	}
 
 

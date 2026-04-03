@@ -181,7 +181,7 @@ const QUALITY_PRESETS: Dictionary = {
 		"ambient_occlusion": true,
 		"bloom": true,
 		"bloom_intensity": 1.0,
-		"vsync": false             # Allow unlocked FPS
+		"vsync": true              # Prevent uncapped FPS from maxing GPU
 	}
 }
 

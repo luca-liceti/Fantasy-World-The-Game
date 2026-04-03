@@ -20,6 +20,7 @@ signal troop_slot_selected(slot_index: int)
 var main_container: Control
 
 # Top bar
+var top_bar: PanelContainer
 var turn_label: Label
 var timer_label: Label
 var current_player_label: Label
@@ -38,7 +39,7 @@ var end_turn_button: Button
 
 # Selected troop info
 var selected_troop_panel: PanelContainer
-var selected_troop_label: Label  # Kept for backward compat (name header)
+var selected_troop_label: Label # Kept for backward compat (name header)
 var _troop_hp_bar: ProgressBar
 var _troop_hp_label: Label
 var _troop_atk_label: Label
@@ -48,7 +49,7 @@ var _troop_speed_label: Label
 
 # Troop cards panel (shows current player's troops)
 var troop_cards_panel: PanelContainer
-var troop_cards_container: HBoxContainer
+var troop_cards_container: Control
 var troop_card_buttons: Array[Button] = []
 var troop_card_art_rects: Array[TextureRect] = [] # Card art thumbnails in HUD
 
@@ -56,9 +57,13 @@ var troop_card_art_rects: Array[TextureRect] = [] # Card art thumbnails in HUD
 var item_inventory_panel: PanelContainer
 var item_slot_labels: Array[Label] = []
 
-# Top bar resource labels (active player)
+# Top bar resource labels
 var top_gold_label: Label
 var top_xp_label: Label
+
+# Layout Stacks
+var _bl_stack: VBoxContainer # Bottom Left stack
+var _br_stack: VBoxContainer # Bottom Right stack
 
 # Info panel
 var info_panel: PanelContainer
@@ -79,9 +84,9 @@ var keyboard_overlay_visible: bool = false
 # =============================================================================
 const PLAYER1_COLOR = Color(0.2, 0.5, 1.0) # Blue
 const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
-const BUTTON_NORMAL = Color(0.15, 0.15, 0.2)
-const BUTTON_HOVER = Color(0.25, 0.25, 0.35)
-const BUTTON_DISABLED = Color(0.1, 0.1, 0.12)
+const BUTTON_NORMAL = Color(0.12, 0.11, 0.10) # Neutral dark
+const BUTTON_HOVER = Color(0.25, 0.22, 0.18) # Bronze-gray
+const BUTTON_DISABLED = Color(0.08, 0.08, 0.08)
 
 
 # =============================================================================
@@ -99,23 +104,27 @@ func _create_ui() -> void:
 	main_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(main_container)
 	
+	# Structure containers
+	_create_bottom_left_stack()
+	_create_bottom_right_stack()
+	
 	_create_top_bar()
 	_create_info_panel()
-	_create_selected_troop_panel()
+	_create_selected_troop_panel() # Added to stacks below
 	_create_troop_cards_panel()
-	_create_quick_action_panel()
-	_create_item_inventory_panel()
+	_create_quick_action_panel() # Added to stacks below
+	_create_item_inventory_panel() # Added to stacks below
 	_create_toast_container()
 
 
 func _create_top_bar() -> void:
-	var top_bar = PanelContainer.new()
-	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_bar = PanelContainer.new()
 	top_bar.custom_minimum_size = Vector2(0, 50)
+	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	main_container.add_child(top_bar)
 	
-	# Style — UITheme HUD panel
-	top_bar.add_theme_stylebox_override("panel", UITheme.hud_panel())
+	# Style — HUD bar (flush to top, no margins, no rounded corners)
+	top_bar.add_theme_stylebox_override("panel", UITheme.hud_bar_style())
 	
 	var hbox = HBoxContainer.new()
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -172,10 +181,8 @@ func _create_top_bar() -> void:
 func _create_quick_action_panel() -> void:
 	# Create a floating quick action panel in bottom right corner
 	quick_action_panel = PanelContainer.new()
-	quick_action_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	quick_action_panel.position = Vector2(-140, -280) # Offset from bottom right
 	quick_action_panel.custom_minimum_size = Vector2(130, 260)
-	main_container.add_child(quick_action_panel)
+	_br_stack.add_child(quick_action_panel)
 	
 	# Style — UITheme HUD panel with subtle gold border
 	quick_action_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(UITheme.C_GOLD.darkened(0.5)))
@@ -220,6 +227,7 @@ func _create_quick_action_panel() -> void:
 
 func _create_quick_action_button(text: String, hotkey: String, color: Color) -> Button:
 	var button = Button.new()
+	button.focus_mode = Control.FOCUS_NONE
 	if hotkey != "":
 		button.text = text + " [" + hotkey + "]"
 	else:
@@ -257,11 +265,9 @@ func _create_info_panel() -> void:
 
 func _create_selected_troop_panel() -> void:
 	selected_troop_panel = PanelContainer.new()
-	selected_troop_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	selected_troop_panel.position = Vector2(10, -220)
-	selected_troop_panel.custom_minimum_size = Vector2(220, 160)
+	selected_troop_panel.custom_minimum_size = Vector2(240, 160)
 	selected_troop_panel.visible = false
-	main_container.add_child(selected_troop_panel)
+	_bl_stack.add_child(selected_troop_panel)
 	
 	selected_troop_panel.add_theme_stylebox_override("panel", UITheme.hud_panel())
 	
@@ -341,13 +347,15 @@ func _make_stat_label(text: String) -> Label:
 func _create_troop_cards_panel() -> void:
 	# Create panel for troop cards at absolute bottom center of screen
 	troop_cards_panel = PanelContainer.new()
+	troop_cards_panel.custom_minimum_size = Vector2(500, 140)
 	troop_cards_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	troop_cards_panel.position = Vector2(-250, -170) # Positioned at very bottom
-	troop_cards_panel.custom_minimum_size = Vector2(500, 160)
+	troop_cards_panel.offset_bottom = -5
+	troop_cards_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	troop_cards_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	main_container.add_child(troop_cards_panel)
 	
-	# Style — UITheme HUD panel with gold border
-	troop_cards_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(UITheme.C_GOLD.darkened(0.3)))
+	# Style — Make transparent to remove the black box and gold border
+	troop_cards_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 6)
@@ -356,14 +364,15 @@ func _create_troop_cards_panel() -> void:
 	# Header with player-specific color (will be updated dynamically)
 	var header = Label.new()
 	header.name = "TroopCardHeader"
-	header.text = "🎴 YOUR TROOPS (Press 1-4)"
+	header.text = "YOUR TROOPS (Press 1-4)"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UITheme.style_label(header, 13, UITheme.C_GOLD)
+	vbox.add_child(header)
 	
 	# Card container
-	troop_cards_container = HBoxContainer.new()
-	troop_cards_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	troop_cards_container.add_theme_constant_override("separation", 10)
+	troop_cards_container = Control.new()
+	troop_cards_container.custom_minimum_size = Vector2(0, 140)
+	troop_cards_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_child(troop_cards_container)
 	
 	# Create 4 card slots
@@ -383,10 +392,11 @@ func _create_troop_card_slot(slot_index: int) -> Dictionary:
 	
 	# Container style
 	var container_style = StyleBoxFlat.new()
-	container_style.bg_color = Color(0.08, 0.08, 0.12)
-	container_style.border_color = Color(0.3, 0.3, 0.4)
+	container_style.bg_color = Color(0.05, 0.05, 0.05) # Neutral black
+	container_style.border_color = UITheme.C_GOLD.darkened(0.5)
 	container_style.set_border_width_all(2)
 	container_style.set_corner_radius_all(8)
+	container_style.set_content_margin_all(4)
 	container.add_theme_stylebox_override("panel", container_style)
 	
 	# VBox inside: card art on top, button text below
@@ -404,6 +414,7 @@ func _create_troop_card_slot(slot_index: int) -> Dictionary:
 	
 	# Button for interaction and stats display
 	var button = Button.new()
+	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(106, 55)
 	button.clip_text = true
 	
@@ -443,6 +454,8 @@ func _create_troop_card_slot(slot_index: int) -> Dictionary:
 	disabled_style.set_corner_radius_all(0)
 	button.add_theme_stylebox_override("disabled", disabled_style)
 	
+	UITheme.style_button_text(button, 10, UITheme.C_GOLD)
+	
 	vbox.add_child(button)
 	
 	# Connect signal
@@ -453,6 +466,66 @@ func _create_troop_card_slot(slot_index: int) -> Dictionary:
 
 func _on_troop_card_pressed(slot_index: int) -> void:
 	troop_slot_selected.emit(slot_index)
+
+
+func _tween_card(card: Control, target_pos: Vector2, target_rot: float, target_scale: float, duration: float) -> void:
+	var tween = card.get_meta("tween", null) as Tween
+	if tween and tween.is_valid():
+		tween.kill()
+		
+	tween = create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	card.set_meta("tween", tween)
+	card.pivot_offset = Vector2(card.size.x / 2.0, card.size.y)
+	
+	tween.tween_property(card, "position", target_pos, duration)
+	tween.tween_property(card, "rotation", target_rot, duration)
+	tween.tween_property(card, "scale", Vector2(target_scale, target_scale), duration)
+
+
+func _layout_hand() -> void:
+	var visible_cards = []
+	for child in troop_cards_container.get_children():
+		if child.visible:
+			visible_cards.append(child)
+			
+	var count = visible_cards.size()
+	if count == 0: return
+	
+	# We rely on the container size. If it's 0 (like on first frame), fallback to parent panel size.
+	var c_width = troop_cards_container.size.x
+	if c_width <= 0: c_width = 500.0
+	
+	var container_center = c_width / 2.0
+	var card_overlap_width = 80.0
+	var max_angle = 6.0
+	var base_y = 5.0
+	
+	var total_width = (count - 1) * card_overlap_width + 110.0 # 110 is card width
+	var start_x = container_center - (total_width / 2.0) + (110.0 / 2.0)
+	
+	for i in range(count):
+		var card = visible_cards[i]
+		var t = 0.0
+		if count > 1:
+			t = float(i) / float(count - 1)
+			
+		var normalized_pos = (t * 2.0) - 1.0
+		var angle_deg = normalized_pos * max_angle
+		var y_offset = base_y + (normalized_pos * normalized_pos) * 10.0
+		
+		# start_x is the center of the first card, so we subtract half card width to get standard pos
+		var target_x = start_x + (i * card_overlap_width) - (110.0 / 2.0)
+		var target_pos = Vector2(target_x, y_offset)
+		
+		var is_selected = card.get_meta("is_selected") if card.has_meta("is_selected") else false
+		
+		if is_selected:
+			card.z_index = 100
+			var popup_pos = target_pos + Vector2(0, -10)
+			_tween_card(card, popup_pos, deg_to_rad(angle_deg) * 0.5, 1.05, 0.15)
+		else:
+			card.z_index = i
+			_tween_card(card, target_pos, deg_to_rad(angle_deg), 1.0, 0.3)
 
 
 # =============================================================================
@@ -471,19 +544,32 @@ func update_turn(turn_number: int, current_player_id: int) -> void:
 		current_player_label.add_theme_color_override("font_color", PLAYER2_COLOR)
 
 
+# Prevent expensive style invalidation by tracking current state
+var _last_timer_color: Color = Color.TRANSPARENT
+var _last_timer_text: String = ""
+
 ## Update timer display
 func update_timer(seconds_remaining: float) -> void:
-	var mins = int(seconds_remaining) / 60
+	var mins = int(seconds_remaining / 60.0)
 	var secs = int(seconds_remaining) % 60
-	timer_label.text = "⏱ %d:%02d" % [mins, secs]
+	var new_text = "⏱ %d:%02d" % [mins, secs]
+	
+	if new_text != _last_timer_text:
+		timer_label.text = new_text
+		_last_timer_text = new_text
 	
 	# Color changes based on time
+	var target_color: Color
 	if seconds_remaining < 30:
-		timer_label.add_theme_color_override("font_color", Color.RED)
+		target_color = Color.RED
 	elif seconds_remaining < 60:
-		timer_label.add_theme_color_override("font_color", Color.YELLOW)
+		target_color = Color.YELLOW
 	else:
-		timer_label.add_theme_color_override("font_color", Color.WHITE)
+		target_color = Color.WHITE
+		
+	if target_color != _last_timer_color:
+		timer_label.add_theme_color_override("font_color", target_color)
+		_last_timer_color = target_color
 
 
 ## Update player resources (shown in top bar for the active player)
@@ -518,41 +604,65 @@ func hide_info() -> void:
 	info_panel.visible = false
 
 
-## Show selected troop info with visual HP bar and stat labels
-func show_selected_troop(troop: Troop) -> void:
-	if troop == null:
+## Show selected troop or mine info with visual stats
+func show_selected_troop(entity: Node) -> void:
+	if entity == null:
 		selected_troop_panel.visible = false
 		return
 	
 	selected_troop_panel.visible = true
 	
-	# Name + Level header
-	selected_troop_label.text = "%s  Lv.%d" % [troop.display_name, troop.level]
-	
-	# HP bar
-	var hp_pct = (float(troop.current_hp) / float(troop.max_hp)) * 100.0 if troop.max_hp > 0 else 0.0
-	_troop_hp_bar.value = hp_pct
-	_troop_hp_label.text = "HP  %d / %d" % [troop.current_hp, troop.max_hp]
-	
-	# Dynamic bar color: green → yellow → red
-	var bar_color: Color
-	if hp_pct > 60.0:
-		bar_color = Color(0.2, 0.85, 0.3)  # Green
-	elif hp_pct > 30.0:
-		bar_color = Color(0.9, 0.75, 0.15) # Yellow
-	else:
-		bar_color = Color(0.9, 0.2, 0.15)  # Red
-	
-	var fill_style = StyleBoxFlat.new()
-	fill_style.bg_color = bar_color
-	fill_style.set_corner_radius_all(4)
-	_troop_hp_bar.add_theme_stylebox_override("fill", fill_style)
-	
-	# Stat labels
-	_troop_atk_label.text = "⚔️ ATK: %d" % troop.current_atk
-	_troop_def_label.text = "🛡️ DEF: %d" % troop.current_def
-	_troop_range_label.text = "🎯 RNG: %d" % troop.current_range
-	_troop_speed_label.text = "👟 SPD: %d" % troop.current_speed
+	if entity is Troop:
+		# Name + Level header
+		selected_troop_label.text = "%s  Lv.%d" % [entity.display_name, entity.level]
+		
+		# HP bar
+		var hp_pct = (float(entity.current_hp) / float(entity.max_hp)) * 100.0 if entity.max_hp > 0 else 0.0
+		_troop_hp_bar.value = hp_pct
+		_troop_hp_label.text = "HP  %d / %d" % [entity.current_hp, entity.max_hp]
+		
+		# Dynamic bar color: green → yellow → red
+		var bar_color: Color
+		if hp_pct > 60.0:
+			bar_color = Color(0.2, 0.85, 0.3) # Green
+		elif hp_pct > 30.0:
+			bar_color = Color(0.9, 0.75, 0.15) # Yellow
+		else:
+			bar_color = Color(0.9, 0.2, 0.15) # Red
+		
+		var fill_style = StyleBoxFlat.new()
+		fill_style.bg_color = bar_color
+		fill_style.set_corner_radius_all(4)
+		_troop_hp_bar.add_theme_stylebox_override("fill", fill_style)
+		
+		# Stat labels
+		_troop_atk_label.text = "⚔️ ATK: %d" % entity.current_atk
+		_troop_def_label.text = "🛡️ DEF: %d" % entity.current_def
+		_troop_range_label.text = "🎯 RNG: %d" % entity.current_range
+		_troop_speed_label.text = "👟 SPD: %d" % entity.current_speed
+	elif "card_id" in entity and entity.card_id.begins_with("mine_"):
+		# Name + Level header
+		selected_troop_label.text = "Gold Mine  Lv.%d" % entity.level
+		
+		# Simulated 'HP' bar (full gold color)
+		_troop_hp_bar.value = 100
+		_troop_hp_label.text = "Active Generation"
+		
+		var fill_style = StyleBoxFlat.new()
+		fill_style.bg_color = Color(1.0, 0.84, 0.0)
+		fill_style.set_corner_radius_all(4)
+		_troop_hp_bar.add_theme_stylebox_override("fill", fill_style)
+		
+		# Mine specific stats
+		_troop_atk_label.text = "💰 +%d /turn" % entity.get_gold_per_turn()
+		var cost = GameConfig.MINE_UPGRADE_COSTS.get(entity.level + 1, 0)
+		if entity.level < 5:
+			_troop_def_label.text = "⬆️ Gold: %d" % cost
+			_troop_range_label.text = "⬆️ XP: 0"
+		else:
+			_troop_def_label.text = "⬆️ MAX"
+			_troop_range_label.text = "⬆️ MAX"
+		_troop_speed_label.text = ""
 
 
 ## Hide selected troop info
@@ -574,58 +684,103 @@ func show_action_mode(mode: String) -> void:
 
 
 ## Update troop cards display
-func update_troop_cards(player: Player, selected_troop: Troop = null) -> void:
+func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 	if not player:
 		return
 	
-	for i in range(4):
+	# Ensure UI has enough slots
+	while troop_card_buttons.size() < player.deck.size():
+		var slot_index = troop_card_buttons.size()
+		var card_slot = _create_troop_card_slot(slot_index)
+		troop_card_buttons.append(card_slot["button"])
+		troop_card_art_rects.append(card_slot["art_rect"])
+		troop_cards_container.add_child(card_slot["container"])
+	
+	for i in range(troop_card_buttons.size()):
 		var button = troop_card_buttons[i]
 		var art_rect = troop_card_art_rects[i]
+		var container = troop_cards_container.get_child(i)
 		
-		# Check if there's a troop for this slot
+		# Check if there's an entity for this slot
 		if i < player.deck.size():
-			var troop_id = player.deck[i]
-			var troop = _find_troop_by_id(player, troop_id)
+			container.visible = true
+			var entity_id = player.deck[i]
+			var is_mine = entity_id.begins_with("mine_")
+			var entity = null
 			
-			# Load card art for this troop
-			var card_art = CharacterModelLoader.load_card_art(troop_id)
-			if card_art:
-				art_rect.texture = card_art
+			if is_mine:
+				entity = _find_mine_by_id(player, entity_id)
+				var level = 1
+				if entity:
+					level = entity.level
+				var mine_art_path = "res://assets/textures/cards/mine_pics/gold_mine_lvl_%d.png" % clamp(level, 1, 5)
+				art_rect.texture = load(mine_art_path) as Texture2D
 				art_rect.visible = true
-			else:
-				art_rect.visible = false
-			
-			if troop and troop.is_alive:
-				# Troop is alive - show info
-				button.disabled = false
-				button.text = "[%d] %s\n❤️ %d/%d" % [i + 1, troop.display_name, troop.current_hp, troop.max_hp]
-				button.add_theme_font_size_override("font_size", 10)
 				
-				# Highlight if selected
-				if troop == selected_troop:
-					_highlight_troop_card(button, true, player.team_color, i)
+				if entity and entity.is_active:
+					# Mine is alive
+					button.disabled = false
+					button.text = "[%d] Gold Mine\nLv.%d  +💰%d" % [i + 1, entity.level, entity.get_gold_per_turn()]
+					button.add_theme_font_size_override("font_size", 10)
+					
+					# Highlight if selected
+					if entity == selected_troop:
+						_highlight_troop_card(button, true, player.team_color, i)
+					else:
+						_highlight_troop_card(button, false, player.team_color, i)
 				else:
-					_highlight_troop_card(button, false, player.team_color, i)
-				
-				# Show status indicators
-				if troop.has_moved_this_turn or troop.has_attacked_this_turn:
-					button.text += "\n✓ Done"
+					# Mine is destroyed
+					button.disabled = true
+					button.text = "[%d] Gold Mine\n💀 DESTROYED" % (i + 1)
+					button.add_theme_font_size_override("font_size", 10)
+					_highlight_troop_card(button, false, Color.GRAY, i)
+					# Dim the card art for destroyed mines
+					art_rect.modulate = Color(0.3, 0.3, 0.3)
 			else:
-				# Troop is dead
-				button.disabled = true
-				var card_data = CardData.get_troop(troop_id)
-				var dead_name = card_data.get("name", troop_id) if not card_data.is_empty() else troop_id
-				button.text = "[%d] %s\n💀 DEAD" % [i + 1, dead_name]
-				button.add_theme_font_size_override("font_size", 10)
-				_highlight_troop_card(button, false, Color.GRAY, i)
-				# Dim the card art for dead troops
-				art_rect.modulate = Color(0.3, 0.3, 0.3)
+				entity = _find_troop_by_id(player, entity_id)
+				
+				# Load card art for this troop
+				var card_art = CharacterModelLoader.load_card_art(entity_id)
+				if card_art:
+					art_rect.texture = card_art
+					art_rect.visible = true
+				else:
+					art_rect.visible = false
+				
+				if entity and entity.is_alive:
+					# Troop is alive - show info
+					button.disabled = false
+					button.text = "[%d] %s\n❤️ %d/%d" % [i + 1, entity.display_name, entity.current_hp, entity.max_hp]
+					button.add_theme_font_size_override("font_size", 10)
+					
+					# Highlight if selected
+					if entity == selected_troop:
+						_highlight_troop_card(button, true, player.team_color, i)
+					else:
+						_highlight_troop_card(button, false, player.team_color, i)
+					
+					# Show status indicators
+					if entity.has_moved_this_turn or entity.has_attacked_this_turn:
+						button.text += "\n✓ Done"
+				else:
+					# Troop is dead
+					button.disabled = true
+					var card_data = CardData.get_troop(entity_id)
+					var dead_name = card_data.get("name", entity_id) if not card_data.is_empty() else entity_id
+					button.text = "[%d] %s\n💀 DEAD" % [i + 1, dead_name]
+					button.add_theme_font_size_override("font_size", 10)
+					_highlight_troop_card(button, false, Color.GRAY, i)
+					# Dim the card art for dead troops
+					art_rect.modulate = Color(0.3, 0.3, 0.3)
 		else:
 			# No troop at this slot
+			container.visible = false
 			button.disabled = true
 			button.text = "[%d]\nEmpty" % (i + 1)
 			art_rect.visible = false
 			_highlight_troop_card(button, false, Color.GRAY, i)
+	
+	_layout_hand()
 
 
 func _find_troop_by_id(player: Player, troop_id: String) -> Troop:
@@ -635,23 +790,32 @@ func _find_troop_by_id(player: Player, troop_id: String) -> Troop:
 	return null
 
 
-func _highlight_troop_card(button: Button, is_selected: bool, team_color: Color, slot_index: int = -1) -> void:
+func _find_mine_by_id(player: Player, mine_id: String) -> GoldMine:
+	for mine in player.gold_mines:
+		if mine and mine.card_id == mine_id:
+			return mine
+	return null
+
+
+func _highlight_troop_card(_button: Button, is_selected: bool, team_color: Color, slot_index: int = -1) -> void:
 	# Update the parent container's border to show selection state
 	var container: PanelContainer = null
 	if slot_index >= 0 and slot_index < troop_cards_container.get_child_count():
 		container = troop_cards_container.get_child(slot_index) as PanelContainer
 	
 	if container:
+		container.set_meta("is_selected", is_selected)
 		var container_style = StyleBoxFlat.new()
 		if is_selected:
 			container_style.bg_color = team_color.darkened(0.6)
-			container_style.border_color = Color(1.0, 0.84, 0.0) # Gold border for selected
+			container_style.border_color = UITheme.C_GOLD_BRIGHT
 			container_style.set_border_width_all(3)
 		else:
-			container_style.bg_color = Color(0.08, 0.08, 0.12)
-			container_style.border_color = team_color.darkened(0.3)
+			container_style.bg_color = Color(0.05, 0.05, 0.05)
+			container_style.border_color = UITheme.C_GOLD.darkened(0.3)
 			container_style.set_border_width_all(2)
 		container_style.set_corner_radius_all(8)
+		container_style.set_content_margin_all(4)
 		container.add_theme_stylebox_override("panel", container_style)
 	
 	# Also reset the card art modulate for living troops
@@ -667,10 +831,8 @@ func _highlight_troop_card(button: Button, is_selected: bool, team_color: Color,
 
 func _create_item_inventory_panel() -> void:
 	item_inventory_panel = PanelContainer.new()
-	item_inventory_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	item_inventory_panel.position = Vector2(10, -85)
-	item_inventory_panel.custom_minimum_size = Vector2(200, 75)
-	main_container.add_child(item_inventory_panel)
+	item_inventory_panel.custom_minimum_size = Vector2(240, 75)
+	_bl_stack.add_child(item_inventory_panel)
 	
 	item_inventory_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(Color(0.5, 0.7, 0.4, 0.7)))
 	
@@ -697,7 +859,7 @@ func _create_item_inventory_panel() -> void:
 		slot_panel.custom_minimum_size = Vector2(58, 32)
 		
 		var slot_style = StyleBoxFlat.new()
-		slot_style.bg_color = Color(0.12, 0.12, 0.16, 0.8)
+		slot_style.bg_color = Color(0.1, 0.1, 0.1, 0.8)
 		slot_style.border_color = Color(0.3, 0.3, 0.4, 0.5)
 		slot_style.set_border_width_all(1)
 		slot_style.set_corner_radius_all(4)
@@ -952,3 +1114,24 @@ func _hide_keyboard_overlay() -> void:
 				keyboard_overlay.queue_free()
 				keyboard_overlay = null
 		)
+
+# =============================================================================
+# LAYOUT HELPERS
+# =============================================================================
+
+func _create_bottom_left_stack() -> void:
+	_bl_stack = VBoxContainer.new()
+	_bl_stack.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_bl_stack.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_bl_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bl_stack.add_theme_constant_override("separation", 0) # No space between components
+	main_container.add_child(_bl_stack)
+
+func _create_bottom_right_stack() -> void:
+	_br_stack = VBoxContainer.new()
+	_br_stack.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_br_stack.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_br_stack.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_br_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_br_stack.add_theme_constant_override("separation", 0)
+	main_container.add_child(_br_stack)

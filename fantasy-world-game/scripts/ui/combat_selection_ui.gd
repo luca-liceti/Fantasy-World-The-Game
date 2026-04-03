@@ -69,8 +69,8 @@ var recommended_move_index: int = -1
 # =============================================================================
 # COLORS & STYLING
 # =============================================================================
-const BG_COLOR = Color(0.05, 0.05, 0.08, 0.95)
-const PANEL_COLOR = Color(0.1, 0.1, 0.14, 0.95)
+const BG_COLOR = Color(0, 0, 0, 0)
+const PANEL_COLOR = Color(0, 0, 0, 0)
 const BORDER_COLOR = Color(0.3, 0.4, 0.5)
 const MOVE_COLORS = {
 	MoveData.MoveType.STANDARD: Color(0.6, 0.6, 0.7),
@@ -288,16 +288,18 @@ func _create_move_button(index: int) -> Button:
 	
 	var normal_style = StyleBoxFlat.new()
 	normal_style.bg_color = Color(0.15, 0.15, 0.2)
-	normal_style.border_color = Color(0.3, 0.3, 0.4)
+	normal_style.border_color = UITheme.C_GOLD.darkened(0.5)
 	normal_style.set_border_width_all(2)
 	normal_style.set_corner_radius_all(8)
+	normal_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("normal", normal_style)
 	
 	var hover_style = StyleBoxFlat.new()
 	hover_style.bg_color = Color(0.2, 0.2, 0.28)
-	hover_style.border_color = Color(0.5, 0.5, 0.6)
+	hover_style.border_color = UITheme.C_GOLD
 	hover_style.set_border_width_all(2)
 	hover_style.set_corner_radius_all(8)
+	hover_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("hover", hover_style)
 	
 	var disabled_style = StyleBoxFlat.new()
@@ -305,6 +307,7 @@ func _create_move_button(index: int) -> Button:
 	disabled_style.border_color = Color(0.2, 0.2, 0.2)
 	disabled_style.set_border_width_all(1)
 	disabled_style.set_corner_radius_all(8)
+	disabled_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("disabled", disabled_style)
 	
 	button.pressed.connect(_on_move_button_pressed.bind(index))
@@ -323,16 +326,18 @@ func _create_stance_button(stance: int) -> Button:
 	
 	var normal_style = StyleBoxFlat.new()
 	normal_style.bg_color = color.darkened(0.7)
-	normal_style.border_color = color.darkened(0.4)
+	normal_style.border_color = UITheme.C_GOLD.darkened(0.5)
 	normal_style.set_border_width_all(2)
 	normal_style.set_corner_radius_all(8)
+	normal_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("normal", normal_style)
 	
 	var hover_style = StyleBoxFlat.new()
 	hover_style.bg_color = color.darkened(0.5)
-	hover_style.border_color = color
+	hover_style.border_color = UITheme.C_GOLD
 	hover_style.set_border_width_all(2)
 	hover_style.set_corner_radius_all(8)
+	hover_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("hover", hover_style)
 	
 	var pressed_style = StyleBoxFlat.new()
@@ -340,6 +345,7 @@ func _create_stance_button(stance: int) -> Button:
 	pressed_style.border_color = Color(1.0, 0.9, 0.5)
 	pressed_style.set_border_width_all(3)
 	pressed_style.set_corner_radius_all(8)
+	pressed_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("pressed", pressed_style)
 	
 	var disabled_style = StyleBoxFlat.new()
@@ -347,6 +353,7 @@ func _create_stance_button(stance: int) -> Button:
 	disabled_style.border_color = Color(0.2, 0.2, 0.2)
 	disabled_style.set_border_width_all(1)
 	disabled_style.set_corner_radius_all(8)
+	disabled_style.set_content_margin_all(8)
 	button.add_theme_stylebox_override("disabled", disabled_style)
 	
 	button.pressed.connect(_on_stance_button_pressed.bind(stance))
@@ -623,25 +630,31 @@ func _start_timer() -> void:
 	_update_timer_display()
 
 
+var _last_timer_seconds: int = -1
+
 func _update_timer_display() -> void:
 	timer_bar.value = current_time
-	timer_label.text = " %ds" % int(current_time)
+	var display_seconds = int(current_time)
 	
-	# Change color based on time remaining
-	var bar_fill = StyleBoxFlat.new()
-	bar_fill.set_corner_radius_all(4)
-	
-	if current_time <= 3:
-		bar_fill.bg_color = Color(0.9, 0.2, 0.2)
-		timer_label.add_theme_color_override("font_color", Color.RED)
-	elif current_time <= 5:
-		bar_fill.bg_color = Color(0.9, 0.7, 0.2)
-		timer_label.add_theme_color_override("font_color", Color.YELLOW)
-	else:
-		bar_fill.bg_color = Color(0.2, 0.7, 0.3)
-		timer_label.add_theme_color_override("font_color", Color.WHITE)
-	
-	timer_bar.add_theme_stylebox_override("fill", bar_fill)
+	if display_seconds != _last_timer_seconds:
+		_last_timer_seconds = display_seconds
+		timer_label.text = " %ds" % display_seconds
+		
+		# Change color based on time remaining
+		var bar_fill = StyleBoxFlat.new()
+		bar_fill.set_corner_radius_all(4)
+		
+		if display_seconds <= 3:
+			bar_fill.bg_color = Color(0.9, 0.2, 0.2)
+			timer_label.add_theme_color_override("font_color", Color.RED)
+		elif display_seconds <= 5:
+			bar_fill.bg_color = Color(0.9, 0.7, 0.2)
+			timer_label.add_theme_color_override("font_color", Color.YELLOW)
+		else:
+			bar_fill.bg_color = Color(0.2, 0.7, 0.3)
+			timer_label.add_theme_color_override("font_color", Color.WHITE)
+		
+		timer_bar.add_theme_stylebox_override("fill", bar_fill)
 
 
 func _on_move_button_pressed(index: int) -> void:
@@ -685,7 +698,7 @@ func _on_stance_button_pressed(stance: int) -> void:
 		elif not button.disabled:
 			var normal_style = StyleBoxFlat.new()
 			normal_style.bg_color = color.darkened(0.7)
-			normal_style.border_color = color.darkened(0.4)
+			normal_style.border_color = UITheme.C_GOLD.darkened(0.5)
 			normal_style.set_border_width_all(2)
 			normal_style.set_corner_radius_all(8)
 			button.add_theme_stylebox_override("normal", normal_style)

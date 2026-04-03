@@ -128,16 +128,6 @@ func set_deck(card_ids: Array[String]) -> Dictionary:
 	return validation
 
 
-## Get the total mana cost of the current deck
-func get_deck_mana_cost() -> int:
-	var total: int = 0
-	for card_id in deck:
-		var card = CardData.get_troop(card_id)
-		if not card.is_empty():
-			total += card["mana"]
-	return total
-
-
 ## Check if deck is valid
 func is_deck_valid() -> bool:
 	return CardData.validate_deck(deck)["valid"]

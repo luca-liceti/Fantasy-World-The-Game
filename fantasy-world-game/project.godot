@@ -14,17 +14,25 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Fantasy World Game"
+config/name="Fantasy World The Game"
 config/description="A fantasy strategy board game with hexagonal tiles, troops, and turn-based combat."
 run/main_scene="res://scenes/game_root.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 boot_splash/bg_color=Color(0, 0, 0, 1)
-config/icon="res://icon.svg"
+boot_splash/stretch_mode=0
+boot_splash/image="res://icons/web-app-manifest-512x512.png"
+config/icon="res://icons/favicon.svg"
+config/windows_native_icon="res://icons/favicon.ico"
+
+[audio]
+
+default_bus_layout="res://default_bus_layout.tres"
 
 [autoload]
 
 SettingsManager="*res://scripts/managers/settings_manager.gd"
 SceneManagerAutoload="*res://scripts/managers/scene_manager.gd"
+AudioManager="*res://scripts/managers/audio_manager.gd"
 
 [display]
 

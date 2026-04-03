@@ -103,7 +103,7 @@ func _build_ui() -> void:
 
 
 func _build_logo() -> void:
-	var sub_logo_scale = 0.50
+	var sub_logo_scale = 0.30
 	var lw = UITheme.LOGO_W * sub_logo_scale
 	var lh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
@@ -117,14 +117,15 @@ func _build_logo() -> void:
 	_root.add_child(logo)
 
 func _build_page_title() -> void:
-	var lh = UITheme.LOGO_H * 0.50
+	# Base title positioning on a safer estimated logo height
+	var title_top = 160.0
 
 	var title = Label.new()
 	title.text = "MULTIPLAYER"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	title.custom_minimum_size = Vector2(800, 56)
-	title.position = Vector2(-400, lh + 40)
+	title.position = Vector2(-400, title_top)
 	UITheme.style_label(title, UITheme.TITLE_FONT, UITheme.C_GOLD, true)
 	_root.add_child(title)
 
@@ -133,30 +134,39 @@ func _build_page_title() -> void:
 	_status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_status_lbl.custom_minimum_size = Vector2(600, 32)
-	_status_lbl.position = Vector2(-300, lh + 100)
+	_status_lbl.position = Vector2(-300, title_top + 68)
 	UITheme.style_label(_status_lbl, 16, UITheme.C_DIM)
 	_root.add_child(_status_lbl)
 
 	var sep = UITheme.make_separator()
 	sep.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	sep.custom_minimum_size = Vector2(640, 4)
-	sep.position = Vector2(-320, lh + 136)
+	sep.position = Vector2(-320, title_top + 116)
 	_root.add_child(sep)
 
 func _build_panels() -> void:
-	var lh = UITheme.LOGO_H * 0.50
-	var panel_top = lh + 148.0
+	var panel_top = 300.0
 	var total_w   = LEFT_W + GAP + RIGHT_W
-	var left_x    = -total_w * 0.5
+	
+	# Create a centering anchor that covers the screen width at the target Y
+	# Even if the content grows (like the 3-button host lobby), it stays centered.
+	var anchor = CenterContainer.new()
+	anchor.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	anchor.custom_minimum_size = Vector2(1920, PANEL_H) # Full screen width for centering
+	anchor.position = Vector2(-960, panel_top)
+	_root.add_child(anchor)
+
+	var holder = HBoxContainer.new()
+	holder.name = "PanelHolder"
+	holder.add_theme_constant_override("separation", GAP)
+	anchor.add_child(holder)
 
 	# === LEFT PANEL ===
 	_left_panel = PanelContainer.new()
 	_left_panel.name = "LeftPanel"
-	_left_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_left_panel.custom_minimum_size = Vector2(LEFT_W, PANEL_H)
-	_left_panel.position = Vector2(left_x, panel_top)
 	UITheme.apply_panel(_left_panel)
-	_root.add_child(_left_panel)
+	holder.add_child(_left_panel)
 
 	# Scroll inside left
 	var lscroll = ScrollContainer.new()
@@ -166,24 +176,21 @@ func _build_panels() -> void:
 
 	_left_inner = VBoxContainer.new()
 	_left_inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_left_inner.add_theme_constant_override("separation", 14)
+	_left_inner.add_theme_constant_override("separation", 18)
 	lscroll.add_child(_left_inner)
 
-	# === RIGHT PANEL  (MY STATUS — always shown) ===
-	var right_x = left_x + LEFT_W + GAP
+	# === RIGHT PANEL (MY STATUS) ===
 	_right_panel = PanelContainer.new()
 	_right_panel.name = "RightPanel"
-	_right_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_right_panel.custom_minimum_size = Vector2(RIGHT_W, PANEL_H)
-	_right_panel.position = Vector2(right_x, panel_top)
 	UITheme.apply_panel(_right_panel)
-	_root.add_child(_right_panel)
+	holder.add_child(_right_panel)
 
 	_build_right_panel_content()
 
 func _build_right_panel_content() -> void:
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 20) # More breathing room
 	_right_panel.add_child(vbox)
 
 	_add_panel_title(vbox, "MY STATUS")
@@ -284,6 +291,7 @@ func _show_join_panel() -> void:
 	_left_inner.add_child(_port_input)
 
 	var row = HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_left_inner.add_child(row)
@@ -321,6 +329,7 @@ func _show_lobby(as_host: bool) -> void:
 	_left_inner.add_child(UITheme.make_separator())
 
 	var row = HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_left_inner.add_child(row)
@@ -416,9 +425,9 @@ func _make_panel_btn(text: String) -> Button:
 func _make_small_btn(text: String) -> Button:
 	var btn = Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(160, UITheme.BTN_SM_H)
+	btn.custom_minimum_size = Vector2(200, UITheme.BTN_SM_H)
 	# Pivot at centre for even scale animations
-	btn.pivot_offset = Vector2(80, UITheme.BTN_SM_H * 0.5)
+	btn.pivot_offset = Vector2(100, UITheme.BTN_SM_H * 0.5)
 	UITheme.apply_menu_button(btn, UITheme.BTN_SM_FONT)
 	btn.button_down.connect(func(): _hover_press(btn))
 	btn.button_up.connect(func():  _hover_release(btn))
@@ -426,18 +435,21 @@ func _make_small_btn(text: String) -> Button:
 
 func _make_player_row(default_name: String, _is_host: bool) -> HBoxContainer:
 	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 12)
+	row.custom_minimum_size = Vector2(0, 32)
 
 	var name_lbl = Label.new()
 	name_lbl.name = "Name"
 	name_lbl.text = default_name
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	UITheme.style_label(name_lbl, 16, UITheme.C_WARM_WHITE)
 	row.add_child(name_lbl)
 
 	var status_lbl = Label.new()
 	status_lbl.name = "Status"
 	status_lbl.text = "Waiting…"
+	status_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	UITheme.style_label(status_lbl, 14, UITheme.C_DIM)
 	row.add_child(status_lbl)
 
@@ -450,7 +462,7 @@ func _hover_press(btn: Button) -> void:
 
 func _hover_release(btn: Button) -> void:
 	var tw = create_tween()
-	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12)
 
 

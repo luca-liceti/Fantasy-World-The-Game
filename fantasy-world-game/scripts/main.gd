@@ -90,6 +90,9 @@ var _pre_combat_yaw: float = 0.0
 var _pre_combat_pitch: float = 35.0
 var _pre_combat_view: CameraView = CameraView.OVERVIEW
 var _in_combat_camera: bool = false
+## When true the dice-roll cinematic is active; all game input is locked
+## except ESC (pause) and ENTER (roll).  Set by FirstMoveDiceUI / DiceUI.
+var dice_roll_active: bool = false
 
 # View preset definitions: {distance, pitch, yaw_offset from base position}
 # yaw_offset: 0 = directly behind player, positive = rotate right, negative = rotate left
@@ -108,7 +111,7 @@ const VIEW_NAMES: Array[String] = ["Overview", "Tactical", "Troop Focus", "Top-D
 # =============================================================================
 var game_started: bool = false
 var decks_confirmed: bool = false
-var selected_troop: Troop = null
+var selected_troop: Node = null
 var troops: Array[Troop] = []
 
 # Action mode: "none", "move", "attack", "mine"
@@ -117,6 +120,7 @@ var action_mode: String = "none"
 # Pause state
 var is_paused: bool = false
 var pause_menu: CanvasLayer = null
+var ignore_camera_process: bool = false
 
 # Team Colors
 const PLAYER1_COLOR = Color(0.2, 0.5, 1.0) # Blue
@@ -125,9 +129,9 @@ const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 # =============================================================================
 # DEBUG FLAGS - Set these to skip game phases during development
 # =============================================================================
-const DEBUG_SKIP_DECK_SELECTION := false # Skip deck selection and use default decks
-const DEBUG_SKIP_FIRST_MOVE_DICE := false # Skip the first move dice roll animation
-const DEBUG_DEFAULT_DECK: Array[String] = ["knight", "archer", "cleric", "stone_giant"] # Default deck when skipping
+const DEBUG_SKIP_DECK_SELECTION: bool = false
+const DEBUG_SKIP_FIRST_MOVE_DICE: bool = false
+const DEBUG_DEFAULT_DECK: Array[String] = ["medieval_knight", "elven_archer", "celestial_cleric", "frost_valkyrie"] # Default deck when skipping
 
 # =============================================================================
 # INITIALIZATION
@@ -139,6 +143,9 @@ func _ready() -> void:
 	
 	# Find or create camera system
 	_setup_camera_system()
+	
+	# Handle pause menu input
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	
 	# Find hex board
 	hex_board = get_node_or_null("HexBoard")
@@ -304,10 +311,12 @@ func _setup_game_ui() -> void:
 		game_ui.action_end_turn_pressed.connect(_on_action_end_turn)
 		game_ui.troop_slot_selected.connect(_on_troop_slot_selected)
 		
-		# Create Dice UI for combat visualization
+		# Create Dice UI for combat visualization (3D d20 die toss)
 		dice_ui = DiceUI.new()
 		add_child(dice_ui)
-		
+		dice_ui.set_camera(camera, self )
+
+
 		# Create Card Selection UI
 		card_selection_ui = CardSelectionUIScene.new()
 		add_child(card_selection_ui)
@@ -322,6 +331,8 @@ func _setup_game_ui() -> void:
 			first_move_dice_ui = FirstMoveDiceUIScene.new()
 			add_child(first_move_dice_ui)
 			first_move_dice_ui.roll_complete.connect(_on_first_move_roll_complete)
+			# Inject camera + root refs so the cinematic can drive camera & spawn dice
+			first_move_dice_ui.set_camera(camera, self )
 		else:
 			print("DEBUG: FirstMoveDiceUI creation disabled")
 		
@@ -434,6 +445,11 @@ func _on_deck_confirmed(deck: Array[String]) -> void:
 ## Called when a player cancels deck selection
 func _on_deck_selection_canceled() -> void:
 	print("Deck selection canceled - returning to main menu")
+	
+	# Fade out tavern music quickly when returning to main menu
+	if AudioManager and AudioManager.has_method("fade_out_music"):
+		AudioManager.fade_out_music(0.8)
+		
 	# Return to main menu or handle cancellation
 	if card_selection_ui:
 		card_selection_ui.hide_selection()
@@ -489,26 +505,26 @@ func _show_terrain_loading_screen() -> void:
 	# Dark background
 	var bg = ColorRect.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.03, 0.03, 0.05, 0.92)
+	bg.color = Color(0.0, 0.0, 0.0, 0.95) # Pure black loading background
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bg)
 	
 	# Center container
 	var center = VBoxContainer.new()
 	center.set_anchors_preset(Control.PRESET_CENTER)
-	center.custom_minimum_size = Vector2(600, 300)
-	center.position = Vector2(-300, -150)
+	center.custom_minimum_size = Vector2(800, 500)
+	center.position = Vector2(-400, -250)
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 24)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(center)
 	
-	# Logo (smaller)
+	# Logo (larger)
 	var logo = TextureRect.new()
 	logo.texture = UITheme.tex_logo()
 	logo.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	logo.custom_minimum_size = Vector2(360, 128)
+	logo.custom_minimum_size = Vector2(720, 256)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(logo)
 	
@@ -566,8 +582,8 @@ func _show_terrain_loading_screen() -> void:
 	# Pulsing bar animation
 	var bar_tw = create_tween()
 	bar_tw.set_loops()
-	bar_tw.tween_property(bar_fill, "custom_minimum_size:x", 398.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	bar_tw.tween_property(bar_fill, "custom_minimum_size:x", 40.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bar_tw.tween_property(bar_fill, "custom_minimum_size", Vector2(398.0, 6.0), 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bar_tw.tween_property(bar_fill, "custom_minimum_size", Vector2(40.0, 6.0), 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	
 	print("[TerrainLoadingScreen] Shown")
 
@@ -786,10 +802,10 @@ func _update_ui() -> void:
 	
 	# Update action buttons based on selected troop
 	if selected_troop:
-		var can_move = not selected_troop.has_moved_this_turn
-		var can_attack = not selected_troop.has_attacked_this_turn
-		var can_mine = game_manager.player_manager.get_player(selected_troop.owner_player_id).gold >= 100
-		var can_upgrade = selected_troop.level < 5
+		var can_move = ("has_moved_this_turn" in selected_troop) and not selected_troop.has_moved_this_turn
+		var can_attack = ("has_attacked_this_turn" in selected_troop) and not selected_troop.has_attacked_this_turn
+		var can_mine = game_manager.player_manager.get_player(selected_troop.owner_player_id).gold >= 100 if selected_troop is Troop else false
+		var can_upgrade = selected_troop.level < 5 if "level" in selected_troop else false
 		game_ui.update_action_buttons(can_move, can_attack, can_mine, can_upgrade)
 		game_ui.show_selected_troop(selected_troop)
 	else:
@@ -934,13 +950,21 @@ func _pan_camera(direction: Vector3, delta: float) -> void:
 # =============================================================================
 
 func _process(delta: float) -> void:
+	if is_paused:
+		return
+		
 	_handle_keyboard_movement(delta)
 	
-	if not is_camera_transitioning and abs(camera_distance - target_distance) > 0.001:
-		camera_distance = lerp(camera_distance, target_distance, 15.0 * delta)
+	if not ignore_camera_process:
+		if not is_camera_transitioning and abs(camera_distance - target_distance) > 0.001:
+			camera_distance = lerp(camera_distance, target_distance, 15.0 * delta)
+			_update_camera_transform()
+			
+		_update_camera_smooth(delta)
+	else:
+		# Exclusively controlled by UI tweens
 		_update_camera_transform()
-		
-	_update_camera_smooth(delta)
+	
 	# Camera collision is handled inside _update_camera_transform() via
 	# CharacterBody3D.move_and_collide() — no separate step needed.
 	
@@ -950,6 +974,9 @@ func _process(delta: float) -> void:
 
 
 func _handle_keyboard_movement(delta: float) -> void:
+	# No camera panning during dice-roll cinematics
+	if dice_roll_active: return
+
 	var direction = Vector3.ZERO
 	
 	# WASD for panning (relative to camera facing)
@@ -973,16 +1000,28 @@ func _handle_keyboard_movement(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# Mouse button events
+	# Mouse button events — blocked during dice roll
 	if event is InputEventMouseButton:
-		_handle_mouse_button(event)
-	
-	# Mouse motion events
+		if not dice_roll_active:
+			_handle_mouse_button(event)
+
+	# Mouse motion events — blocked during dice roll
 	if event is InputEventMouseMotion:
-		_handle_mouse_motion(event)
-	
+		if not dice_roll_active:
+			_handle_mouse_motion(event)
+
 	# Keyboard events
 	if event is InputEventKey and event.pressed:
+		# Always allow ESC (pause menu, mouse release)
+		if event.keycode == KEY_ESCAPE:
+			_handle_key_press(event)
+			return
+		# During dice roll, block everything else
+		if dice_roll_active:
+			return
+		# Normal gameplay key handling
+		if is_paused:
+			return
 		_handle_key_press(event)
 
 
@@ -1112,18 +1151,43 @@ func _select_troop_by_slot(slot: int) -> void:
 	
 	# Find troop by deck slot (same as UI card order)
 	if slot < player.deck.size():
-		var troop_id = player.deck[slot]
-		var troop = _find_troop_by_id_for_player(player, troop_id)
+		var entity_id = player.deck[slot]
+		var entity = null
 		
-		if troop and troop.is_alive:
+		# Check if it's a mine
+		if entity_id.begins_with("mine_"):
+			for mine in player.gold_mines:
+				if mine and mine.card_id == entity_id:
+					entity = mine
+					break
+		else:
+			entity = _find_troop_by_id_for_player(player, entity_id)
+		
+		var is_selectable = false
+		if entity:
+			if entity is Troop and entity.is_alive:
+				is_selectable = true
+			elif "is_active" in entity and entity.is_active:
+				is_selectable = true
+		
+		if is_selectable:
 			# Cancel any active action mode when selecting a new troop
 			_cancel_action_mode()
 			
-			selected_troop = troop
-			print("Selected %s (Slot %d)" % [selected_troop.display_name, slot + 1])
-			
-			# Smart camera focus on troop for tactical view
-			_focus_on_troop_tactical(selected_troop)
+			if selected_troop == entity:
+				selected_troop = null
+				print("Deselected Slot %d" % (slot + 1))
+			else:
+				selected_troop = entity
+				var display_name = entity.display_name if "display_name" in entity else "Gold Mine"
+				print("Selected %s (Slot %d)" % [display_name, slot + 1])
+				
+				# Smart camera focus on troop for tactical view
+				_focus_on_troop_tactical(selected_troop)
+				
+				# Audio feedback (only play if it's a new selection)
+				if AudioManager and AudioManager.has_method("play_card_pick"):
+					AudioManager.play_card_pick()
 			
 			_update_ui()
 
@@ -1146,7 +1210,8 @@ func _focus_on_selection() -> void:
 	if selected_troop and selected_troop.current_hex:
 		# Use tactical camera focus for best move/attack view
 		_focus_on_troop_tactical(selected_troop)
-		print("Camera focused on %s (tactical view)" % selected_troop.display_name)
+		var display_name = selected_troop.display_name if "display_name" in selected_troop else "Gold Mine"
+		print("Camera focused on %s (tactical view)" % display_name)
 	elif hex_board and hex_board.selected_tile:
 		target_focus_point = hex_board.selected_tile.global_position
 		target_distance = 15.0
@@ -1386,7 +1451,7 @@ func _exit_combat_camera() -> void:
 
 ## Smart camera positioning when selecting a troop
 ## Positions camera behind the troop, facing towards the enemy side
-func _focus_on_troop_tactical(troop: Troop) -> void:
+func _focus_on_troop_tactical(troop: Node) -> void:
 	if not troop or not troop.current_hex:
 		return
 	
@@ -1606,7 +1671,6 @@ func _open_pause_menu() -> void:
 	print("Game paused")
 
 
-
 func _create_pause_button(text: String) -> Button:
 	var button = Button.new()
 	button.text = text
@@ -1648,6 +1712,11 @@ func _on_settings_closed() -> void:
 
 func _return_to_main_menu() -> void:
 	_close_pause_menu()
+	
+	# Fade out tavern music quickly when returning to main menu
+	if AudioManager and AudioManager.has_method("fade_out_music"):
+		AudioManager.fade_out_music(0.8)
+		
 	# Use SceneManager for smooth transition
 	if SceneManagerAutoload:
 		SceneManagerAutoload.change_scene("start_menu")
@@ -1732,6 +1801,12 @@ func _show_confirmation_dialog(title_text: String, message_text: String, on_conf
 		confirm_layer.queue_free()
 	)
 	btn_row.add_child(no_btn)
+	
+	# Transition
+	panel.modulate.a = 0.0
+	var tw = confirm_layer.create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(panel, "modulate:a", 1.0, 0.35)
 
 
 # =============================================================================
@@ -1764,16 +1839,21 @@ func _on_tile_selected(tile: HexTile) -> void:
 		_try_place_mine_at(tile)
 		return
 	
-	# Check if there's a troop on this tile
+	# Check if there's a troop or mine on this tile
 	var occupant = tile.get_occupant()
-	if occupant is Troop:
-		# Check if it's the current player's troop
+	if occupant and (occupant is Troop or ("card_id" in occupant and occupant.card_id.begins_with("mine_"))):
+		# Check if it's the current player's entity
 		var current_player_id = game_manager.turn_manager.get_active_player_id()
-		if occupant.owner_player_id == current_player_id:
+		if "owner_player_id" in occupant and occupant.owner_player_id == current_player_id:
 			selected_troop = occupant
-			print("Selected troop: %s" % occupant.display_name)
+			var entity_name = occupant.display_name if "display_name" in occupant else "Gold Mine"
+			print("Selected entity: %s" % entity_name)
+			
+			# When selecting an entity on the board, focus the 3D model
+			_focus_on_troop_tactical(occupant)
 		else:
-			print("Enemy troop: %s" % occupant.display_name)
+			var entity_name = occupant.display_name if "display_name" in occupant else "Enemy Gold Mine"
+			print("Enemy entity: %s" % entity_name)
 	else:
 		# Deselect if clicking empty tile
 		if selected_troop:
@@ -1814,6 +1894,10 @@ func _on_action_move() -> void:
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
 		return
+		
+	if not selected_troop is Troop:
+		game_ui.show_info("This entity cannot move!")
+		return
 	
 	if selected_troop.has_moved_this_turn:
 		game_ui.show_info("This troop has already moved!")
@@ -1841,6 +1925,10 @@ func _on_action_attack() -> void:
 	
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
+		return
+		
+	if not selected_troop is Troop:
+		game_ui.show_info("This entity cannot attack!")
 		return
 	
 	if selected_troop.has_attacked_this_turn:
@@ -1870,6 +1958,10 @@ func _on_action_place_mine() -> void:
 	if not selected_troop:
 		game_ui.show_info("Select a troop first!")
 		return
+		
+	if not selected_troop is Troop:
+		game_ui.show_info("Only troops can place mines!")
+		return
 	
 	var player = game_manager.player_manager.get_player(selected_troop.owner_player_id)
 	if player.gold < 100:
@@ -1886,26 +1978,50 @@ func _on_action_upgrade() -> void:
 		return
 	
 	if not selected_troop:
-		game_ui.show_info("Select a troop first!")
+		game_ui.show_info("Select a troop or mine first!")
 		return
-	
-	var cost = selected_troop.get_upgrade_cost()
-	if not cost["can_upgrade"]:
-		game_ui.show_info("Troop is already max level!")
-		return
-	
-	var player = game_manager.player_manager.get_player(selected_troop.owner_player_id)
-	if player.gold < cost["gold"] or player.xp < cost["xp"]:
-		game_ui.show_info("Not enough resources! Need %d gold and %d XP." % [cost["gold"], cost["xp"]])
-		return
-	
-	# Perform upgrade
-	var result = game_manager.action_upgrade_troop(selected_troop)
-	if result["success"]:
-		print("Upgraded %s to level %d!" % [selected_troop.display_name, result["new_level"]])
-		_update_ui()
+		
+	if selected_troop is Troop:
+		var cost = selected_troop.get_upgrade_cost()
+		if not cost["can_upgrade"]:
+			game_ui.show_info("Troop is already max level!")
+			return
+		
+		var player = game_manager.player_manager.get_player(selected_troop.owner_player_id)
+		if player.gold < cost["gold"] or player.xp < cost["xp"]:
+			game_ui.show_info("Not enough resources! Need %d gold and %d XP." % [cost["gold"], cost["xp"]])
+			return
+		
+		# Perform upgrade
+		var result = game_manager.action_upgrade_troop(selected_troop)
+		if result["success"]:
+			print("Upgraded %s to level %d!" % [selected_troop.display_name, result["new_level"]])
+			_update_ui()
+		else:
+			game_ui.show_info(result.get("error", "Upgrade failed!"))
+			
+	elif "card_id" in selected_troop and selected_troop.card_id.begins_with("mine_"):
+		if not selected_troop.can_upgrade():
+			game_ui.show_info("Mine is already max level!")
+			return
+			
+		var cost = selected_troop.get_upgrade_cost()
+		var player = game_manager.player_manager.get_player(selected_troop.owner_player_id)
+		
+		if player.gold < cost:
+			game_ui.show_info("Not enough gold! Need %d gold." % cost)
+			return
+			
+		# Perform mine upgrade
+		var result = game_manager.action_upgrade_mine(selected_troop)
+		if result["success"]:
+			print("Upgraded Gold Mine to level %d!" % result["new_level"])
+			_update_ui()
+		else:
+			game_ui.show_info(result.get("error", "Upgrade failed!"))
+			
 	else:
-		game_ui.show_info(result.get("error", "Upgrade failed!"))
+		game_ui.show_info("This entity cannot be upgraded!")
 
 
 func _on_action_end_turn() -> void:

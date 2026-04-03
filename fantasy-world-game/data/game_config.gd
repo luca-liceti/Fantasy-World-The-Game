@@ -79,7 +79,6 @@ const NUM_PLAYERS: int = 2 # 1v1 game
 const STARTING_GOLD: int = 150
 const STARTING_XP: int = 0
 const CARDS_PER_PLAYER: int = 4
-const MAX_DECK_MANA: int = 22 # Maximum total mana cost for deck
 const SPAWN_HEXES_PER_PLAYER: int = 4
 
 # =============================================================================

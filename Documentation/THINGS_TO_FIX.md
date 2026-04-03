@@ -7,7 +7,7 @@
 *Set the visual direction first — everything else builds on this.*
 
 - [ ] 🔧 **Establish Game Theme Direction** — Set the overall visual and tonal direction to match **Dark Souls / Elden Ring / The Witcher 3** — gritty, atmospheric, grounded dark fantasy. This should serve as the reference point for all future art, UI, and lighting decisions.
-- [ ] 🔧 **Redo UI Theme** — Completely rebuild the UITheme based on the refreshed UI component designs. Fix all graphical UI bugs in the current theme. Apply the new theme consistently across all menus and pages — with special attention to the **Deck Selection page**.
+- [x] 🔧 **Redo UI Theme** — Completely rebuild the UITheme based on the refreshed UI component designs. Fix all graphical UI bugs in the current theme. Apply the new theme consistently across all menus and pages — with special attention to the **Deck Selection page**.
 - [x] 🐛 **Remove Main Menu Background Dark Opacity** — The dark opacity overlay on the main menu background should be removed so the revolving cinematic backgrounds (Cozy Tavern, Battlefield Tent, etc.) show through clearly. ✅ *Done*
 - [x] ✨ **Add Menu Box Background Opacity** — Settings and related menus need a semi-transparent dark panel behind content for legibility. Apply to Settings and any other menus that currently lack it. ✅ *Done*
 - [ ] ✨ **Add Witcher 3 / Dark Souls 2–Style Lighting** — Implement moody atmospheric lighting with warm/cool contrast, volumetric effects, and dramatic shadows. The current studio lighting should remain accessible as a toggleable option in the debug menu.
@@ -35,7 +35,7 @@
 - [x] 🐛 **Fix Default View Angle** — The default camera angle is too high and too far out. It should be lower and closer to the board for a more immersive, grounded perspective. ✅ *Done — OVERVIEW: 35° pitch / 25 distance (was 45° / 35). All presets adjusted.*
 - [ ] 🐛 **Fix Character-Focus View Angle** — When the camera is focused on a character, it should similarly be lower and more close-up than it currently is. ⏸️ *Skipped for now*
 - [x] 🔧 **Combat Camera — Attack/Defense Selection** — During the attack or defense selection phase, the camera should automatically switch to a **front-quarter view** (similar to Mortal Kombat's perspective). The attack/defense choice UI should move to the **bottom-center** of the screen during this phase to avoid covering the characters. ✅ *Done — camera smoothly transitions to 55° side view of combat axis at 22° pitch*
-- [x] 🔧 **Combat Camera — Post-Selection** — Once choices are locked in, the camera should pivot to **frame the attacking character as the main subject**, while always keeping the opponent visible in shot. ✅ *Done — camera restores to pre-combat view after resolution*
+- [ ] 🔧 **Combat Camera — Post-Selection** — Once choices are locked in, the camera should pivot to **frame the attacking character as the main subject**, while always keeping the opponent visible in shot.
 
 ---
 
@@ -50,11 +50,11 @@
 
 - [x] 🔧 **Replace Stat Fractions with Bars** — Anywhere stats are displayed as raw fractions (e.g. `80/150 HP`), replace with visual bars that contain the fraction as a label inside or beside them. Applies to the selected troop info panel and any other stat displays. ✅ *Done — HP bar with green/yellow/red color, stat grid with icons*
 - [x] 🔧 **Move Player Resources to the Top Bar** — Player **Gold** and **XP** should be displayed in the **top bar on the left side** of the screen. The mine count should be removed from the top bar entirely (see below). ✅ *Done — top bar: [💰 Gold | ⭐ XP] [TURN X | PLAYER N's TURN] [⏱ Timer]. Side panels removed.*
-- [ ] 🔧 **Replace Mine Count with Mine Cards in Hand** — Instead of a mine count in the top bar, each gold mine a player owns should appear as a **card in the player's hand** alongside their troop cards. The card should reflect the mine's current state at all times:
+- [x] 🔧 **Replace Mine Count with Mine Cards in Hand** — Instead of a mine count in the top bar, each gold mine a player owns should appear as a **card in the player's hand** alongside their troop cards. The card should reflect the mine's current state at all times:
   - **Added** to hand when a new mine is placed
   - **Updated** (stats refresh on the card) when the mine is upgraded
   - **Removed** from hand when the mine is destroyed
-- [ ] ✨ **Show Gold Mine Stats in Bottom-Left Panel** — When a player clicks on a mine card in their hand (or the mine on the board), its stats (level, gold per turn, upgrade cost) should appear in the **bottom-left info panel** — the same way troop stats are shown when a troop is selected.
+- [x] ✨ **Show Gold Mine Stats in Bottom-Left Panel** — When a player clicks on a mine card in their hand (or the mine on the board), its stats (level, gold per turn, upgrade cost) should appear in the **bottom-left info panel** — the same way troop stats are shown when a troop is selected.
 
 ---
 
@@ -73,7 +73,7 @@
 ## 🎵 Audio
 
 - [ ] ✨ **Add Main Menu Music** — Add a background music track that fits the dark fantasy theme and loops cleanly.
-- [ ] ✨ **Add In-Game Music** — Add ambient/atmospheric background music during gameplay, separate from the main menu track. Should ideally vary by situation (exploration vs. combat).
+- [x] ✨ **Add In-Game Music** — Add ambient/atmospheric background music during gameplay, separate from the main menu track. Should ideally vary by situation (exploration vs. combat).
 
 ---
 

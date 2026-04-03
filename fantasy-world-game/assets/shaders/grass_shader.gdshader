@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode cull_disabled, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
+render_mode cull_disabled, depth_draw_opaque, depth_prepass_alpha, diffuse_burley, specular_schlick_ggx;
 
 // =============================================================================
 // MANOR LORDS STYLE GRASS SHADER
@@ -106,10 +106,9 @@ void fragment() {
 	// Sample grass texture
 	vec4 tex = texture(grass_texture, UV);
 	
-	// Alpha test with soft edges
-	if (tex.a < alpha_scissor) {
-		discard;
-	}
+	// Native alpha scissoring (allows Godot to optimize Z-testing and depth prepass)
+	ALPHA = tex.a;
+	ALPHA_SCISSOR_THRESHOLD = alpha_scissor;
 	
 	// ==========================================================
 	// COLOR WITH BIOME TINTING AND VARIATION
@@ -160,5 +159,5 @@ void fragment() {
 	BACKLIGHT = sss_color.rgb * sss_strength * smoothstep(0.2, 0.8, v_height);
 	
 	// Transmittance for light passing through thin blades
-	SSS_STRENGTH = sss_strength * 0.4;
+	// SSS_STRENGTH = sss_strength * 0.4; // DISABLED: Triggers a massive GPU screen-space blur pass
 }

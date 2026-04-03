@@ -126,6 +126,8 @@ func load_environment(env: EnvironmentType) -> void:
 	call_deferred("_align_to_table")
 	# Defer camera collision generation so transforms are resolved
 	call_deferred("_generate_camera_collision_for_environment")
+	# Defer lighting setup so the model is fully in the scene tree
+	call_deferred("_notify_tavern_lighting")
 
 	print("[EnvironmentBuilder] Loaded environment: %s" % ENVIRONMENT_NAMES.get(env, "Unknown"))
 
@@ -244,3 +246,38 @@ func _add_camera_collision_recursive(node: Node, count: int) -> void:
 	# Recurse into children
 	for child in node.get_children():
 		_add_camera_collision_recursive(child, count)
+
+
+# =============================================================================
+# TAVERN LIGHTING INTEGRATION
+# =============================================================================
+
+## Called deferred after the environment model is loaded.
+## Finds the TavernLighting child node and hands it the loaded model +
+## WorldEnvironment so it can apply the atmospheric lighting preset.
+func _notify_tavern_lighting() -> void:
+	# TavernLighting is expected as a direct child of this node
+	var lighting: Node = null
+	for child in get_children():
+		if child.get_script() and child.get_class() == "Node" and child.has_method("apply"):
+			lighting = child
+			break
+
+	if not lighting:
+		# Also try by class name if class_name is available
+		lighting = get_node_or_null("TavernLighting")
+
+	if not lighting:
+		push_warning("[EnvironmentBuilder] TavernLighting child not found — skipping atmospheric setup.")
+		return
+
+	# Find the WorldEnvironment in the parent scene
+	var world_env: WorldEnvironment = null
+	var parent := get_parent()
+	if parent:
+		for sibling in parent.get_children():
+			if sibling is WorldEnvironment:
+				world_env = sibling as WorldEnvironment
+				break
+
+	lighting.call("apply", _environment_instance, world_env)

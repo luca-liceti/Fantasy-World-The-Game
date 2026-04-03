@@ -46,8 +46,8 @@ func _build_ui() -> void:
 	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(scrim)
 
-	# ── Sub-logo (top centre, 50 % of full logo) ──
-	var sub_logo_scale = 0.50
+	# ── Sub-logo (top centre, small sub-screen scale) ──
+	var sub_logo_scale = 0.30
 	var slw = UITheme.LOGO_W * sub_logo_scale
 	var slh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
@@ -61,12 +61,13 @@ func _build_ui() -> void:
 	_root.add_child(logo)
 
 	# ── Page title ──
+	var title_top = 160.0
 	var title_lbl = Label.new()
 	title_lbl.text = "PLAY"
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	title_lbl.custom_minimum_size = Vector2(800, 60)
-	title_lbl.position = Vector2(-400, slh + 32)
+	title_lbl.position = Vector2(-400, title_top)
 	UITheme.style_label(title_lbl, UITheme.TITLE_FONT, UITheme.C_GOLD, true)
 	_root.add_child(title_lbl)
 
@@ -74,16 +75,17 @@ func _build_ui() -> void:
 	var sep = UITheme.make_separator()
 	sep.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	sep.custom_minimum_size = Vector2(640, 4)
-	sep.position = Vector2(-320, slh + 32 + 62)
+	sep.position = Vector2(-320, title_top + 64)
 	_root.add_child(sep)
 
 	# ── Content panel ──
 	var panel_w = 560
 	var panel_h = 520
+	var panel_top = 300.0
 	var panel = PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	panel.custom_minimum_size = Vector2(panel_w, panel_h)
-	panel.position = Vector2(-panel_w * 0.5, -panel_h * 0.5 + 32)
+	panel.position = Vector2(-panel_w * 0.5, panel_top)
 	UITheme.apply_panel(panel)
 	_root.add_child(panel)
 

@@ -104,7 +104,7 @@ func _build_bg_layer() -> void:
 	if _bg_textures.is_empty():
 		var fb = ColorRect.new()
 		fb.set_anchors_preset(Control.PRESET_FULL_RECT)
-		fb.color = Color(0.07, 0.05, 0.04, 1.0)
+		fb.color = Color.BLACK
 		fb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_bg_layer.add_child(fb)
 		return
@@ -152,7 +152,7 @@ func _build_logo(parent: Control) -> void:
 
 	# Centre-top anchor
 	_logo.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 120)
+	_logo.position = Vector2(-UITheme.LOGO_W * 0.5, 90)
 	_logo.modulate.a = 0.0
 	parent.add_child(_logo)
 
@@ -161,9 +161,9 @@ func _build_buttons(parent: Control) -> void:
 	_btn_container.name = "ButtonContainer"
 	_btn_container.set_anchors_preset(Control.PRESET_CENTER)
 	_btn_container.custom_minimum_size = Vector2(UITheme.BTN_W, 0)
-	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, -40)
+	_btn_container.position = Vector2(-UITheme.BTN_W * 0.5, -60)
 	_btn_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	_btn_container.add_theme_constant_override("separation", -2)
+	_btn_container.add_theme_constant_override("separation", 12)
 	parent.add_child(_btn_container)
 
 	# 7 buttons — order and labels match the UI template exactly
@@ -224,7 +224,7 @@ func _play_intro() -> void:
 
 	# Logo fades in + gentle upward settle
 	_intro_tween.tween_property(_logo, "modulate:a", 1.0, 1.0)
-	_intro_tween.parallel().tween_property(_logo, "position:y", 120.0, 1.0).from(144.0)
+	_intro_tween.parallel().tween_property(_logo, "position:y", 90.0, 1.0).from(114.0)
 
 	# Buttons cascade in left-to-right
 	var buttons = _btn_container.get_children()
@@ -250,7 +250,7 @@ func _on_btn_press(btn: Button) -> void:
 ## Release: pop back to normal size
 func _on_btn_release(btn: Button) -> void:
 	var tw = create_tween()
-	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12)
 
 
@@ -689,7 +689,7 @@ func _make_page_content(root: Control, page_title: String,
 		panel_w: float, panel_h: float) -> VBoxContainer:
 
 	# Logo at top of every sub-screen (smaller than main menu logo)
-	var sub_logo_scale = 0.50
+	var sub_logo_scale = 0.30
 	var slw = UITheme.LOGO_W * sub_logo_scale
 	var slh = UITheme.LOGO_H * sub_logo_scale
 	var logo = TextureRect.new()
@@ -703,12 +703,13 @@ func _make_page_content(root: Control, page_title: String,
 	root.add_child(logo)
 
 	# Page title (e.g. "SETTINGS")
+	var title_top = 160.0
 	var title_lbl = Label.new()
 	title_lbl.text = page_title
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	title_lbl.custom_minimum_size = Vector2(800, 60)
-	title_lbl.position = Vector2(-400, slh + 32)
+	title_lbl.position = Vector2(-400, title_top)
 	UITheme.style_label(title_lbl, UITheme.TITLE_FONT, UITheme.C_GOLD, true)
 	root.add_child(title_lbl)
 
@@ -716,14 +717,15 @@ func _make_page_content(root: Control, page_title: String,
 	var sep = UITheme.make_separator()
 	sep.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	sep.custom_minimum_size = Vector2(640, 4)
-	sep.position = Vector2(-320, slh + 32 + 62)
+	sep.position = Vector2(-320, title_top + 64)
 	root.add_child(sep)
 
 	# Content panel — centred
+	var panel_top = 300.0
 	var panel = PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	panel.custom_minimum_size = Vector2(panel_w, panel_h)
-	panel.position = Vector2(-panel_w * 0.5, -panel_h * 0.5 + 32)
+	panel.position = Vector2(-panel_w * 0.5, panel_top)
 	UITheme.apply_panel(panel)
 	root.add_child(panel)
 

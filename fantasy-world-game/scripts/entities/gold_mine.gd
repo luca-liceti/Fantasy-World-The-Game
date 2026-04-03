@@ -20,6 +20,9 @@ var owner_player_id: int = -1
 ## Current upgrade level (1-5)
 var level: int = 1
 
+## Unique ID for the deck hand representation
+var card_id: String = ""
+
 ## Reference to the hex tile this mine occupies
 var current_hex: Node = null
 
@@ -56,6 +59,7 @@ func initialize(player_id: int, hex: Node) -> void:
 	current_hex = hex
 	level = 1
 	is_active = true
+	card_id = "mine_" + str(get_instance_id())
 	
 	# Set position
 	if hex:

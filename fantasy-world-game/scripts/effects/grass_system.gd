@@ -8,7 +8,7 @@ extends RefCounted
 # SETTINGS
 # =============================================================================
 
-static var grass_enabled: bool = true
+static var grass_enabled: bool = false
 static var grass_quality: int = 2  # 0=Off, 1=Low, 2=Medium, 3=High
 
 # =============================================================================
@@ -166,6 +166,9 @@ static func clear_cache() -> void:
 
 ## Create grass for a hex tile
 static func create_grass_for_hex(biome_type: Biomes.Type, hex_size: float = 1.0) -> MultiMeshInstance3D:
+	# DISABLED FOR NOW: To save GPU performance as requested
+	return null
+	
 	if not grass_enabled or grass_quality == 0:
 		return null
 	

@@ -482,6 +482,7 @@ func action_place_mine(troop: Troop, target_hex: HexTile) -> Dictionary:
 	
 	# Add to player
 	player.add_gold_mine(mine)
+	player.deck.append(mine.card_id)
 	
 	mine_placed.emit(mine, target_hex)
 	
@@ -518,6 +519,39 @@ func action_upgrade_troop(troop: Troop) -> Dictionary:
 	troop.upgrade()
 	
 	return {"success": true, "new_level": troop.level}
+
+
+## Upgrade a mine
+func action_upgrade_mine(mine: Node) -> Dictionary:
+	if current_state != GameState.PLAYING:
+		return {"success": false, "error": "Game not in playing state"}
+	
+	var player = player_manager.get_player(mine.owner_player_id)
+	if player == null:
+		return {"success": false, "error": "Invalid player"}
+	
+	# Get upgrade cost
+	var cost = mine.get_upgrade_cost() if mine.has_method("get_upgrade_cost") else 0
+	if not mine.has_method("can_upgrade") or not mine.can_upgrade():
+		return {"success": false, "error": "Cannot upgrade further"}
+	
+	if not player.can_afford_gold(cost):
+		return {"success": false, "error": "Not enough gold"}
+	
+	# Validate through turn manager
+	var turn_result = turn_manager.perform_upgrade_mine(mine)
+	
+	if not turn_result["success"]:
+		return turn_result
+	
+	# Spend resources
+	player.spend_gold(cost)
+	
+	# Upgrade mine
+	if mine.has_method("upgrade"):
+		mine.upgrade()
+	
+	return {"success": true, "new_level": mine.level}
 
 
 ## Use an item
@@ -658,7 +692,10 @@ func _on_mine_destroyed(mine: GoldMine) -> void:
 	var player = player_manager.get_player(mine.owner_player_id)
 	if player:
 		player.remove_gold_mine(mine)
-		print("Mine destroyed and removed from Player %d's list" % [player.player_id + 1])
+		var index = player.deck.find(mine.card_id)
+		if index != -1:
+			player.deck.remove_at(index)
+		print("Mine destroyed and removed from Player %d's list and deck" % [player.player_id + 1])
 
 
 # =============================================================================
