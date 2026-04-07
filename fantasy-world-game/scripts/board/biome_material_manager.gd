@@ -1,10 +1,14 @@
 ## Biome Material Manager
-## Creates and caches StandardMaterial3D materials for each biome type
-## Supports loading PBR textures with proper world-space UV mapping for seamless tiling
+## Creates and caches materials for each biome type.
 ##
-## "Manor Lords" Aesthetic Implementation:
-## - PBR Workflow: Roughness and AO maps prioritized over Base Color
-## - Normal Maps: Slightly over-driven (1.2x - 1.5x) for top-down visibility
+## When PBR textures are present a ShaderMaterial is built using
+## biome_terrain.gdshader, which implements:
+##   - World-space Triplanar mapping  (no UV seams across hex tiles)
+##   - Stochastic Sampling            (no visible texture tiling)
+##
+## "Manor Lords" Aesthetic:
+## - PBR Workflow: Roughness and AO maps prioritised over Base Color
+## - Normal Maps: Over-driven (1.2x - 1.5x) for top-down camera visibility
 ## - Color Palette: Muted earth tones (Umber, Sage, Slate, Charcoal)
 ## - Global saturation reduced ~15% for medieval atmosphere
 ## Reference: Photogrammetry, Upper Franconian Climate, Muted Medieval, High AO
@@ -17,6 +21,9 @@ extends RefCounted
 
 ## Path to biome textures
 const TEXTURES_PATH := "res://assets/textures/biomes/"
+
+## Path to the stochastic terrain shader
+const TERRAIN_SHADER_PATH := "res://assets/shaders/biome_terrain.gdshader"
 
 # =============================================================================
 # WORLD SCALE REFERENCE
@@ -31,8 +38,8 @@ const TEXTURES_PATH := "res://assets/textures/biomes/"
 
 ## Texture scale for world-space UV mapping (controls texture tiling frequency)
 ## Lower value = larger texture appearance (less tiling), Higher = smaller/more tiled
-## At scale 0.03: textures tile every ~33 meters, showing realistic ground detail
-const TEXTURE_SCALE := 0.03  # Realistic 1:1 scale - visible rocks, leaves, terrain detail
+## At scale 0.3: textures tile every ~3.3 meters, showing realistic ground detail
+const TEXTURE_SCALE := 0.3  # Realistic 1:1 scale - visible rocks, leaves, terrain detail
 
 ## Normal map intensity multiplier (Manor Lords: 1.2x - 1.5x for top-down visibility)
 const NORMAL_MAP_OVERDRIVE := 1.3  # Slightly over-driven for camera angle
@@ -159,11 +166,14 @@ const BIOME_MATERIAL_PROPERTIES: Dictionary = {
 # CACHED MATERIALS AND TEXTURES
 # =============================================================================
 
-## Cached materials dictionary {Biomes.Type: StandardMaterial3D}
+## Cached materials dictionary {Biomes.Type: Material}
 static var _material_cache: Dictionary = {}
 
 ## Cached textures dictionary {texture_path: Texture2D}
 static var _texture_cache: Dictionary = {}
+
+## Cached stochastic terrain shader
+static var _terrain_shader: Shader = null
 
 ## Whether PBR textures are available
 static var _textures_available: bool = false
@@ -173,13 +183,14 @@ static var _texture_check_done: bool = false
 # PUBLIC METHODS
 # =============================================================================
 
-## Get the material for a biome type
-## Creates and caches the material if not already cached
-static func get_material(biome_type: Biomes.Type) -> StandardMaterial3D:
+## Get the material for a biome type.
+## Returns a ShaderMaterial when PBR textures are present,
+## or a StandardMaterial3D fallback otherwise.
+static func get_material(biome_type: Biomes.Type) -> Material:
 	# Check cache first
 	if _material_cache.has(biome_type):
 		return _material_cache[biome_type]
-	
+
 	# Create new material
 	var material = _create_material(biome_type)
 	_material_cache[biome_type] = material
@@ -190,57 +201,59 @@ static func get_material(biome_type: Biomes.Type) -> StandardMaterial3D:
 static func clear_cache() -> void:
 	_material_cache.clear()
 	_texture_cache.clear()
+	_terrain_shader = null
 	_texture_check_done = false
 
 
 ## Get a duplicate material (for unique instances that may be modified)
-static func get_material_copy(biome_type: Biomes.Type) -> StandardMaterial3D:
+static func get_material_copy(biome_type: Biomes.Type) -> Material:
 	var base = get_material(biome_type)
-	return base.duplicate() as StandardMaterial3D
+	return base.duplicate()
 
 
 # =============================================================================
 # PRIVATE METHODS
 # =============================================================================
 
-## Create a material for the given biome type
-static func _create_material(biome_type: Biomes.Type) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	
+## Create a material for the given biome type.
+## Returns ShaderMaterial (stochastic PBR) when textures are available,
+## or a plain StandardMaterial3D procedural fallback otherwise.
+static func _create_material(biome_type: Biomes.Type) -> Material:
 	# Get fallback properties for this biome
 	var props: Dictionary = BIOME_MATERIAL_PROPERTIES.get(biome_type, {})
-	
+
 	# Check if textures are available (only once)
 	if not _texture_check_done:
 		_check_textures_available()
-	
-	# Try to load PBR textures if available
-	var texture_loaded := false
-	if _textures_available:
-		var texture_prefix = BIOME_TEXTURE_MAP.get(biome_type, "")
+
+	# Try to build a stochastic ShaderMaterial if PBR textures are present
+	var _shader_enabled := true
+
+	# Try to build a stochastic ShaderMaterial if PBR textures are present
+	if _shader_enabled and _textures_available:
+		var texture_prefix: String = BIOME_TEXTURE_MAP.get(biome_type, "")
 		if texture_prefix != "":
-			texture_loaded = _try_load_pbr_textures(material, texture_prefix, biome_type)
-	
-	# If no textures, use procedural color with enhanced properties
-	if not texture_loaded:
-		material.albedo_color = props.get("color", Biomes.get_biome_color(biome_type))
-	
-	# Apply material properties
-	material.roughness = props.get("roughness", 0.75)
-	material.metallic = props.get("metallic", 0.0)
-	
-	# Apply emission (for glowing biomes like Ashlands)
+			var shader_mat = _try_build_shader_material(texture_prefix, biome_type)
+			if shader_mat:
+				return shader_mat
+
+	# -----------------------------------------------------------------------
+	# Fallback: plain StandardMaterial3D with procedural colour
+	# -----------------------------------------------------------------------
+	var material := StandardMaterial3D.new()
+	material.albedo_color = props.get("color", Biomes.get_biome_color(biome_type))
+	material.roughness    = props.get("roughness", 0.75)
+	material.metallic     = props.get("metallic", 0.0)
+
 	var emission_energy: float = props.get("emission_energy", 0.0)
 	if emission_energy > 0.0:
-		material.emission_enabled = true
-		material.emission = props.get("emission", Color.WHITE)
-		material.emission_energy_multiplier = emission_energy
-	
-	# Shading settings for better quality
+		material.emission_enabled            = true
+		material.emission                    = props.get("emission", Color.WHITE)
+		material.emission_energy_multiplier  = emission_energy
+
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	material.diffuse_mode = BaseMaterial3D.DIFFUSE_BURLEY
 	material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
-	
 	return material
 
 
@@ -293,89 +306,131 @@ static func _load_texture_any_ext(base_path: String, map_type: String) -> Textur
 	return null
 
 
-## Try to load PBR textures for a material
-static func _try_load_pbr_textures(material: StandardMaterial3D, texture_prefix: String, biome_type: Biomes.Type) -> bool:
-	# Texture patterns to try:
-	# 1. Direct name: {prefix}_{map_type}.{ext} (new textures like ashlands_new_diffuse.jpg)
-	# 2. Primary variant: {prefix}_primary_{map_type}.{ext} (original textures)
-	
+## Load the shared stochastic terrain shader (cached).
+static func _get_terrain_shader() -> Shader:
+	if _terrain_shader:
+		return _terrain_shader
+	if ResourceLoader.exists(TERRAIN_SHADER_PATH):
+		_terrain_shader = load(TERRAIN_SHADER_PATH) as Shader
+		if _terrain_shader:
+			return _terrain_shader
+	push_warning("[BiomeMaterialManager] Terrain shader not found: %s" % TERRAIN_SHADER_PATH)
+	return null
+
+
+## Build a ShaderMaterial using the stochastic biome_terrain.gdshader.
+## Returns null when the shader or diffuse texture cannot be loaded.
+static func _try_build_shader_material(texture_prefix: String, biome_type: Biomes.Type) -> ShaderMaterial:
+	# -----------------------------------------------------------------------
+	# 1. Locate the diffuse texture (determines the base_path for other maps)
+	# -----------------------------------------------------------------------
 	var diffuse_tex: Texture2D = null
-	var base_path: String = ""
-	var variant_tried: String = ""
-	
-	# Try direct path first (new texture format)
-	base_path = TEXTURES_PATH + texture_prefix + "_"
+	var base_path: String      = ""
+	var variant_tried: String  = ""
+
+	base_path   = TEXTURES_PATH + texture_prefix + "_"
 	diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
 	if diffuse_tex:
 		variant_tried = "direct"
-	
-	# Try primary variant (original texture format — secondary variants removed)
+
 	if not diffuse_tex:
-		base_path = TEXTURES_PATH + texture_prefix + "_primary_"
+		base_path   = TEXTURES_PATH + texture_prefix + "_primary_"
 		diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
 		if diffuse_tex:
 			variant_tried = "primary"
-	
-	# Try fallback texture if primary texture not found
+
 	if not diffuse_tex and BIOME_TEXTURE_FALLBACKS.has(texture_prefix):
-		var fallback = BIOME_TEXTURE_FALLBACKS[texture_prefix]
-		base_path = TEXTURES_PATH + fallback + "_primary_"
+		var fallback: String = BIOME_TEXTURE_FALLBACKS[texture_prefix]
+		base_path   = TEXTURES_PATH + fallback + "_primary_"
 		diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
 		if diffuse_tex:
 			variant_tried = "fallback: " + fallback
-	
+
 	if not diffuse_tex:
-		print("[BiomeMaterialManager] No texture found for: %s" % texture_prefix)
-		return false
-	
-	# Apply diffuse texture
-	material.albedo_texture = diffuse_tex
-	material.albedo_color = Color.WHITE  # Use natural texture color
-	
-	# Enable triplanar mapping for seamless world-space tiling
-	material.uv1_triplanar = true
-	material.uv1_world_triplanar = true
-	material.uv1_triplanar_sharpness = 1.0
-	material.uv1_scale = Vector3(TEXTURE_SCALE, TEXTURE_SCALE, TEXTURE_SCALE)
-	
-	# Get biome-specific properties for customization
+		print("[BiomeMaterialManager] No diffuse texture for: %s" % texture_prefix)
+		return null
+
+	# -----------------------------------------------------------------------
+	# 2. Load the stochastic shader
+	# -----------------------------------------------------------------------
+	var shader: Shader = _get_terrain_shader()
+	if not shader:
+		return null
+
+	# -----------------------------------------------------------------------
+	# 3. Build ShaderMaterial and assign uniforms
+	# -----------------------------------------------------------------------
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+
+	# Biome-specific properties
 	var props: Dictionary = BIOME_MATERIAL_PROPERTIES.get(biome_type, {})
-	
-	# Load normal map - ENHANCED strength for visible terrain depth
-	# Over-driven per Manor Lords spec (1.2x - 1.5x) for top-down camera visibility
-	var normal_tex = _load_texture_any_ext(base_path, "normal")
+
+	# Albedo
+	mat.set_shader_parameter("texture_albedo", diffuse_tex)
+
+	# Normal map
+	var normal_tex: Texture2D = _load_texture_any_ext(base_path, "normal")
 	if normal_tex:
-		material.normal_enabled = true
-		material.normal_texture = normal_tex
-		# Use biome-specific or default enhanced scale
-		var normal_scale = props.get("normal_scale", NORMAL_MAP_OVERDRIVE)
-		material.normal_scale = normal_scale  # Use full strength for visible depth
-	
-	# Load roughness map - PRIORITY per Manor Lords PBR workflow
-	# "The look relies more on how light interacts with surface texture than Base Color"
-	var roughness_tex = _load_texture_any_ext(base_path, "roughness")
+		mat.set_shader_parameter("texture_normal", normal_tex)
+	var normal_scale: float = props.get("normal_scale", NORMAL_MAP_OVERDRIVE)
+	mat.set_shader_parameter("normal_scale", normal_scale)
+
+	# Roughness
+	var roughness_tex: Texture2D = _load_texture_any_ext(base_path, "roughness")
 	if roughness_tex:
-		material.roughness_texture = roughness_tex
-		material.roughness = 1.0  # Let texture drive roughness
+		mat.set_shader_parameter("texture_roughness", roughness_tex)
+		mat.set_shader_parameter("roughness_override", 1.0)
 	else:
-		# Fallback: use biome-specific roughness
-		material.roughness = props.get("roughness", 0.75)
-	
-	# Load ambient occlusion map - HIGH PRIORITY per Manor Lords spec
-	# "Heavy Ambient Occlusion in crevices to define debris, sticks, pine needles"
-	var ao_tex = _load_texture_any_ext(base_path, "ao")
+		mat.set_shader_parameter("roughness_override", props.get("roughness", 0.75))
+
+	# Ambient occlusion
+	var ao_tex: Texture2D = _load_texture_any_ext(base_path, "ao")
 	if ao_tex:
-		material.ao_enabled = true
-		material.ao_texture = ao_tex
-		# Per Manor Lords spec: heavy AO - use biome-specific intensity
-		var ao_intensity = props.get("ao_intensity", 0.5)
-		material.ao_light_affect = ao_intensity
-	
-	# Apply biome-specific adjustments (roughness, wetness, desaturation)
-	_apply_biome_adjustments(material, biome_type)
-	
-	print("[BiomeMaterialManager] Loaded: %s (%s) [Manor Lords PBR]" % [texture_prefix, variant_tried])
-	return true
+		mat.set_shader_parameter("texture_ao", ao_tex)
+	var ao_intensity: float = props.get("ao_intensity", 0.5)
+	mat.set_shader_parameter("ao_intensity", ao_intensity)
+
+	# World-space tiling scale — matches the GDScript TEXTURE_SCALE constant
+	mat.set_shader_parameter("texture_scale", TEXTURE_SCALE)
+
+	# Stochastic cell size: 3-4× the texture period gives good coverage
+	mat.set_shader_parameter("stochastic_cell_size", 3.5 / TEXTURE_SCALE)
+
+	# Triplanar sharpness
+	mat.set_shader_parameter("triplanar_sharpness", 4.0)
+
+	# Full stochastic sampling enabled by default
+	mat.set_shader_parameter("stochastic_strength", 1.0)
+
+	# Biome-specific albedo tint (muted earth tones per Manor Lords spec)
+	var tint: Color = _get_biome_tint(biome_type)
+	mat.set_shader_parameter("albedo_tint", tint)
+
+	print("[BiomeMaterialManager] Stochastic shader material built for: %s (%s)" % [texture_prefix, variant_tried])
+	return mat
+
+
+## Return a subtle albedo tint coloring for each biome (Manor Lords muted palette).
+## Applied on top of the diffuse texture in the shader.
+static func _get_biome_tint(biome_type: Biomes.Type) -> Color:
+	match biome_type:
+		Biomes.Type.FOREST:
+			return Color(0.88, 0.92, 0.82)   # Slight green–brown desaturation
+		Biomes.Type.PEAKS:
+			return Color(0.92, 0.94, 1.00)   # Cold blue–white tint
+		Biomes.Type.WASTES:
+			return Color(0.95, 0.90, 0.82)   # Warm sandy ochre
+		Biomes.Type.PLAINS:
+			return Color(0.90, 0.92, 0.80)   # Faintly golden sage
+		Biomes.Type.ASHLANDS:
+			return Color(0.78, 0.76, 0.74)   # Heavy desaturation — "dead" look
+		Biomes.Type.HILLS:
+			return Color(0.88, 0.92, 0.84)   # Sage green
+		Biomes.Type.SWAMP:
+			return Color(0.82, 0.88, 0.76)   # Murky greenish
+		_:
+			return Color.WHITE
 
 
 ## Apply biome-specific material adjustments per "Manor Lords" aesthetic

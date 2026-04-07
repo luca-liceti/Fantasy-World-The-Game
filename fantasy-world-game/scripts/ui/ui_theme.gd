@@ -17,6 +17,11 @@ const PATH_RANDOMIZE    = "res://assets/textures/ui/components/randomize_button.
 const PATH_SLIDER_H     = "res://assets/textures/ui/components/horizontal_bar.png"
 const PATH_SLIDER_V     = "res://assets/textures/ui/components/verticle_bar.png"
 const PATH_SLIDER_COMPS = "res://assets/textures/ui/components/slider_components.png"
+const PATH_SLIDER_FILLED = "res://assets/textures/ui/components/slider_component_filled.png"
+const PATH_SLIDER_HANDLE = "res://assets/textures/ui/components/slider_component_handle.png"
+const PATH_SLIDER_EMPTY  = "res://assets/textures/ui/components/slider_component_empty.png"
+const PATH_TOGGLE_ON      = "res://assets/textures/ui/components/toggle_button_on.png"
+const PATH_TOGGLE_OFF     = "res://assets/textures/ui/components/toggle_button_off.png"
 
 const PATH_LOGO         = "res://assets/textures/logo/fantasy-world-main-screen-logo.png"
 
@@ -119,6 +124,11 @@ static var _tex_logo:     Texture2D = null
 static var _tex_slider_h: Texture2D = null
 static var _tex_slider_v: Texture2D = null
 static var _tex_slider_comps: Texture2D = null
+static var _tex_slider_filled: Texture2D = null
+static var _tex_slider_handle: Texture2D = null
+static var _tex_slider_empty: Texture2D = null
+static var _tex_toggle_on:   Texture2D = null
+static var _tex_toggle_off:  Texture2D = null
 
 static func tex_btn_default() -> Texture2D:
 	if _tex_btn_def == null and ResourceLoader.exists(PATH_BTN_DEFAULT):
@@ -169,6 +179,31 @@ static func tex_logo() -> Texture2D:
 	if _tex_logo == null and ResourceLoader.exists(PATH_LOGO):
 		_tex_logo = load(PATH_LOGO)
 	return _tex_logo
+
+static func tex_slider_filled() -> Texture2D:
+	if _tex_slider_filled == null and ResourceLoader.exists(PATH_SLIDER_FILLED):
+		_tex_slider_filled = load(PATH_SLIDER_FILLED)
+	return _tex_slider_filled
+
+static func tex_slider_handle() -> Texture2D:
+	if _tex_slider_handle == null and ResourceLoader.exists(PATH_SLIDER_HANDLE):
+		_tex_slider_handle = load(PATH_SLIDER_HANDLE)
+	return _tex_slider_handle
+
+static func tex_slider_empty() -> Texture2D:
+	if _tex_slider_empty == null and ResourceLoader.exists(PATH_SLIDER_EMPTY):
+		_tex_slider_empty = load(PATH_SLIDER_EMPTY)
+	return _tex_slider_empty
+
+static func tex_toggle_on() -> Texture2D:
+	if _tex_toggle_on == null and ResourceLoader.exists(PATH_TOGGLE_ON):
+		_tex_toggle_on = load(PATH_TOGGLE_ON)
+	return _tex_toggle_on
+
+static func tex_toggle_off() -> Texture2D:
+	if _tex_toggle_off == null and ResourceLoader.exists(PATH_TOGGLE_OFF):
+		_tex_toggle_off = load(PATH_TOGGLE_OFF)
+	return _tex_toggle_off
 
 
 # =============================================================================
@@ -311,6 +346,102 @@ static func slider_v() -> StyleBoxTexture:
 	s.texture_margin_top    = 8
 	s.texture_margin_bottom = 8
 	return s
+
+## Slider components for HSlider
+static func slider_filled_style() -> StyleBoxTexture:
+	var s = StyleBoxTexture.new()
+	s.texture = tex_slider_filled()
+	# Crop out the first 150px to remove the starting artifacts
+	s.region_rect = Rect2(150, 0, 1600, 328)
+	s.texture_margin_left   = 0
+	s.texture_margin_right  = 0
+	s.texture_margin_top    = 0
+	s.texture_margin_bottom = 0
+	s.expand_margin_top    = 8
+	s.expand_margin_bottom = 8
+	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	return s
+
+static func slider_empty_style() -> StyleBoxTexture:
+	var s = StyleBoxTexture.new()
+	s.texture = tex_slider_empty()
+	s.texture = tex_slider_empty()
+	# Crop out the end to remove the sharp spike artifact (very aggressive crop)
+	s.region_rect = Rect2(0, 0, 1200, 328)
+	s.texture_margin_left   = 0
+	s.texture_margin_right  = 0
+	s.texture_margin_top    = 0
+	s.texture_margin_bottom = 0
+	s.expand_margin_top    = 8
+	s.expand_margin_bottom = 8
+	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	return s
+
+static func apply_slider(slider: HSlider) -> void:
+	# Textures for the grabber (handle) — resize in code to avoid file bloat/size issues
+	var handle_tex = tex_slider_handle()
+	if handle_tex:
+		var img = handle_tex.get_image()
+		if img:
+			# Target size: 28x26 (roughly 20% smaller than previous 32x30)
+			img.resize(28, 26, Image.INTERPOLATE_LANCZOS)
+			var scaled_tex = ImageTexture.create_from_image(img)
+			slider.add_theme_icon_override("grabber", scaled_tex)
+			slider.add_theme_icon_override("grabber_highlight", scaled_tex)
+	
+	# Styleboxes for the track
+	slider.add_theme_stylebox_override("slider",   slider_empty_style())
+	slider.add_theme_stylebox_override("grabber_area", slider_filled_style())
+	slider.add_theme_stylebox_override("grabber_area_highlight", slider_filled_style())
+
+
+## Apply the toggle textures (Switch style) to a CheckButton
+static func apply_toggle(toggle: CheckButton) -> void:
+	var on_tex = tex_toggle_on()
+	var off_tex = tex_toggle_off()
+	
+	if on_tex and off_tex:
+		var img_on = on_tex.get_image()
+		var img_off = off_tex.get_image()
+		
+		# Target size: maintaining 3.25:1 aspect ratio.
+		# A good height for settings menu is about 20-22px.
+		var target_h = 22
+		var target_w = int(target_h * (792.0 / 243.0)) # ~72px
+		
+		img_on.resize(target_w, target_h, Image.INTERPOLATE_LANCZOS)
+		img_off.resize(target_w, target_h, Image.INTERPOLATE_LANCZOS)
+		
+		# Programmatically add a "Minor Golden Glow" to the ON texture
+		# We boost the gold/warm channels to make it look glowing/active
+		for y in range(img_on.get_height()):
+			for x in range(img_on.get_width()):
+				var c = img_on.get_pixel(x, y)
+				if c.a > 0.01:
+					# Brighten and shift towards gold (increase R and G more than B)
+					c.r = min(1.0, c.r * 1.25)
+					c.g = min(1.0, c.g * 1.15)
+					c.b = min(1.0, c.b * 0.90) # slightly reduce blue for warmer gold
+					img_on.set_pixel(x, y, c)
+		
+		var scaled_on = ImageTexture.create_from_image(img_on)
+		var scaled_off = ImageTexture.create_from_image(img_off)
+		
+		toggle.add_theme_icon_override("switch_on",  scaled_on)
+		toggle.add_theme_icon_override("switch_off", scaled_off)
+		toggle.add_theme_icon_override("switch_on_disabled",  scaled_on)
+		toggle.add_theme_icon_override("switch_off_disabled", scaled_off)
+		
+		# For maximum compatibility, also override the CheckBox style icons
+		toggle.add_theme_icon_override("checked",     scaled_on)
+		toggle.add_theme_icon_override("unchecked",   scaled_off)
+		toggle.add_theme_icon_override("checked_disabled",   scaled_on)
+		toggle.add_theme_icon_override("unchecked_disabled", scaled_off)
+		
+		# Explicitly set minimum size so the HBox layout knows how big we are
+		toggle.custom_minimum_size = Vector2(target_w, target_h)
+
+	connect_hover_sound(toggle)
 
 
 # =============================================================================
@@ -467,35 +598,52 @@ static func hud_action_button(_accent: Color) -> void:
 	# caller should pass the button; this is kept for symmetry
 	pass  # Use apply_hud_button() instead
 
-## Apply HUD action button styling (compact, dark, accent-bordered)
+## Apply HUD action button styling (compact, textured, accent-tinted on hover)
 static func apply_hud_button(btn: Button, accent: Color, size: int = 13) -> void:
-	var normal_s = StyleBoxFlat.new()
-	normal_s.bg_color     = Color(0.10, 0.09, 0.08, 0.90)
-	normal_s.border_color = C_GOLD.darkened(0.5)
-	normal_s.set_border_width_all(2)
-	normal_s.set_corner_radius_all(6)
-	normal_s.content_margin_left   = 8
-	normal_s.content_margin_right  = 8
-	normal_s.content_margin_top    = 6
-	normal_s.content_margin_bottom = 6
+	var normal_s = btn_normal().duplicate()
+	# "Slightly pointy" look by cutting only the outermost 15 pixels of the spike
+	normal_s.region_rect = Rect2(15, 0, 570, 96)
+	normal_s.texture_margin_left   = 45
+	normal_s.texture_margin_right  = 45
+	# Adjust margins for taller HUD buttons
+	normal_s.content_margin_left   = 24
+	normal_s.content_margin_right  = 24
+	normal_s.content_margin_top    = 8
+	normal_s.content_margin_bottom = 8
 	btn.add_theme_stylebox_override("normal", normal_s)
 
-	var hover_s = normal_s.duplicate()
-	hover_s.bg_color     = accent.darkened(0.60)
-	hover_s.border_color = C_GOLD
-	hover_s.set_border_width_all(3)
+	var hover_s = btn_hover().duplicate()
+	hover_s.region_rect = Rect2(15, 0, 570, 96)
+	hover_s.texture_margin_left   = 45
+	hover_s.texture_margin_right  = 45
+	hover_s.content_margin_left   = 24
+	hover_s.content_margin_right  = 24
+	hover_s.content_margin_top    = 8
+	hover_s.content_margin_bottom = 8
+	# Tint with accent to preserve the action's thematic colour
+	hover_s.modulate_color = accent.lerp(C_GOLD_BRIGHT, 0.4)
 	btn.add_theme_stylebox_override("hover", hover_s)
+	btn.add_theme_stylebox_override("focus", hover_s)
 
-	var pressed_s = normal_s.duplicate()
-	pressed_s.bg_color     = accent.darkened(0.50)
-	pressed_s.border_color = C_GOLD_BRIGHT
-	pressed_s.set_border_width_all(3)
+	var pressed_s = btn_pressed().duplicate()
+	pressed_s.region_rect = Rect2(15, 0, 570, 96)
+	pressed_s.texture_margin_left   = 45
+	pressed_s.texture_margin_right  = 45
+	pressed_s.content_margin_left   = 24
+	pressed_s.content_margin_right  = 24
+	pressed_s.content_margin_top    = 8
+	pressed_s.content_margin_bottom = 8
+	pressed_s.modulate_color = accent
 	btn.add_theme_stylebox_override("pressed", pressed_s)
 
-	var disabled_s = normal_s.duplicate()
-	disabled_s.bg_color     = Color(0.08, 0.07, 0.06, 0.55)
-	disabled_s.border_color = Color(0.20, 0.18, 0.16, 0.40)
-	disabled_s.set_border_width_all(1)
+	var disabled_s = btn_disabled().duplicate()
+	disabled_s.region_rect = Rect2(15, 0, 570, 96)
+	disabled_s.texture_margin_left   = 45
+	disabled_s.texture_margin_right  = 45
+	disabled_s.content_margin_left   = 24
+	disabled_s.content_margin_right  = 24
+	disabled_s.content_margin_top    = 8
+	disabled_s.content_margin_bottom = 8
 	btn.add_theme_stylebox_override("disabled", disabled_s)
 
 	style_button_text(btn, size)

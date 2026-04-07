@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://dce4oh7hqfa85"
+path="res://.godot/imported/._beads.wav-417ab8eaf0f1ad9d9c0f4f96dca5c191.sample"
+
+[deps]
+
+source_file="res://assets/sfx/rpg_sound_pack/__MACOSX/RPG Sound Pack/inventory/._beads.wav"
+dest_files=["res://.godot/imported/._beads.wav-417ab8eaf0f1ad9d9c0f4f96dca5c191.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

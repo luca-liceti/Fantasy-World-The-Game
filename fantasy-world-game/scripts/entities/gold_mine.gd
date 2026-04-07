@@ -60,6 +60,7 @@ func initialize(player_id: int, hex: Node) -> void:
 	level = 1
 	is_active = true
 	card_id = "mine_" + str(get_instance_id())
+	_update_visual()
 	
 	# Set position
 	if hex:
@@ -240,6 +241,10 @@ func _update_visual() -> void:
 		
 		# Apply a vertical offset because the 3D model's origin is centered, causing it to clip below the tile.
 		current_model.position.y = 0.4 
+		
+		# Rotate the mine 180 degrees for player 1 as requested.
+		if owner_player_id == 0:
+			current_model.rotation_degrees.y = 180
 		
 		add_child(current_model)
 		_fix_model_materials(current_model)

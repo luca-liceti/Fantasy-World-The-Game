@@ -446,7 +446,7 @@ If attack succeeds:
 
 ## NPC Behavior
 
-- **Spawn Chance**: 5% when any troop moves to a hex
+- **Spawn Chance**: 10% when any troop moves to a hex
 - NPCs do NOT spawn on occupied hexes
 - NPCs are **stationary** (do not move)
 - NPCs attack nearest player unit in range 2 each turn

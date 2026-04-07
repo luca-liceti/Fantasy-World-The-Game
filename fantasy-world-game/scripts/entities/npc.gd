@@ -212,7 +212,7 @@ func get_loot() -> Dictionary:
 # SPAWNING (Static)
 # =============================================================================
 
-## Check if an NPC should spawn (5% chance when troop moves)
+## Check if an NPC should spawn (10% chance when troop moves)
 static func should_spawn() -> bool:
 	return randf() < GameConfig.NPC_SPAWN_CHANCE
 
@@ -276,10 +276,10 @@ func _create_placeholder_visual() -> void:
 	
 	# Create a sphere as placeholder
 	var sphere = SphereMesh.new()
-	sphere.radius = 0.25
-	sphere.height = 0.5
+	sphere.radius = 0.075 # 0.25*0.3
+	sphere.height = 0.15 # 0.5*0.3
 	mesh_instance.mesh = sphere
-	mesh_instance.position.y = 0.25
+	mesh_instance.position.y = 0.075 # 0.25*0.3
 	
 	# Red color for enemies
 	var material = StandardMaterial3D.new()
@@ -295,9 +295,9 @@ func _create_placeholder_visual() -> void:
 	
 	var cam_col = CollisionShape3D.new()
 	var cam_sphere = SphereShape3D.new()
-	cam_sphere.radius = 0.35
+	cam_sphere.radius = 0.105 # 0.35*0.3
 	cam_col.shape = cam_sphere
-	cam_col.position.y = 0.25
+	cam_col.position.y = 0.075 # 0.25*0.3
 	cam_body.add_child(cam_col)
 
 
@@ -310,13 +310,13 @@ func _update_visual() -> void:
 	match npc_id:
 		"goblin":
 			mesh_instance.material_override.albedo_color = Color(0.4, 0.7, 0.3)  # Green
-			mesh_instance.scale = Vector3(0.8, 0.8, 0.8)
+			mesh_instance.scale = Vector3(0.24, 0.24, 0.24) # 0.8*0.3
 		"orc":
 			mesh_instance.material_override.albedo_color = Color(0.5, 0.4, 0.3)  # Brown
-			mesh_instance.scale = Vector3(1.0, 1.0, 1.0)
+			mesh_instance.scale = Vector3(0.3, 0.3, 0.3) # 1.0*0.3
 		"troll":
 			mesh_instance.material_override.albedo_color = Color(0.6, 0.5, 0.7)  # Purple
-			mesh_instance.scale = Vector3(1.3, 1.3, 1.3)
+			mesh_instance.scale = Vector3(0.39, 0.39, 0.39) # 1.3*0.3
 
 
 # =============================================================================

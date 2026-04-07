@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://b13db51viehx1"
+path="res://.godot/imported/Spell_00.wav-1738779baedcb2bc6cd9d8e853602f8c.sample"
+
+[deps]
+
+source_file="res://assets/sfx/Fantasy Sound Library (INCLUDES A LOT)/Fantasy Sound Library/Wav/Spell_00.wav"
+dest_files=["res://.godot/imported/Spell_00.wav-1738779baedcb2bc6cd9d8e853602f8c.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

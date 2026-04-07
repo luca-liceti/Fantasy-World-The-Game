@@ -283,6 +283,8 @@ func spawn_troop(card_id: String, player_id: int, hex_tile: HexTile) -> Troop:
 	else:
 		troop = Troop.new()
 	
+	# Ensure troops pause when the game is paused
+	troop.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(troop)
 	troop.initialize(card_id, player_id)
 	
@@ -474,6 +476,7 @@ func action_place_mine(troop: Troop, target_hex: HexTile) -> Dictionary:
 		mine = GoldMine.new()
 	
 	add_child(mine)
+	mine.process_mode = Node.PROCESS_MODE_PAUSABLE
 	mine.initialize(player.player_id, target_hex)
 	mine.set_team_color(player.team_color)
 	
@@ -632,6 +635,8 @@ func _try_spawn_npc(hex: HexTile) -> void:
 	
 	var npc = NPC.try_spawn_at(hex, hex_board)
 	if npc:
+		# Ensure NPCs pause when the game is paused
+		npc.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(npc)
 		active_npcs.append(npc)
 		npc_spawned.emit(npc, hex)

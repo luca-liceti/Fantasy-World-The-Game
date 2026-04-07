@@ -813,39 +813,39 @@ func _create_placeholder_visual() -> void:
 	var mesh: Mesh
 	match role:
 		CardData.Role.GROUND_TANK:
-			# Box for tanks - sturdy knight ~2m tall, broad shoulders
+			# Box for tanks - sturdy knight ~0.6m tall, broad shoulders
 			var box = BoxMesh.new()
-			box.size = Vector3(0.8, 2.0, 0.6) # Wide, tall, not too deep
+			box.size = Vector3(0.24, 0.6, 0.18) # 0.8*0.3, 2.0*0.3, 0.6*0.3
 			mesh = box
-			mesh_instance.position.y = 1.0 # Center at half height
+			mesh_instance.position.y = 0.3 # 1.0*0.3
 		CardData.Role.AIR_HYBRID:
-			# Cone (pointing up) for air units - winged creature ~3m wingspan
+			# Cone (pointing up) for air units - winged creature ~0.9m wingspan
 			var prism = PrismMesh.new()
-			prism.size = Vector3(1.2, 1.8, 1.2) # Wider, slightly shorter
+			prism.size = Vector3(0.36, 0.54, 0.36) # 1.2*0.3, 1.8*0.3, 1.2*0.3
 			mesh = prism
-			mesh_instance.position.y = 0.9
+			mesh_instance.position.y = 0.27 # 0.9*0.3
 		CardData.Role.RANGED_MAGIC:
-			# Cylinder for ranged - like a mage/archer ~1.9m tall
+			# Cylinder for ranged - like a mage/archer ~0.57m tall
 			var cylinder = CylinderMesh.new()
-			cylinder.top_radius = 0.35
-			cylinder.bottom_radius = 0.4
-			cylinder.height = 1.9
+			cylinder.top_radius = 0.105 # 0.35*0.3
+			cylinder.bottom_radius = 0.12 # 0.4*0.3
+			cylinder.height = 0.57 # 1.9*0.3
 			mesh = cylinder
-			mesh_instance.position.y = 0.95
+			mesh_instance.position.y = 0.285 # 0.95*0.3
 		CardData.Role.FLEX_SUPPORT:
-			# Sphere for flex/support - cleric/support ~1.6m 
+			# Sphere for flex/support - cleric/support ~0.48m 
 			var sphere = SphereMesh.new()
-			sphere.radius = 0.5
-			sphere.height = 1.6
+			sphere.radius = 0.15 # 0.5*0.3
+			sphere.height = 0.48 # 1.6*0.3
 			mesh = sphere
-			mesh_instance.position.y = 0.8
+			mesh_instance.position.y = 0.24 # 0.8*0.3
 		_:
-			# Default capsule - generic humanoid ~1.8m
+			# Default capsule - generic humanoid ~0.54m
 			var capsule = CapsuleMesh.new()
-			capsule.radius = 0.4
-			capsule.height = 1.8
+			capsule.radius = 0.12 # 0.4*0.3
+			capsule.height = 0.54 # 1.8*0.3
 			mesh = capsule
-			mesh_instance.position.y = 0.9
+			mesh_instance.position.y = 0.27 # 0.9*0.3
 	
 	mesh_instance.mesh = mesh
 	
@@ -864,10 +864,10 @@ func _create_placeholder_visual() -> void:
 	
 	var cam_col = CollisionShape3D.new()
 	var cam_capsule = CapsuleShape3D.new()
-	cam_capsule.radius = 0.5
-	cam_capsule.height = 2.0
+	cam_capsule.radius = 0.15 # 0.5*0.3
+	cam_capsule.height = 0.6 # 2.0*0.3
 	cam_col.shape = cam_capsule
-	cam_col.position.y = 1.0 # Center at half troop height
+	cam_col.position.y = 0.3 # 1.0*0.3
 	cam_body.add_child(cam_col)
 
 
@@ -974,10 +974,10 @@ func _create_click_area() -> void:
 	
 	var col_shape = CollisionShape3D.new()
 	var cylinder = CylinderShape3D.new()
-	cylinder.radius = 0.6
-	cylinder.height = 3.5 # Tall enough to cover all troops (dragons, giants, etc.)
+	cylinder.radius = 0.18 # 0.6*0.3
+	cylinder.height = 1.05 # 3.5*0.3
 	col_shape.shape = cylinder
-	col_shape.position.y = 1.75 # Span from Y=0 to Y=3.5 local
+	col_shape.position.y = 0.525 # 1.75*0.3
 	
 	click_area.add_child(col_shape)
 	add_child(click_area)

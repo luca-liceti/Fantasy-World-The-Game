@@ -79,9 +79,9 @@ func _build_ui() -> void:
 	_root.add_child(sep)
 
 	# ── Content panel ──
-	var panel_w = 560
-	var panel_h = 520
-	var panel_top = 300.0
+	var panel_w = 640
+	var panel_h = 720
+	var panel_top = 280.0
 	var panel = PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	panel.custom_minimum_size = Vector2(panel_w, panel_h)

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bm8fwap0q4k5t"
+path="res://.godot/imported/._metal-ringing.wav-338792f218a884e7f2551b435d4531a5.sample"
+
+[deps]
+
+source_file="res://assets/sfx/rpg_sound_pack/__MACOSX/RPG Sound Pack/inventory/._metal-ringing.wav"
+dest_files=["res://.godot/imported/._metal-ringing.wav-338792f218a884e7f2551b435d4531a5.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

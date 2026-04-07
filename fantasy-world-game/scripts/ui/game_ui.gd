@@ -52,6 +52,8 @@ var troop_cards_panel: PanelContainer
 var troop_cards_container: Control
 var troop_card_buttons: Array[Button] = []
 var troop_card_art_rects: Array[TextureRect] = [] # Card art thumbnails in HUD
+var troop_card_names: Array[Label] = []
+var troop_card_stats: Array[Label] = []
 
 # Item inventory display
 var item_inventory_panel: PanelContainer
@@ -119,22 +121,26 @@ func _create_ui() -> void:
 
 func _create_top_bar() -> void:
 	top_bar = PanelContainer.new()
-	top_bar.custom_minimum_size = Vector2(0, 50)
+	top_bar.custom_minimum_size = Vector2(0, 48)
 	top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	main_container.add_child(top_bar)
 	
-	# Style — HUD bar (flush to top, no margins, no rounded corners)
-	top_bar.add_theme_stylebox_override("panel", UITheme.hud_bar_style())
+	# Use an empty StyleBox to remove the black background and golden border
+	top_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
-	var hbox = HBoxContainer.new()
-	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	hbox.add_theme_constant_override("separation", 0)
-	top_bar.add_child(hbox)
+	# We use a standard Control as the child to handle absolute positioning/anchors
+	var top_bar_layout = Control.new()
+	top_bar_layout.set_anchors_preset(Control.PRESET_FULL_RECT)
+	top_bar_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_bar.add_child(top_bar_layout)
 	
-	# LEFT SIDE: Player resources
+	# Resource container (Anchored Top-Left with 16px margin)
 	var res_hbox = HBoxContainer.new()
+	res_hbox.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	res_hbox.offset_left = 16
+	res_hbox.offset_top = 16 # Match side spacing
 	res_hbox.add_theme_constant_override("separation", 16)
-	hbox.add_child(res_hbox)
+	top_bar_layout.add_child(res_hbox)
 	
 	top_gold_label = Label.new()
 	top_gold_label.text = "💰 150"
@@ -146,46 +152,39 @@ func _create_top_bar() -> void:
 	UITheme.style_label(top_xp_label, 16, Color(0.6, 0.8, 1.0), true)
 	res_hbox.add_child(top_xp_label)
 	
-	# Expanding spacer pushes center content to the middle
-	var spacer_left = Control.new()
-	spacer_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(spacer_left)
+	# Center Group (Anchored Center-Top with 16px margin)
+	var turn_hbox = HBoxContainer.new()
+	turn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	turn_hbox.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	turn_hbox.offset_top = 16 # Match side spacing exactly
+	turn_hbox.add_theme_constant_override("separation", 24)
+	turn_hbox.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	top_bar_layout.add_child(turn_hbox)
 	
-	# CENTER: Turn + Player
 	turn_label = Label.new()
 	turn_label.text = "TURN 1"
 	UITheme.style_label(turn_label, 20, UITheme.C_WARM_WHITE, true)
-	hbox.add_child(turn_label)
-	
-	var spacer_mid = Control.new()
-	spacer_mid.custom_minimum_size = Vector2(24, 0)
-	hbox.add_child(spacer_mid)
+	turn_hbox.add_child(turn_label)
 	
 	current_player_label = Label.new()
 	current_player_label.text = "PLAYER 1's TURN"
 	UITheme.style_label(current_player_label, 24, PLAYER1_COLOR, true)
-	hbox.add_child(current_player_label)
+	turn_hbox.add_child(current_player_label)
 	
-	# Expanding spacer pushes timer to the right
-	var spacer_right = Control.new()
-	spacer_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hbox.add_child(spacer_right)
-	
-	# RIGHT SIDE: Timer
 	timer_label = Label.new()
 	timer_label.text = "⏱ 60s"
-	UITheme.style_label(timer_label, 20, UITheme.C_WARM_WHITE)
-	hbox.add_child(timer_label)
+	UITheme.style_label(timer_label, 20, UITheme.C_WARM_WHITE, true)
+	turn_hbox.add_child(timer_label)
 
 
 func _create_quick_action_panel() -> void:
 	# Create a floating quick action panel in bottom right corner
 	quick_action_panel = PanelContainer.new()
-	quick_action_panel.custom_minimum_size = Vector2(130, 260)
+	quick_action_panel.custom_minimum_size = Vector2(170, 300)
 	_br_stack.add_child(quick_action_panel)
 	
-	# Style — UITheme HUD panel with subtle gold border
-	quick_action_panel.add_theme_stylebox_override("panel", UITheme.hud_panel(UITheme.C_GOLD.darkened(0.5)))
+	# Style — Make transparent to remove the black box and gold border
+	quick_action_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.add_theme_constant_override("separation", 6)
@@ -232,7 +231,7 @@ func _create_quick_action_button(text: String, hotkey: String, color: Color) -> 
 		button.text = text + " [" + hotkey + "]"
 	else:
 		button.text = text
-	button.custom_minimum_size = Vector2(110, 36)
+	button.custom_minimum_size = Vector2(152, 48)
 	
 	# Style — UITheme HUD button with accent colour
 	UITheme.apply_hud_button(button, color, 11)
@@ -255,7 +254,8 @@ func _create_info_panel() -> void:
 	info_panel.visible = false
 	main_container.add_child(info_panel)
 	
-	info_panel.add_theme_stylebox_override("panel", UITheme.hud_panel())
+	# Use an empty StyleBox to remove the black background and golden border
+	info_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	
 	info_label = Label.new()
 	info_label.text = ""
@@ -347,9 +347,9 @@ func _make_stat_label(text: String) -> Label:
 func _create_troop_cards_panel() -> void:
 	# Create panel for troop cards at absolute bottom center of screen
 	troop_cards_panel = PanelContainer.new()
-	troop_cards_panel.custom_minimum_size = Vector2(500, 140)
+	troop_cards_panel.custom_minimum_size = Vector2(600, 210)
 	troop_cards_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	troop_cards_panel.offset_bottom = -5
+	troop_cards_panel.offset_bottom = -10
 	troop_cards_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	troop_cards_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	main_container.add_child(troop_cards_panel)
@@ -371,7 +371,7 @@ func _create_troop_cards_panel() -> void:
 	
 	# Card container
 	troop_cards_container = Control.new()
-	troop_cards_container.custom_minimum_size = Vector2(0, 140)
+	troop_cards_container.custom_minimum_size = Vector2(0, 202)
 	troop_cards_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_child(troop_cards_container)
 	
@@ -380,88 +380,80 @@ func _create_troop_cards_panel() -> void:
 		var card_slot = _create_troop_card_slot(i)
 		troop_card_buttons.append(card_slot["button"])
 		troop_card_art_rects.append(card_slot["art_rect"])
+		troop_card_names.append(card_slot["top_label"])
+		troop_card_stats.append(card_slot["bottom_label"])
 		troop_cards_container.add_child(card_slot["container"])
 
 	# --- snip: keep existing _create_troop_card_slot below ---
 
 
 func _create_troop_card_slot(slot_index: int) -> Dictionary:
-	# Container panel that holds both the card art and the button
-	var container = PanelContainer.new()
-	container.custom_minimum_size = Vector2(110, 110)
+	var container = Control.new()
+	container.custom_minimum_size = Vector2(144, 202)
 	
-	# Container style
-	var container_style = StyleBoxFlat.new()
-	container_style.bg_color = Color(0.05, 0.05, 0.05) # Neutral black
-	container_style.border_color = UITheme.C_GOLD.darkened(0.5)
-	container_style.set_border_width_all(2)
-	container_style.set_corner_radius_all(8)
-	container_style.set_content_margin_all(4)
-	container.add_theme_stylebox_override("panel", container_style)
-	
-	# VBox inside: card art on top, button text below
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
-	container.add_child(vbox)
-	
-	# Card art thumbnail (small portrait)
+	# Card art thumb background (Uses the framed image directly)
 	var art_rect = TextureRect.new()
-	art_rect.custom_minimum_size = Vector2(106, 50)
-	art_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	art_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(art_rect)
+	container.add_child(art_rect)
 	
-	# Button for interaction and stats display
+	# Top label for the card name
+	var top_label = Label.new()
+	top_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	top_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	top_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	top_label.offset_top = 4
+	top_label.offset_left = 6
+	top_label.offset_right = -6
+	UITheme.style_label(top_label, 11, UITheme.C_GOLD, true)
+	top_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1))
+	top_label.add_theme_constant_override("shadow_outline_size", 4)
+	top_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	container.add_child(top_label)
+	
+	# Bottom label for stats
+	var bottom_label = Label.new()
+	bottom_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bottom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bottom_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	bottom_label.offset_top = 172
+	bottom_label.offset_left = 6
+	bottom_label.offset_right = -6
+	UITheme.style_label(bottom_label, 13, UITheme.C_WARM_WHITE, true)
+	bottom_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1))
+	bottom_label.add_theme_constant_override("shadow_outline_size", 4)
+	bottom_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	container.add_child(bottom_label)
+	
+	# Invisible interactable button over the card
 	var button = Button.new()
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(106, 55)
-	button.clip_text = true
 	
-	# Default style
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.12, 0.12, 0.16, 0.0) # Transparent
-	normal_style.border_color = Color(0.0, 0.0, 0.0, 0.0)
-	normal_style.set_border_width_all(0)
-	normal_style.set_corner_radius_all(0)
-	button.add_theme_stylebox_override("normal", normal_style)
+	var style_empty = StyleBoxEmpty.new()
+	button.add_theme_stylebox_override("normal", style_empty)
 	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color(0.18, 0.18, 0.24, 0.5)
-	hover_style.border_color = Color(0.5, 0.5, 0.6, 0.0)
-	hover_style.set_border_width_all(0)
-	hover_style.set_corner_radius_all(0)
-	button.add_theme_stylebox_override("hover", hover_style)
+	var hover = StyleBoxFlat.new()
+	hover.bg_color = Color(1, 1, 1, 0.15)
+	hover.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("hover", hover)
 	
-	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = Color(0.2, 0.25, 0.35, 0.5)
-	pressed_style.border_color = Color(0.6, 0.7, 1.0, 0.0)
-	pressed_style.set_border_width_all(0)
-	pressed_style.set_corner_radius_all(0)
-	button.add_theme_stylebox_override("pressed", pressed_style)
+	var pressed = StyleBoxFlat.new()
+	pressed.bg_color = Color(1, 1, 1, 0.3)
+	pressed.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("pressed", pressed)
 	
-	var focus_style = StyleBoxFlat.new()
-	focus_style.bg_color = Color(0.2, 0.25, 0.35, 0.0)
-	focus_style.border_color = Color(0.0, 0.0, 0.0, 0.0)
-	focus_style.set_border_width_all(0)
-	focus_style.set_corner_radius_all(0)
-	button.add_theme_stylebox_override("focus", focus_style)
-	
-	var disabled_style = StyleBoxFlat.new()
-	disabled_style.bg_color = Color(0.1, 0.1, 0.1, 0.3)
-	disabled_style.border_color = Color(0.0, 0.0, 0.0, 0.0)
-	disabled_style.set_border_width_all(0)
-	disabled_style.set_corner_radius_all(0)
-	button.add_theme_stylebox_override("disabled", disabled_style)
-	
-	UITheme.style_button_text(button, 10, UITheme.C_GOLD)
-	
-	vbox.add_child(button)
+	button.add_theme_stylebox_override("focus", style_empty)
+	button.add_theme_stylebox_override("disabled", style_empty)
+	container.add_child(button)
 	
 	# Connect signal
 	button.pressed.connect(_on_troop_card_pressed.bind(slot_index))
 	
-	return {"container": container, "button": button, "art_rect": art_rect}
+	return {"container": container, "button": button, "art_rect": art_rect, "top_label": top_label, "bottom_label": bottom_label}
 
 
 func _on_troop_card_pressed(slot_index: int) -> void:
@@ -493,15 +485,15 @@ func _layout_hand() -> void:
 	
 	# We rely on the container size. If it's 0 (like on first frame), fallback to parent panel size.
 	var c_width = troop_cards_container.size.x
-	if c_width <= 0: c_width = 500.0
+	if c_width <= 0: c_width = 600.0
 	
 	var container_center = c_width / 2.0
-	var card_overlap_width = 80.0
+	var card_overlap_width = 96.0
 	var max_angle = 6.0
 	var base_y = 5.0
 	
-	var total_width = (count - 1) * card_overlap_width + 110.0 # 110 is card width
-	var start_x = container_center - (total_width / 2.0) + (110.0 / 2.0)
+	var total_width = (count - 1) * card_overlap_width + 144.0 # 144 is card width
+	var start_x = container_center - (total_width / 2.0) + (144.0 / 2.0)
 	
 	for i in range(count):
 		var card = visible_cards[i]
@@ -514,7 +506,7 @@ func _layout_hand() -> void:
 		var y_offset = base_y + (normalized_pos * normalized_pos) * 10.0
 		
 		# start_x is the center of the first card, so we subtract half card width to get standard pos
-		var target_x = start_x + (i * card_overlap_width) - (110.0 / 2.0)
+		var target_x = start_x + (i * card_overlap_width) - (144.0 / 2.0)
 		var target_pos = Vector2(target_x, y_offset)
 		
 		var is_selected = card.get_meta("is_selected") if card.has_meta("is_selected") else false
@@ -565,7 +557,7 @@ func update_timer(seconds_remaining: float) -> void:
 	elif seconds_remaining < 60:
 		target_color = Color.YELLOW
 	else:
-		target_color = Color.WHITE
+		target_color = UITheme.C_WARM_WHITE # Match turn counter gray
 		
 	if target_color != _last_timer_color:
 		timer_label.add_theme_color_override("font_color", target_color)
@@ -694,11 +686,15 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 		var card_slot = _create_troop_card_slot(slot_index)
 		troop_card_buttons.append(card_slot["button"])
 		troop_card_art_rects.append(card_slot["art_rect"])
+		troop_card_names.append(card_slot["top_label"])
+		troop_card_stats.append(card_slot["bottom_label"])
 		troop_cards_container.add_child(card_slot["container"])
 	
 	for i in range(troop_card_buttons.size()):
 		var button = troop_card_buttons[i]
 		var art_rect = troop_card_art_rects[i]
+		var name_label = troop_card_names[i]
+		var stat_label = troop_card_stats[i]
 		var container = troop_cards_container.get_child(i)
 		
 		# Check if there's an entity for this slot
@@ -720,8 +716,8 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 				if entity and entity.is_active:
 					# Mine is alive
 					button.disabled = false
-					button.text = "[%d] Gold Mine\nLv.%d  +💰%d" % [i + 1, entity.level, entity.get_gold_per_turn()]
-					button.add_theme_font_size_override("font_size", 10)
+					name_label.text = "Gold Mine"
+					stat_label.text = "Lv.%d  +💰%d" % [entity.level, entity.get_gold_per_turn()]
 					
 					# Highlight if selected
 					if entity == selected_troop:
@@ -731,16 +727,16 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 				else:
 					# Mine is destroyed
 					button.disabled = true
-					button.text = "[%d] Gold Mine\n💀 DESTROYED" % (i + 1)
-					button.add_theme_font_size_override("font_size", 10)
+					name_label.text = "Gold Mine"
+					stat_label.text = "💀 DESTROYED"
 					_highlight_troop_card(button, false, Color.GRAY, i)
 					# Dim the card art for destroyed mines
 					art_rect.modulate = Color(0.3, 0.3, 0.3)
 			else:
 				entity = _find_troop_by_id(player, entity_id)
 				
-				# Load card art for this troop
-				var card_art = CharacterModelLoader.load_card_art(entity_id)
+				# Load framed card art for this troop
+				var card_art = CharacterModelLoader.load_framed_card_art(entity_id)
 				if card_art:
 					art_rect.texture = card_art
 					art_rect.visible = true
@@ -750,8 +746,12 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 				if entity and entity.is_alive:
 					# Troop is alive - show info
 					button.disabled = false
-					button.text = "[%d] %s\n❤️ %d/%d" % [i + 1, entity.display_name, entity.current_hp, entity.max_hp]
-					button.add_theme_font_size_override("font_size", 10)
+					name_label.text = entity.display_name
+					
+					var stat_text = "❤️ %d/%d" % [entity.current_hp, entity.max_hp]
+					if entity.has_moved_this_turn or entity.has_attacked_this_turn:
+						stat_text += "\n✓ Done"
+					stat_label.text = stat_text
 					
 					# Highlight if selected
 					if entity == selected_troop:
@@ -759,16 +759,13 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 					else:
 						_highlight_troop_card(button, false, player.team_color, i)
 					
-					# Show status indicators
-					if entity.has_moved_this_turn or entity.has_attacked_this_turn:
-						button.text += "\n✓ Done"
 				else:
 					# Troop is dead
 					button.disabled = true
 					var card_data = CardData.get_troop(entity_id)
 					var dead_name = card_data.get("name", entity_id) if not card_data.is_empty() else entity_id
-					button.text = "[%d] %s\n💀 DEAD" % [i + 1, dead_name]
-					button.add_theme_font_size_override("font_size", 10)
+					name_label.text = dead_name
+					stat_label.text = "💀 DEAD"
 					_highlight_troop_card(button, false, Color.GRAY, i)
 					# Dim the card art for dead troops
 					art_rect.modulate = Color(0.3, 0.3, 0.3)
@@ -776,7 +773,8 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 			# No troop at this slot
 			container.visible = false
 			button.disabled = true
-			button.text = "[%d]\nEmpty" % (i + 1)
+			name_label.text = "Empty"
+			stat_label.text = ""
 			art_rect.visible = false
 			_highlight_troop_card(button, false, Color.GRAY, i)
 	
@@ -798,31 +796,22 @@ func _find_mine_by_id(player: Player, mine_id: String) -> GoldMine:
 
 
 func _highlight_troop_card(_button: Button, is_selected: bool, team_color: Color, slot_index: int = -1) -> void:
-	# Update the parent container's border to show selection state
-	var container: PanelContainer = null
+	# Keep track of selection meta for the tweening
+	var container: Control = null
 	if slot_index >= 0 and slot_index < troop_cards_container.get_child_count():
-		container = troop_cards_container.get_child(slot_index) as PanelContainer
+		container = troop_cards_container.get_child(slot_index) as Control
 	
 	if container:
 		container.set_meta("is_selected", is_selected)
-		var container_style = StyleBoxFlat.new()
-		if is_selected:
-			container_style.bg_color = team_color.darkened(0.6)
-			container_style.border_color = UITheme.C_GOLD_BRIGHT
-			container_style.set_border_width_all(3)
-		else:
-			container_style.bg_color = Color(0.05, 0.05, 0.05)
-			container_style.border_color = UITheme.C_GOLD.darkened(0.3)
-			container_style.set_border_width_all(2)
-		container_style.set_corner_radius_all(8)
-		container_style.set_content_margin_all(4)
-		container.add_theme_stylebox_override("panel", container_style)
 	
-	# Also reset the card art modulate for living troops
+	# Visually modulate the card to show it's active
 	if slot_index >= 0 and slot_index < troop_card_art_rects.size():
 		var art_rect = troop_card_art_rects[slot_index]
-		if team_color != Color.GRAY:
-			art_rect.modulate = Color.WHITE # Full color for alive troops
+		if team_color != Color.GRAY: # Meaning it is alive
+			if is_selected:
+				art_rect.modulate = Color(1.15, 1.15, 1.15) # Very slight glow
+			else:
+				art_rect.modulate = Color.WHITE
 
 
 # =============================================================================
@@ -939,13 +928,8 @@ func show_toast(message: String, color: Color = Color(0.3, 0.6, 1.0), duration: 
 	toast.custom_minimum_size = Vector2(300, 36)
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.12, 0.92)
-	style.border_color = color.darkened(0.2)
-	style.set_border_width_all(1)
-	style.border_width_left = 4 # Accent bar on left side
-	style.border_color = color
-	style.set_corner_radius_all(6)
+	# Use an empty StyleBox for a floating text look
+	var style = StyleBoxEmpty.new()
 	style.content_margin_left = 12
 	style.content_margin_right = 12
 	style.content_margin_top = 6
@@ -1024,8 +1008,8 @@ func _show_keyboard_overlay() -> void:
 	# Semi-transparent panel at center
 	var panel = PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(400, 340)
-	panel.position = Vector2(-200, -170)
+	panel.custom_minimum_size = Vector2(400, 400)
+	panel.position = Vector2(-200, -200)
 	keyboard_overlay.add_child(panel)
 	
 	panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(Color(0.4, 0.6, 1.0)))
@@ -1053,15 +1037,17 @@ func _show_keyboard_overlay() -> void:
 	
 	# Shortcut entries
 	var shortcuts = [
-		["WASD", "Camera Pan"],
-		["Q / E", "Camera Rotate"],
+		["WASD", "Move Camera"],
+		["Q / E", "Level: Up/Down"],
+		["V", "Cycle Views"],
+		["F", "Focus Selection"],
 		["Scroll", "Zoom In/Out"],
 		["1-4", "Select Troop"],
 		["M", "Move Mode"],
 		["T", "Attack Mode"],
 		["Space", "End Turn"],
 		["Esc", "Pause Menu"],
-		["F1", "Toggle This Overlay"]
+		["F1", "Toggle Help"]
 	]
 	
 	for entry in shortcuts:

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://r1ky7om7kwsw"
+path="res://.godot/imported/._spell.wav-3e589224bb7a5d06e830694af489cbd5.sample"
+
+[deps]
+
+source_file="res://assets/sfx/rpg_sound_pack/__MACOSX/RPG Sound Pack/battle/._spell.wav"
+dest_files=["res://.godot/imported/._spell.wav-3e589224bb7a5d06e830694af489cbd5.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

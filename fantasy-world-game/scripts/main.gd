@@ -32,6 +32,12 @@ var current_selecting_player: int = 0
 var player_decks: Array[Array] = [[], []] # Stores selected decks for both players
 var board_generation_complete: bool = false
 
+# Alternating Draft state
+## { player_id: { slot_index: card_id } }  — built pick-by-pick
+var _draft_picks: Dictionary = {0: {}, 1: {}}
+var _draft_turn_count: int = 0 # 0-7 (8 picks total, 4 per player)
+var _draft_starting_player: int = 0 # rolled randomly at start
+
 # =============================================================================
 # CAMERA SETTINGS
 # =============================================================================
@@ -63,6 +69,7 @@ enum CameraView {
 	OVERVIEW, # Full board view from behind player's troops
 	TACTICAL, # Closer tactical view centered on action
 	TROOP_FOCUS, # Close-up on selected troop
+	FRONT_QUARTER, # Zoomed view from front quarter 45° CW
 	TOP_DOWN, # Bird's eye view
 	CINEMATIC # Low angle dramatic view
 }
@@ -97,14 +104,15 @@ var dice_roll_active: bool = false
 # View preset definitions: {distance, pitch, yaw_offset from base position}
 # yaw_offset: 0 = directly behind player, positive = rotate right, negative = rotate left
 const VIEW_PRESETS: Dictionary = {
-	"OVERVIEW": {"distance": 25.0, "pitch": 35.0, "yaw_offset": 0.0},
+	"OVERVIEW": {"distance": 32.0, "pitch": 35.0, "yaw_offset": 0.0},
 	"TACTICAL": {"distance": 16.0, "pitch": 40.0, "yaw_offset": 0.0},
 	"TROOP_FOCUS": {"distance": 8.0, "pitch": 25.0, "yaw_offset": 15.0},
-	"TOP_DOWN": {"distance": 35.0, "pitch": 85.0, "yaw_offset": 0.0},
+	"FRONT_QUARTER": {"distance": 5.0, "pitch": 25.0, "yaw_offset": 165.0},
+	"TOP_DOWN": {"distance": 35.0, "pitch": 90.0, "yaw_offset": 0.0},
 	"CINEMATIC": {"distance": 12.0, "pitch": 15.0, "yaw_offset": 25.0}
 }
 
-const VIEW_NAMES: Array[String] = ["Overview", "Tactical", "Troop Focus", "Top-Down", "Cinematic"]
+const VIEW_NAMES: Array[String] = ["Overview", "Tactical", "Troop Focus", "Front Quarter View", "Top-Down", "Cinematic"]
 
 # =============================================================================
 # GAME STATE
@@ -129,8 +137,8 @@ const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 # =============================================================================
 # DEBUG FLAGS - Set these to skip game phases during development
 # =============================================================================
-const DEBUG_SKIP_DECK_SELECTION: bool = false
-const DEBUG_SKIP_FIRST_MOVE_DICE: bool = false
+const DEBUG_SKIP_DECK_SELECTION: bool = true
+const DEBUG_SKIP_FIRST_MOVE_DICE: bool = true
 const DEBUG_DEFAULT_DECK: Array[String] = ["medieval_knight", "elven_archer", "celestial_cleric", "frost_valkyrie"] # Default deck when skipping
 
 # =============================================================================
@@ -150,6 +158,8 @@ func _ready() -> void:
 	# Find hex board
 	hex_board = get_node_or_null("HexBoard")
 	if hex_board:
+		# Ensure the board pauses when the game is paused
+		hex_board.process_mode = Node.PROCESS_MODE_PAUSABLE
 		# Ensure board is at origin so BOARD_LIFT (1.0) is accurate world height
 		hex_board.position.y = 0.0
 		# Board generation is deferred to _finalize_game_start() (after deck selection)
@@ -210,7 +220,7 @@ func _setup_camera_system() -> void:
 	camera_body = CharacterBody3D.new()
 	camera_body.name = "CameraBody"
 	camera_body.collision_layer = 0 # Invisible to other objects
-	camera_body.collision_mask = CAMERA_COLLISION_LAYER # Detects Layer 16
+	camera_body.collision_mask = 0 # Collision disabled
 	add_child(camera_body)
 	
 	var cam_col = CollisionShape3D.new()
@@ -313,14 +323,17 @@ func _setup_game_ui() -> void:
 		
 		# Create Dice UI for combat visualization (3D d20 die toss)
 		dice_ui = DiceUI.new()
+		dice_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(dice_ui)
 		dice_ui.set_camera(camera, self )
 
 
 		# Create Card Selection UI
 		card_selection_ui = CardSelectionUIScene.new()
+		card_selection_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(card_selection_ui)
 		card_selection_ui.deck_confirmed.connect(_on_deck_confirmed)
+		card_selection_ui.pick_made.connect(_on_pick_made)
 		card_selection_ui.selection_canceled.connect(_on_deck_selection_canceled)
 		
 		# DEBUG: Set to true to disable the first move dice UI completely
@@ -329,6 +342,7 @@ func _setup_game_ui() -> void:
 		# Create First Move Dice UI for turn order roll
 		if not disable_first_move_dice_ui:
 			first_move_dice_ui = FirstMoveDiceUIScene.new()
+			first_move_dice_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
 			add_child(first_move_dice_ui)
 			first_move_dice_ui.roll_complete.connect(_on_first_move_roll_complete)
 			# Inject camera + root refs so the cinematic can drive camera & spawn dice
@@ -338,6 +352,7 @@ func _setup_game_ui() -> void:
 		
 		# Create Enhanced Combat Selection UI
 		combat_selection_ui = CombatSelectionUIScene.new()
+		combat_selection_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
 		combat_selection_ui.layer = 120 # Above most UI
 		add_child(combat_selection_ui)
 		combat_selection_ui.move_selected.connect(_on_enhanced_move_selected)
@@ -359,6 +374,8 @@ func _start_test_game() -> void:
 	
 	# Create GameManager
 	game_manager = GameManager.new()
+	# Ensure the GameManager (and its children) pause when the game is paused
+	game_manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(game_manager)
 	
 	# Initialize game - don't create new board, use existing
@@ -392,27 +409,111 @@ func _start_test_game() -> void:
 		_finalize_game_start()
 		return
 	
-	# Start deck selection for Player 1
-	_start_deck_selection(0)
+	# Choose draft mode from GameConfig
+	if GameConfig.deck_selection_mode == GameConfig.DeckSelectionMode.ALTERNATING_DRAFT:
+		_start_draft_selection()
+	else:
+		# Legacy mode: Player 1 picks whole deck, then Player 2
+		_start_deck_selection(0)
 
 
-## Start deck selection phase for a player
+## Start deck selection phase for a player (SEQUENTIAL mode)
 func _start_deck_selection(player_id: int) -> void:
 	is_selecting_decks = true
 	current_selecting_player = player_id
 	game_manager.current_state = GameManager.GameState.DECK_SELECTION
 	
-	print("=== DECK SELECTION ===")
+	print("=== DECK SELECTION (Sequential) ===")
 	print("Player %d - Select your deck!" % (player_id + 1))
 	print("card_selection_ui exists: %s" % (card_selection_ui != null))
 	
-	# Show card selection UI
+	# Show card selection UI (sequential mode — no draft mode flag)
 	if card_selection_ui:
 		print("Calling show_selection...")
 		card_selection_ui.show_selection(player_id, true)
 		print("show_selection called!")
 	else:
 		push_error("ERROR: card_selection_ui is NULL!")
+
+
+# =============================================================================
+# ALTERNATING DRAFT
+# =============================================================================
+
+## Kick off the alternating draft. Rolls a random first player.
+func _start_draft_selection() -> void:
+	is_selecting_decks = true
+	game_manager.current_state = GameManager.GameState.DECK_SELECTION
+	_draft_picks = {0: {}, 1: {}}
+	_draft_turn_count = 0
+	_draft_starting_player = randi() % 2 # Random first picker
+	print("=== ALTERNATING DRAFT — Player %d goes first ===" % (_draft_starting_player + 1))
+	_show_draft_pick_for_turn()
+
+
+## Determine whose turn it is and which slot (if any) is restricted,
+## then open the card selection UI for one pick.
+func _show_draft_pick_for_turn() -> void:
+	# Turn order: 0,1,1,0,0,1,1,0 (snake/alternating pairs)
+	# Each player makes 4 picks total (8 picks across both players).
+	# After the first pick the opponent may pick from the SAME slot or switch freely.
+	# Implementation: each pick is completely free (no slot restriction after pick 1)
+	# because the user spec says the opponent can "pick from the same category OR another".
+	var picker: int = (_draft_starting_player + _draft_turn_count) % 2
+	current_selecting_player = picker
+	
+	# The slot restriction only applies on the VERY FIRST pick of a new category
+	# i.e. when a slot has exactly 0 existing picks for BOTH players — it has no restriction.
+	# The opponent is free to continue in the same category or open a new one.
+	# -> No hard restriction; the UI simply greys out already-taken cards.
+	
+	# Build the opponent_picks dict to pass to the UI
+	var opp_picks_for_ui: Dictionary = _draft_picks.duplicate(true) # deep copy
+	
+	print("Draft turn %d: Player %d picks" % [_draft_turn_count, picker + 1])
+	
+	if card_selection_ui:
+		card_selection_ui.show_selection(
+			picker,
+			true, # timer enabled
+			opp_picks_for_ui,
+			-1, # no slot restriction (free choice)
+			true # draft_mode = true
+		)
+	else:
+		push_error("ERROR: card_selection_ui is NULL!")
+
+
+## Called each time a player makes a single draft pick.
+func _on_pick_made(picker_id: int, slot_index: int, card_id: String) -> void:
+	print("Draft pick: Player %d → slot %d → %s" % [picker_id + 1, slot_index, card_id])
+	
+	# Store the pick
+	_draft_picks[picker_id][slot_index] = card_id
+	_draft_turn_count += 1
+	
+	# Check if both players have filled all 4 slots
+	var p0_done = (_draft_picks[0].size() == 4)
+	var p1_done = (_draft_picks[1].size() == 4)
+	
+	if p0_done and p1_done:
+		# Draft complete — convert dicts to ordered arrays
+		var deck0: Array[String] = ["", "", "", ""]
+		var deck1: Array[String] = ["", "", "", ""]
+		for slot in _draft_picks[0]:
+			deck0[slot] = _draft_picks[0][slot]
+		for slot in _draft_picks[1]:
+			deck1[slot] = _draft_picks[1][slot]
+		player_decks[0] = deck0
+		player_decks[1] = deck1
+		game_manager.set_player_deck(0, deck0)
+		game_manager.set_player_deck(1, deck1)
+		print("Draft complete! P0 deck: %s | P1 deck: %s" % [str(deck0), str(deck1)])
+		_finalize_game_start()
+		return
+	
+	# Continue with the next picker
+	_show_draft_pick_for_turn()
 
 
 ## Called when a player confirms their deck
@@ -745,6 +846,8 @@ func _create_troop(troop_id: String, player_id: int, coord: HexCoordinates) -> T
 		return null
 	
 	var troop = Troop.new()
+	# Ensure troops pause when the game is paused
+	troop.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(troop)
 	
 	# Set team color before initialization
@@ -832,8 +935,8 @@ func _update_camera_transform() -> void:
 	if not camera or not camera_pivot or not camera_body:
 		return
 	
-	# Clamp pitch
-	camera_pitch = clamp(camera_pitch, 10.0, 89.0)
+	# Clamp pitch - allowed to look straight down (90)
+	camera_pitch = clamp(camera_pitch, 10.0, 90.0)
 	
 	# Position pivot at focus point (for reference)
 	camera_pivot.global_position = focus_point
@@ -851,55 +954,20 @@ func _update_camera_transform() -> void:
 	# Desired camera world position (from orbit math)
 	var desired_pos = focus_point + dir * camera_distance
 	
-	# --- Physics-based camera positioning ---
-	if not _camera_body_initialized:
-		camera_body.global_position = desired_pos
-		_camera_body_initialized = true
-	else:
-		var total_motion = desired_pos - camera_body.global_position
-		if total_motion.length() > 0.001:
-			# Sub-step move_and_collide to prevent tunnelling through thin terrain.
-			# A single large move can skip over a tile's trimesh if the frame delta
-			# is large or the camera moves fast. Splitting into MAX_STEPS small steps
-			# guarantees the sphere always touches the surface.
-			const MAX_STEPS: int = 8
-			var step_motion = total_motion / MAX_STEPS
-			var did_collide: bool = false
-			
-			for _step in range(MAX_STEPS):
-				var collision = camera_body.move_and_collide(step_motion)
-				if collision:
-					did_collide = true
-					break # Stop at first collision; we'll re-evaluate next frame
-			
-			if did_collide:
-				# Project body position back onto the orbit ray so pitch/yaw stay stable
-				var projected_dist = (camera_body.global_position - focus_point).dot(dir)
-				projected_dist = max(projected_dist, ZOOM_MIN)
-				
-				camera_distance = projected_dist
-				if not is_camera_transitioning:
-					target_distance = projected_dist
-				
-				# Snap body to orbit line at the resolved distance
-				camera_body.global_position = focus_point + dir * camera_distance
-	
-	# --- Absolute terrain floor clamp (backstop against tunnelling) ---
-	# Even if the physics steps miss a collision (fast move, thin mesh), the
-	# camera must never go below BOARD_LIFT. This is the final safety net.
-	const CAMERA_FLOOR_Y: float = GameConfig.BOARD_LIFT + CAMERA_COLLISION_SPHERE_RADIUS + 0.05
-	if camera_body.global_position.y < CAMERA_FLOOR_Y:
-		camera_body.global_position.y = CAMERA_FLOOR_Y
-		# Also clamp distance so scrolling doesn't accumulate below the floor
-		var clamped_dist = (camera_body.global_position - focus_point).dot(dir)
-		if clamped_dist > ZOOM_MIN:
-			camera_distance = clamped_dist
-			if not is_camera_transitioning:
-				target_distance = clamped_dist
+	# --- Simple Camera Positioning (Collision Disabled) ---
+	camera_body.global_position = desired_pos
+	_camera_body_initialized = true
 	
 	# Camera renders from the physics body's final position
 	camera.global_position = camera_body.global_position
-	camera.look_at(focus_point, Vector3.UP)
+	
+	# Handle straight-down view (pitch = 90) by using an UP vector derived from yaw.
+	# This keeps the orientation consistent with the regular orbital view.
+	var up_vec = Vector3.UP
+	if camera_pitch > 89.5:
+		up_vec = Vector3(-sin(yaw_rad), 0, -cos(yaw_rad))
+		
+	camera.look_at(focus_point, up_vec)
 
 
 func _zoom_camera(direction: float) -> void:
@@ -925,6 +993,12 @@ func _pan_camera(direction: Vector3, delta: float) -> void:
 	
 	var forward = - cam_transform.basis.z
 	forward.y = 0
+	
+	# Fallback for straight-down view (where forward.y = 0 makes it zero)
+	if forward.length() < 0.001:
+		forward = - cam_transform.basis.y
+		forward.y = 0
+		
 	forward = forward.normalized()
 	
 	# Calculate movement relative to camera facing
@@ -997,6 +1071,7 @@ func _handle_keyboard_movement(delta: float) -> void:
 	
 	if direction != Vector3.ZERO:
 		_pan_camera(direction.normalized(), delta)
+		is_camera_transitioning = false # User manual control overrides transitions
 
 
 func _input(event: InputEvent) -> void:
@@ -1054,6 +1129,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	if is_rotating:
 		# Rotate camera with right-click drag (Y inverted)
 		_rotate_camera_view(-event.relative.x, event.relative.y)
+		is_camera_transitioning = false # User manual control overrides transitions
 	
 	elif is_panning_mouse:
 		# Pan with middle-click drag
@@ -1270,9 +1346,9 @@ func _setup_initial_camera_view() -> void:
 	
 	print("DEBUG Camera: Focus point = %s" % focus_point)
 	
-	camera_pitch = 10.0 # Very low angle for dramatic ground-level view
-	camera_distance = 20.0 # Zoomed in closer
-	target_distance = 20.0
+	camera_pitch = 20.0 # Standard tactical angle, adjusted to 20 per request
+	camera_distance = 32.0 # Pull back to see board and troops
+	target_distance = 32.0
 	current_view = CameraView.OVERVIEW
 	
 	print("DEBUG Camera: yaw=%f, pitch=%f, distance=%f" % [camera_yaw, camera_pitch, camera_distance])
@@ -1299,6 +1375,11 @@ func _get_player_troops_center(player_id: int) -> Vector3:
 ## Cycle to the next camera view (V key)
 func _cycle_camera_view() -> void:
 	var next_view = (current_view + 1) % CameraView.size()
+	
+	# Skip FRONT_QUARTER if no troop or mine is selected
+	if next_view == CameraView.FRONT_QUARTER and (not selected_troop or (not (selected_troop is Troop) and not (selected_troop is GoldMine))):
+		next_view = (next_view + 1) % CameraView.size()
+		
 	_set_camera_view(next_view, true)
 
 
@@ -1314,14 +1395,44 @@ func _set_camera_view(view: CameraView, smooth: bool = true) -> void:
 	if game_manager and game_manager.turn_manager:
 		current_player_id = game_manager.turn_manager.get_active_player_id()
 	
-	# Calculate target values
+	# Calculate target distance based on preset and entity size
 	target_distance = preset["distance"]
+	
+	# Apply dynamic zoom based on entity height for focused views
+	var focused_entity = selected_troop
+	if focused_entity and (view == CameraView.TROOP_FOCUS or view == CameraView.FRONT_QUARTER or view == CameraView.CINEMATIC):
+		var entity_height = 1.0
+		if focused_entity is Troop:
+			if focused_entity.character_model_node:
+				# Use the actual model scale height
+				entity_height = focused_entity.character_model_node.scale.y
+		elif focused_entity is GoldMine:
+			entity_height = 1.5 # Standard height for mines
+			
+		# Calibrate distance based on view type
+		match view:
+			CameraView.TROOP_FOCUS:
+				# Original was 8.0 for ~1.8-2.0m height => multiplier ≈ 4.0
+				target_distance = entity_height * 4.5
+			CameraView.FRONT_QUARTER:
+				# Tight framing (FOV 60)
+				target_distance = entity_height * 1.5
+			CameraView.CINEMATIC:
+				# Original 12.0 for ~2.0m height => multiplier ≈ 6.0
+				target_distance = entity_height * 7.0
+	
 	target_pitch = preset["pitch"]
 	
 	# Yaw: position camera behind current player's side
 	# Player 0 at -X needs yaw = -90, Player 1 at +X needs yaw = 90
 	var base_yaw = -90.0 if current_player_id == 0 else 90.0
-	target_yaw = base_yaw + preset["yaw_offset"]
+	
+	var yaw_offset = preset["yaw_offset"]
+	# Flip camera for mines in Front Quarter view as requested
+	if view == CameraView.FRONT_QUARTER and focused_entity is GoldMine:
+		yaw_offset += 180.0
+		
+	target_yaw = base_yaw + yaw_offset
 	
 	# Focus point depends on view type
 	match view:
@@ -1335,6 +1446,18 @@ func _set_camera_view(view: CameraView, smooth: bool = true) -> void:
 		CameraView.TROOP_FOCUS:
 			if selected_troop and selected_troop.current_hex:
 				target_focus_point = selected_troop.current_hex.global_position
+			else:
+				target_focus_point = _get_player_troops_center(current_player_id)
+		CameraView.FRONT_QUARTER:
+			if selected_troop and (selected_troop is Troop or selected_troop is GoldMine):
+				var entity_height = 1.0
+				if selected_troop is Troop:
+					if selected_troop.character_model_node:
+						entity_height = selected_troop.character_model_node.scale.y
+				elif selected_troop is GoldMine:
+					entity_height = 1.5
+				# Focus on the vertical center of the entity
+				target_focus_point = selected_troop.global_position + Vector3(0, entity_height * 0.5, 0)
 			else:
 				target_focus_point = _get_player_troops_center(current_player_id)
 		CameraView.TOP_DOWN:
@@ -1606,6 +1729,10 @@ func _toggle_pause_menu() -> void:
 func _open_pause_menu() -> void:
 	is_paused = true
 	get_tree().paused = true
+	
+	# Explicitly pause logic systems
+	if game_manager:
+		game_manager.pause_game()
 
 	pause_menu = CanvasLayer.new()
 	pause_menu.layer = 100
@@ -1687,6 +1814,11 @@ func _close_pause_menu() -> void:
 		pause_menu = null
 	is_paused = false
 	get_tree().paused = false
+	
+	# Explicitly resume logic systems
+	if game_manager:
+		game_manager.resume_game()
+	
 	print("Game resumed")
 
 
@@ -1859,6 +1991,9 @@ func _on_tile_selected(tile: HexTile) -> void:
 		if selected_troop:
 			selected_troop = null
 			hex_board.clear_all_highlights()
+			# Reset camera if we were in the specialized troop zoom
+			if current_view == CameraView.FRONT_QUARTER:
+				_set_camera_view(CameraView.TACTICAL, true)
 	
 	hex_board.select_tile(tile)
 	_update_ui()

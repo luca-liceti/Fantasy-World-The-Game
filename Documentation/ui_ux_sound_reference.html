@@ -1,0 +1,212 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .wrap { padding: 1rem 0; }
+  .section { margin-bottom: 2rem; }
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-radius: var(--border-radius-md);
+    margin-bottom: 8px; font-size: 13px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .row {
+    display: grid; grid-template-columns: 220px 1fr;
+    gap: 0; border-bottom: 0.5px solid var(--color-border-tertiary);
+    padding: 10px 14px;
+    font-size: 14px; line-height: 1.5;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: var(--color-background-secondary); }
+  .name { font-weight: 500; color: var(--color-text-primary); padding-right: 16px; }
+  .desc { color: var(--color-text-secondary); }
+  .table-wrap {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg); overflow: hidden;
+  }
+
+  .h-purple { background: #EEEDFE; color: #3C3489; }
+  .h-teal   { background: #E1F5EE; color: #0F6E56; }
+  .h-amber  { background: #FAEEDA; color: #854F0B; }
+  .h-coral  { background: #FAECE7; color: #993C1D; }
+  .h-blue   { background: #E6F1FB; color: #185FA5; }
+  .h-pink   { background: #FBEAF0; color: #993556; }
+  .h-green  { background: #EAF3DE; color: #3B6D11; }
+  .h-gray   { background: #F1EFE8; color: #5F5E5A; }
+
+  @media (prefers-color-scheme: dark) {
+    .h-purple { background: #3C3489; color: #CECBF6; }
+    .h-teal   { background: #085041; color: #9FE1CB; }
+    .h-amber  { background: #633806; color: #FAC775; }
+    .h-coral  { background: #712B13; color: #F5C4B3; }
+    .h-blue   { background: #0C447C; color: #B5D4F4; }
+    .h-pink   { background: #72243E; color: #F4C0D1; }
+    .h-green  { background: #27500A; color: #C0DD97; }
+    .h-gray   { background: #444441; color: #D3D1C7; }
+  }
+</style>
+<div class="wrap">
+
+  <div class="section">
+    <div class="section-header h-gray">Menu Navigation</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Button hover</div><div class="desc">Faint, dry paper-tap or soft wooden thud — like a finger brushing parchment</div></div>
+      <div class="row"><div class="name">Button click / confirm</div><div class="desc">Decisive single knock, like a chess piece placed down — satisfying, not heavy</div></div>
+      <div class="row"><div class="name">Back / cancel</div><div class="desc">Lighter, slightly reversed version of the confirm click — a gentle retraction</div></div>
+      <div class="row"><div class="name">Menu open</div><div class="desc">Short low whoosh of air, like a heavy book being opened</div></div>
+      <div class="row"><div class="name">Menu close</div><div class="desc">Inverse of menu open — slightly softer, air compressing shut</div></div>
+      <div class="row"><div class="name">Tab switch</div><div class="desc">Quick dry click, like flipping a worn card on a table</div></div>
+      <div class="row"><div class="name">Slider drag</div><div class="desc">Continuous soft scraping, like a wooden bead sliding along a track</div></div>
+      <div class="row"><div class="name">Toggle on</div><div class="desc">Clean snapping click — mechanical, brief</div></div>
+      <div class="row"><div class="name">Toggle off</div><div class="desc">Same snap but slightly lower pitch — feels like releasing tension</div></div>
+      <div class="row"><div class="name">Dropdown open</div><div class="desc">Faint rustle, like leafing through pages</div></div>
+      <div class="row"><div class="name">Dropdown select</div><div class="desc">Quiet definitive tap, as if placing a finger on a specific entry</div></div>
+      <div class="row"><div class="name">Background crossfade</div><div class="desc">No sound — visuals only (silence is intentional for the background cycle)</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-purple">Deck Selection</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Card hover</div><div class="desc">Soft shimmer — high-pitched single chime, like a crystal tapped lightly</div></div>
+      <div class="row"><div class="name">Card select</div><div class="desc">Heavier, resonant chime with a quick magical tail — card locking into place</div></div>
+      <div class="row"><div class="name">Card deselect</div><div class="desc">Reversed card select — slightly hollow, the card being pulled back</div></div>
+      <div class="row"><div class="name">Mana limit reached</div><div class="desc">Low warning hum, like a vibrating tuning fork held too close — not harsh, just firm</div></div>
+      <div class="row"><div class="name">Invalid selection</div><div class="desc">Brief descending two-tone buzz — error, but medieval-flavored, not digital</div></div>
+      <div class="row"><div class="name">Timer tick (last 10s)</div><div class="desc">Quiet ticking clock, like an antique pocket watch — escalates in volume only</div></div>
+      <div class="row"><div class="name">Selection complete</div><div class="desc">Rising three-note ascending chime — done, anticipatory, like a tournament horn prep</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-amber">Dice Roll</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Throw button pressed</div><div class="desc">Hand-release whoosh — the dice leaving the grip with a quick air puff</div></div>
+      <div class="row"><div class="name">Dice tumbling</div><div class="desc">Rapid irregular clacking on a hard wood surface — like real dice rolling across a table</div></div>
+      <div class="row"><div class="name">Dice settle / stop</div><div class="desc">Final sharp clack followed by 0.5s of wobble decay — comes to rest naturally</div></div>
+      <div class="row"><div class="name">Tie — re-roll</div><div class="desc">Low, unresolved musical sting — then goes back to throw sound</div></div>
+      <div class="row"><div class="name">Winner declared</div><div class="desc">Single triumphant low horn note — short, weighty, not celebratory yet</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-teal">In-Game HUD</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Troop card select (hand)</div><div class="desc">Leather and parchment crinkle — dry, tactile, like pulling a card from a leather pouch</div></div>
+      <div class="row"><div class="name">Turn start</div><div class="desc">Soft but clear bell toll — single note, mid-range, signals ownership of the board</div></div>
+      <div class="row"><div class="name">Turn end</div><div class="desc">Low descending chime — a closing tone, the opposite of turn start</div></div>
+      <div class="row"><div class="name">Timer warning (60s)</div><div class="desc">First subtle pulse beat, barely noticeable — just a gentle reminder</div></div>
+      <div class="row"><div class="name">Timer warning (30s)</div><div class="desc">Moderate ticking begins, slightly faster heartbeat rhythm</div></div>
+      <div class="row"><div class="name">Timer warning (10s)</div><div class="desc">Urgent fast ticking, tempo doubles, slight pitch rise — clear urgency without panic</div></div>
+      <div class="row"><div class="name">Timer expired</div><div class="desc">Flat, decisive buzzer-like drone — short, firm, no drama</div></div>
+      <div class="row"><div class="name">Invalid action</div><div class="desc">Muted hollow thud paired with the UI shake — like knocking on a locked wooden door</div></div>
+      <div class="row"><div class="name">Tooltip appear</div><div class="desc">Near-silent — very faint high tick, optional, nearly imperceptible</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-blue">Hex Board Interaction</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Tile hover</div><div class="desc">Very soft stone-on-stone brush — subtle grit, a tile being touched but not moved</div></div>
+      <div class="row"><div class="name">Tile confirm (move)</div><div class="desc">Clean stone step, a boots-on-flagstone footfall — grounded and satisfying</div></div>
+      <div class="row"><div class="name">Move range highlight on</div><div class="desc">Soft wave of subtle chimes spreading outward — like ripples in water</div></div>
+      <div class="row"><div class="name">Attack range highlight on</div><div class="desc">Low tension chord, like a bowstring drawing back — held briefly then fades</div></div>
+      <div class="row"><div class="name">Hex out of range</div><div class="desc">Same as invalid action — muted hollow thud</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-coral">Combat Selection Phase</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Combat phase begins</div><div class="desc">Dramatic sword-ring — like two blades meeting briefly, quick and sharp</div></div>
+      <div class="row"><div class="name">Move button hover</div><div class="desc">Faint weapon-specific resonance — a hum or creak depending on the troop type</div></div>
+      <div class="row"><div class="name">Move selected</div><div class="desc">Firm decisive weapon-lock click — like a hilt snapping into a grip</div></div>
+      <div class="row"><div class="name">Move on cooldown (blocked)</div><div class="desc">Dull thud with a chain-rattle tail — unavailable, costs feel real</div></div>
+      <div class="row"><div class="name">Stance hover</div><div class="desc">Quiet armor shift — a slight metallic whisper</div></div>
+      <div class="row"><div class="name">Stance selected</div><div class="desc">Shield brace or stance-drop sound depending on choice — Brace: shield thud; Dodge: light foot pivot; Counter: blade draw; Endure: deep breath inhale</div></div>
+      <div class="row"><div class="name">Selection timer tick (last 5s)</div><div class="desc">Tension-building heartbeat, slower than the turn timer, more dramatic</div></div>
+      <div class="row"><div class="name">Both selections locked in</div><div class="desc">Quick dual-click sound — both sides confirmed, a brief beat of silence before the roll</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-coral">Combat Resolution</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Hit (normal)</div><div class="desc">Solid weapon-on-armor impact — defined by troop type, but generically: meaty thud</div></div>
+      <div class="row"><div class="name">Miss / dodge</div><div class="desc">Quick air-cut whoosh with no impact — the weapon passing through empty space</div></div>
+      <div class="row"><div class="name">Critical hit (18-20)</div><div class="desc">Explosive crack — the kind of hit that shakes the table; brief screen-flash is paired</div></div>
+      <div class="row"><div class="name">Critical miss (natural 1)</div><div class="desc">Stumble-clatter — weapon dropping or footing lost, almost comedic in weight</div></div>
+      <div class="row"><div class="name">Counter attack triggered</div><div class="desc">Sharp reversal — a quick riposte swipe sound, faster and tighter than a normal hit</div></div>
+      <div class="row"><div class="name">Endure triggered</div><div class="desc">Heavy impact that almost breaks through — a desperate crunch followed by a gasping hold</div></div>
+      <div class="row"><div class="name">Status effect applied</div><div class="desc">Distinct per type: Burn = crackling hiss; Poison = wet gurgle; Stun = electric zap; Slow = deep thud; Curse = hollow dark whisper; Terrify = sharp shriek; Root = vines snapping; Stealth = shadow whoosh</div></div>
+      <div class="row"><div class="name">Status effect tick (per turn)</div><div class="desc">Shorter version of the apply sound — quieter, a reminder not a re-trigger</div></div>
+      <div class="row"><div class="name">Status effect expires</div><div class="desc">Light dissipating tone — a pop or fade, relief-coded</div></div>
+      <div class="row"><div class="name">Damage number appears</div><div class="desc">Tied to hit sound — no separate UI sound needed</div></div>
+      <div class="row"><div class="name">Heal number appears</div><div class="desc">Soft ascending chime with a warm resonance — clearly different from damage</div></div>
+      <div class="row"><div class="name">Type super effective</div><div class="desc">Resonant swell under the hit sound — the impact rings longer, like a tuned bell struck right</div></div>
+      <div class="row"><div class="name">Type not very effective</div><div class="desc">Duller, shorter hit — like striking stone, the energy absorbed rather than transmitted</div></div>
+      <div class="row"><div class="name">Immune</div><div class="desc">Complete deflection — a hollow dome sound, the attack passing harmlessly</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-green">Economy</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Gold received (passive)</div><div class="desc">Soft coins landing on a pile — two or three coins, not a cascade, understated</div></div>
+      <div class="row"><div class="name">Gold received (bounty / reward)</div><div class="desc">Fuller coin cascade — more coins, a brief ringing jingle, more celebratory</div></div>
+      <div class="row"><div class="name">Not enough gold</div><div class="desc">Single hollow clink on an empty pouch — "the well is dry" feeling</div></div>
+      <div class="row"><div class="name">Gold mine placed</div><div class="desc">Construction hammer strike followed by a satisfying wood-thud settle</div></div>
+      <div class="row"><div class="name">Gold mine upgraded</div><div class="desc">Rising mechanical clunk — gears engaging, something upgrading in place</div></div>
+      <div class="row"><div class="name">Gold mine destroyed</div><div class="desc">Wooden crunch and collapse — structural failure, followed by a short dust-settle</div></div>
+      <div class="row"><div class="name">Troop upgrade</div><div class="desc">Ascending three-note chime with armor-clank punctuation — leveling up feels earned</div></div>
+      <div class="row"><div class="name">XP gain</div><div class="desc">Single soft crystalline ping — lighter than gold, high-register, brief</div></div>
+      <div class="row"><div class="name">Max level reached</div><div class="desc">Full ascending chord that resolves — final, definitive, no more upgrades available</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-pink">NPC Encounters & Items</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">NPC spawn</div><div class="desc">Sudden rustling appearance sound — like something stepping out of bushes, alert-coded</div></div>
+      <div class="row"><div class="name">Item dropped (loot)</div><div class="desc">Object hitting the floor — a thud with a brief ring depending on item type</div></div>
+      <div class="row"><div class="name">Item picked up</div><div class="desc">Quick collect chime — satisfying, fast, pocketable feeling</div></div>
+      <div class="row"><div class="name">Inventory full</div><div class="desc">Low, firm rejection knock — space taken, no room, firm but not harsh</div></div>
+      <div class="row"><div class="name">Item used</div><div class="desc">Distinct per item: Speed Potion = liquid gurgle + rush whoosh; Whetstone = blade scrape; Phoenix Feather = fire crackle igniting</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-gray">Notifications & Toasts</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Toast appear (neutral)</div><div class="desc">Short, clean pop — like a notification card being placed on the table</div></div>
+      <div class="row"><div class="name">First Blood bounty</div><div class="desc">Sharp horn burst — quick, triumphant, almost war-horn in miniature</div></div>
+      <div class="row"><div class="name">Kill Streak bounty</div><div class="desc">Escalating version — each streak fires the same sound pitched slightly higher</div></div>
+      <div class="row"><div class="name">Revenge Kill bounty</div><div class="desc">Dramatic resolution chord — the "justified" feeling, emotionally satisfying</div></div>
+      <div class="row"><div class="name">Mine Raider bounty</div><div class="desc">Coin burst + crash hybrid — stealing and destroying at once</div></div>
+      <div class="row"><div class="name">Enemy troop eliminated</div><div class="desc">Death sound handled by the troop's own death SFX — toast is sound-silent</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-blue">End of Match</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Victory</div><div class="desc">Full triumphant fanfare — brass-led, resolving upward, 5–8 seconds, loopable tail</div></div>
+      <div class="row"><div class="name">Defeat</div><div class="desc">Slow descending strings with a muted horn — somber but dignified, not punishing</div></div>
+      <div class="row"><div class="name">Draw / tie</div><div class="desc">Unresolved chord that hangs — neither victory nor defeat, ambiguous, fades out</div></div>
+      <div class="row"><div class="name">Stat card appear</div><div class="desc">Quiet paper-unfurl or scroll-unroll — each stat line appearing has a faint tick</div></div>
+      <div class="row"><div class="name">Rematch confirm</div><div class="desc">Same as deck selection complete — rising three-note ascending chime, eager</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header h-gray">Multiplayer & Connection</div>
+    <div class="table-wrap">
+      <div class="row"><div class="name">Player connected / joined</div><div class="desc">Warm two-note arrival chime — welcoming, door-opening feeling</div></div>
+      <div class="row"><div class="name">Player disconnected</div><div class="desc">Low single note that drops off — like a candle extinguishing</div></div>
+      <div class="row"><div class="name">Reconnect countdown tick</div><div class="desc">Slow heartbeat pulse — patient but present, counting time</div></div>
+      <div class="row"><div class="name">Reconnection successful</div><div class="desc">Short relief chime — same as connected but with a brief prior tension beat</div></div>
+      <div class="row"><div class="name">Room code copied</div><div class="desc">Quick wax-seal-press sound — stamping a document, old-world copy confirmation</div></div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://ccjhww32lhv51"
+path="res://.godot/imported/Pickup_Gold_03.wav-f2ee71f3aa30b8971c8dae721e89aba2.sample"
+
+[deps]
+
+source_file="res://assets/sfx/Fantasy Sound Library (INCLUDES A LOT)/Fantasy Sound Library/Wav/Pickup_Gold_03.wav"
+dest_files=["res://.godot/imported/Pickup_Gold_03.wav-f2ee71f3aa30b8971c8dae721e89aba2.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

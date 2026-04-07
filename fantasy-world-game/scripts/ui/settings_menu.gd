@@ -43,6 +43,7 @@ var _is_showing_confirm: bool = false
 # =============================================================================
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 20
 	_build_ui()
 	_switch_tab("VIDEO")
@@ -64,7 +65,7 @@ func _build_ui() -> void:
 	# Dark scrim for legibility over the revolving backgrounds
 	var scrim = ColorRect.new()
 	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scrim.color = Color(0.0, 0.0, 0.0, 0.55)
+	scrim.color = UITheme.C_OVERLAY_DIM
 	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(scrim)
 
@@ -319,8 +320,9 @@ func _add_slider(path: String, label_text: String,
 	slider.min_value = min_val
 	slider.max_value = max_val
 	slider.step      = step
-	slider.custom_minimum_size = Vector2(220, 24)
+	slider.custom_minimum_size = Vector2(220, 32)
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UITheme.apply_slider(slider)
 	var cur = _get_val(path)
 	slider.value = cur if cur != null else min_val
 	hb.add_child(slider)
@@ -348,7 +350,7 @@ func _add_toggle(path: String, label_text: String) -> void:
 	var cur = _get_val(path)
 	toggle.button_pressed = cur if cur != null else false
 	toggle.toggled.connect(func(v): _on_changed(path, v))
-	UITheme.connect_hover_sound(toggle)
+	UITheme.apply_toggle(toggle)
 
 	row.add_child(toggle)
 	_setting_ctrls[path] = toggle

@@ -47,9 +47,8 @@ extends Node
 
 # ── Chandelier light settings ─────────────────────────────────────────────────
 
-## Candle flame colour — warm gold-white, NOT orange.  Matches the soft candle
-## glow in the reference: bright near the flame, golden on surfaces.
-@export var candle_color: Color = Color(1.0, 0.88, 0.65, 1.0)
+## Candle flame colour — warm gold-amber (toned down from deep orange).
+@export var candle_color: Color = Color(1.0, 0.78, 0.45, 1.0)
 
 ## Energy per chandelier light.  Must fill a room at environment_scale=25.
 @export var candle_energy: float = 20.0
@@ -71,8 +70,8 @@ extends Node
 ## barrel.  This requires a fairly strong, warm-neutral ambient fill that
 ## simulates the cumulative bounce from fireplace + dozens of candles.
 
-## Warm cream/gold ambient — NOT orange.  Keeps wood textures looking natural.
-@export var ambient_color: Color = Color(0.90, 0.78, 0.58, 1.0)
+## Warm-neutral ambient — simulates fireplace and candlelight bounce without being too orange.
+@export var ambient_color: Color = Color(0.88, 0.78, 0.65, 1.0)
 
 ## Strong enough to light walls and ceiling clearly, with shadows still present.
 @export var ambient_energy: float = 0.55
@@ -81,8 +80,8 @@ extends Node
 
 # ── Tonemap / colour grading ──────────────────────────────────────────────────
 
-## Reinhard preserves natural colour relationships — wood looks like wood.
-@export var tonemap_mode: Environment.ToneMapper = Environment.TONE_MAPPER_REINHARDT
+## ACES provides cinematic contrast and handles high-energy highlights better.
+@export var tonemap_mode: Environment.ToneMapper = Environment.TONE_MAPPER_ACES
 
 ## Moderate exposure — the room should feel bright and inviting, not dim.
 @export var tonemap_exposure: float = 1.3
@@ -179,7 +178,10 @@ func _mesh_has_chandelier_material(mi: MeshInstance3D) -> bool:
 
 
 func _name_has_chandelier(s: String) -> bool:
-	return s.to_lower().contains("chandelier")
+	var lower := s.to_lower()
+	return lower.contains("chandelier") or lower.contains("lantern") or \
+		   lower.contains("candle") or lower.contains("lamp") or \
+		   lower.contains("torch")
 
 
 func _spawn_light_on_mesh(mi: MeshInstance3D) -> void:
@@ -253,7 +255,7 @@ func _apply_world_environment() -> void:
 	# Reference has soft, natural AO — not dramatic dark halos.
 	env.ssao_enabled = true
 	env.ssao_radius = 1.0
-	env.ssao_intensity = 1.5       # moderate — you can see it under beams/tables
+	env.ssao_intensity = 2.5       # stronger contact shadows for stone texture depth
 	env.ssao_power = 1.5
 	env.ssao_detail = 0.5
 	env.ssao_horizon = 0.06
@@ -263,7 +265,7 @@ func _apply_world_environment() -> void:
 	# ── SSIL — very subtle warm bounce ────────────────────────────────────────
 	env.ssil_enabled = true
 	env.ssil_radius = 3.0
-	env.ssil_intensity = 0.12
+	env.ssil_intensity = 0.4       # stronger warm bounce for a richer look
 	env.ssil_sharpness = 0.9
 	env.ssil_normal_rejection = 1.0
 
@@ -272,7 +274,7 @@ func _apply_world_environment() -> void:
 	env.glow_normalized = false
 	env.glow_intensity = 0.35
 	env.glow_strength = 0.7
-	env.glow_bloom = 0.04           # just the candle flames themselves
+	env.glow_bloom = 0.1           # soft halos around the lanterns
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.glow_hdr_threshold = 2.0   # only the brightest spots glow
 	env.glow_hdr_scale = 1.5
@@ -290,8 +292,11 @@ func _apply_world_environment() -> void:
 	# ── SDFGI — off (chandelier OmniLights provide GI; SDFGI costs too much) ──
 	env.sdfgi_enabled = false
 
-	# ── Volumetric fog — off by default; enable if you want shaft-of-light fx ──
-	env.volumetric_fog_enabled = false
+	# ── Volumetric fog — adds that "hazy tavern" atmosphere ──────────────────
+	env.volumetric_fog_enabled = true
+	env.volumetric_fog_density = 0.005  # subtle, but visible near lights
+	env.volumetric_fog_albedo = Color(0.18, 0.16, 0.14)  # neutral-warm dust color
+	env.volumetric_fog_emission = Color(0.05, 0.04, 0.02) # slight self-illumination
 
 	world_environment.environment = env
 	print("[TavernLighting] WorldEnvironment replaced with atmospheric preset.")

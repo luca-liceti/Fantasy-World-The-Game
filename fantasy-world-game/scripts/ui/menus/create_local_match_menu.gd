@@ -27,6 +27,7 @@ var _combat_speed_option: OptionButton = null
 var _gold_option: OptionButton = null
 var _npc_toggle: CheckButton = null
 var _bounty_toggle: CheckButton = null
+var _deck_selection_option: OptionButton = null  ## Draft mode selector
 
 
 # =============================================================================
@@ -87,9 +88,9 @@ func _build_ui() -> void:
 	_root.add_child(sep)
 
 	# ── Content panel ──
-	var panel_w = 700.0
-	var panel_h = 500.0
-	var panel_top = 300.0
+	var panel_w = 900.0
+	var panel_h = 520.0
+	var panel_top = 288.0
 	var panel = PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	panel.custom_minimum_size = Vector2(panel_w, panel_h)
@@ -157,6 +158,11 @@ func _build_settings_panels() -> void:
 	_gold_option = _make_option_row(rules_vbox, "Starting Gold",
 		["50 Gold", "100 Gold (Default)", "200 Gold", "500 Gold"])
 	_gold_option.selected = 1
+
+	_deck_selection_option = _make_option_row(rules_vbox, "Deck Selection Mode",
+		["Alternating Draft (Default)", "Sequential (Old)"])
+	_deck_selection_option.selected = 0  # Default: alternating draft
+
 
 	# ── Panel 3: Advanced Mechanics ──
 	var advanced_panel = _make_settings_panel("ADVANCED MECHANICS")
@@ -251,6 +257,7 @@ func _make_toggle_row(parent: VBoxContainer, label_text: String, default_on: boo
 	toggle.add_theme_font_size_override("font_size", 14)
 	toggle.add_theme_color_override("font_color", UITheme.C_WARM_WHITE)
 	toggle.toggled.connect(func(on: bool): toggle.text = "ON" if on else "OFF")
+	UITheme.apply_toggle(toggle)
 	row.add_child(toggle)
 
 	return toggle
@@ -302,6 +309,8 @@ func _gather_settings() -> Dictionary:
 		"starting_gold": gold_values[_gold_option.selected] if _gold_option else 100,
 		"npc_activity": _npc_toggle.button_pressed if _npc_toggle else true,
 		"bounty_system": _bounty_toggle.button_pressed if _bounty_toggle else true,
+		# 0 = Alternating Draft, 1 = Sequential
+		"deck_selection_mode": _deck_selection_option.selected if _deck_selection_option else 0,
 	}
 
 

@@ -58,28 +58,28 @@ const CARD_ART_PATHS: Dictionary = {
 ## convey a clear size hierarchy.
 const MODEL_SCALES: Dictionary = {
 	# --- Human-sized (1.0x Knight = 1.8 units) ---
-	"medieval_knight": Vector3(1.8, 1.8, 1.8),
-	"shadow_assassin": Vector3(1.7, 1.7, 1.7), # Slightly shorter, agile build
-	"elven_archer": Vector3(1.8, 1.8, 1.8), # Same as knight
+	"medieval_knight": Vector3(0.54, 0.54, 0.54),
+	"shadow_assassin": Vector3(0.51, 0.51, 0.51),
+	"elven_archer": Vector3(0.54, 0.54, 0.54),
 	
 	# --- Large Humanoid (1.2-1.5x Knight) ---
-	"dark_magic_wizard": Vector3(1.9, 1.9, 1.9), # Tall robed figure
-	"frost_valkyrie": Vector3(2.2, 2.2, 2.2), # Winged warrior, imposing
-	"celestial_cleric": Vector3(2.0, 2.0, 2.0), # Divine presence, slightly larger
-	"demon_of_darkness": Vector3(2.4, 2.4, 2.4), # Large demon
+	"dark_magic_wizard": Vector3(0.57, 0.57, 0.57),
+	"frost_valkyrie": Vector3(0.66, 0.66, 0.66),
+	"celestial_cleric": Vector3(0.6, 0.6, 0.6),
+	"demon_of_darkness": Vector3(0.72, 0.72, 0.72),
 	
 	# --- Giant (2.0x Knight) ---
-	"stone_giant": Vector3(3.6, 3.6, 3.6), # 2x knight height = towering
+	"stone_giant": Vector3(1.62, 1.62, 1.62), # 1.5x of 1.08
 	
 	# --- Massive Creature (2.5-3.0x Knight) ---
-	"dark_blood_dragon": Vector3(4.5, 4.5, 4.5), # 2.5x knight, dominates tile
-	"four_headed_hydra": Vector3(4.0, 4.0, 4.0), # Multi-headed beast
+	"dark_blood_dragon": Vector3(1.76, 1.76, 1.76), # ~1.3x of 1.35
+	"four_headed_hydra": Vector3(1.8, 1.8, 1.8), # 1.5x of 1.2
 	
 	# --- Aerial/Serpent ---
-	"sky_serpent": Vector3(3.5, 3.5, 3.5), # Winged, ~2x knight
+	"sky_serpent": Vector3(1.37, 1.37, 1.37), # ~1.3x of 1.05
 	
-	# --- Small (0.6-0.8x Knight) ---
-	"infernal_soul": Vector3(1.2, 1.2, 1.2), # Small imp/fire spirit
+	# --- Small (Originally) ---
+	"infernal_soul": Vector3(0.72, 0.72, 0.72), # 2x of 0.36
 }
 
 # =============================================================================
@@ -89,25 +89,22 @@ const MODEL_SCALES: Dictionary = {
 ## Most models have minY=-0.5 (centered at origin), so they need to be lifted
 ## by (scale * 0.5) to sit on the ground. The offset here is ADDED to the
 ## model's local position AFTER scaling.
-##
-## Formula: y_offset = scale * 0.5 for centered models (minY=-0.5)
-##          y_offset = 0.0 for ground-based models (minY=0, like dark_magic_wizard)
 const MODEL_Y_OFFSETS: Dictionary = {
 	# Centered models (minY≈-0.5): offset = scale * 0.5
-	"medieval_knight": 0.9, # 1.8 * 0.5
-	"shadow_assassin": 0.85, # 1.7 * 0.5
-	"elven_archer": 0.9, # 1.8 * 0.5
-	"frost_valkyrie": 1.1, # 2.2 * 0.5
-	"celestial_cleric": 1.0, # 2.0 * 0.5
-	"demon_of_darkness": 1.2, # 2.4 * 0.5
-	"stone_giant": 1.8, # 3.6 * 0.5
-	"four_headed_hydra": 2.0, # 4.0 * 0.5 (minY≈-0.485)
-	"sky_serpent": 1.75, # 3.5 * 0.5
-	"infernal_soul": 0.6, # 1.2 * 0.5
+	"medieval_knight": 0.27,
+	"shadow_assassin": 0.255,
+	"elven_archer": 0.27,
+	"frost_valkyrie": 0.33,
+	"celestial_cleric": 0.3,
+	"demon_of_darkness": 0.36,
+	"stone_giant": 0.81, # 1.62 * 0.5
+	"four_headed_hydra": 0.9, # 1.8 * 0.5
+	"sky_serpent": 0.68, # 1.37 * 0.5
+	"infernal_soul": 0.36, # 0.72 * 0.5
 	
 	# Ground-based models (minY≈0): feet already at origin, no lift needed
-	"dark_magic_wizard": 0.0, # Sits on ground plane natively
-	"dark_blood_dragon": 2.25, # minY≈-0.28 normalized → 0.28 * 4.5 ≈ 1.25 lift
+	"dark_magic_wizard": 0.0,
+	"dark_blood_dragon": 0.88, # 1.76 * 0.5
 }
 
 # =============================================================================
@@ -235,6 +232,29 @@ static func has_model(troop_id: String) -> bool:
 # =============================================================================
 # PUBLIC METHODS - CARD ART
 # =============================================================================
+
+## Load the framed card art texture for a given troop/NPC ID.
+static func load_framed_card_art(troop_id: String) -> Texture2D:
+	var art_path = CARD_ART_PATHS.get(troop_id, "")
+	if art_path.is_empty():
+		return null
+		
+	var ext = art_path.get_extension()
+	var base = art_path.trim_suffix("." + ext)
+	var framed_path = base + "_framed." + ext
+	
+	if ResourceLoader.exists(framed_path):
+		var framed_id = troop_id + "_framed"
+		if _card_art_cache.has(framed_id):
+			return _card_art_cache[framed_id]
+			
+		var texture = load(framed_path) as Texture2D
+		if texture:
+			_card_art_cache[framed_id] = texture
+			return texture
+			
+	return load_card_art(troop_id)
+
 
 ## Load the card art texture for a given troop/NPC ID.
 ## Returns the Texture2D or null if not found.

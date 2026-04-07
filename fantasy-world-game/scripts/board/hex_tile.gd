@@ -37,16 +37,14 @@ var is_hover: bool = false
 
 # Node references
 var mesh_instance: MeshInstance3D
-var border_mesh: MeshInstance3D # Border outline
 var selection_mesh: MeshInstance3D # Full tile overlay for selection
 var terrain_collision_body: StaticBody3D # Camera collision (Layer 16)
 var terrain_collision_shape: CollisionShape3D # Trimesh matching terrain surface
 var particle_emitter: BiomeParticleEmitter # Ambient particle effects
-var grass_instance: MultiMeshInstance3D # Witcher 3-style grass
+var forest_decorations: Node3D = null  # Forest biome 3D prop decorations
 
 # Materials
-var base_material: StandardMaterial3D # Enhanced biome material with strong normals/AO
-var border_material: StandardMaterial3D
+var base_material: Material # Enhanced biome material with strong normals/AO (ShaderMaterial or StandardMaterial3D)
 var selection_material: StandardMaterial3D
 var movement_material: StandardMaterial3D
 var attack_material: StandardMaterial3D
@@ -64,7 +62,6 @@ const PULSE_SPEED: float = 3.0
 func _ready() -> void:
 	_create_hex_mesh()
 	_create_selection_overlay()
-	_create_border_mesh()
 	_create_terrain_collision()
 	_setup_materials()
 	_update_visual()
@@ -78,10 +75,6 @@ func _process(delta: float) -> void:
 		var alpha = lerp(0.3, 0.6, pulse)
 		if selection_material:
 			selection_material.albedo_color.a = alpha
-		# Slight scale pulse on border
-		if border_mesh:
-			var scale_pulse = lerp(1.0, 1.02, pulse)
-			border_mesh.scale = Vector3(scale_pulse, 1.0, scale_pulse)
 
 
 func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
@@ -99,8 +92,8 @@ func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
 	# Setup ambient particles for atmospheric biomes
 	_setup_particles()
 	
-	# Setup Witcher 3-style grass for appropriate biomes
-	_setup_grass()
+	# Setup forest decorations (replaces old grass system)
+	_setup_forest_decorations()
 
 
 # =============================================================================
@@ -327,9 +320,6 @@ func update_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
 	
 	# Rebuild selection overlay to match new terrain shape
 	_rebuild_selection_overlay()
-	
-	# Rebuild border ring to match new terrain shape
-	_rebuild_border_mesh()
 	
 	# Rebuild terrain collision trimesh to match the new surface
 	_rebuild_terrain_collision()
@@ -573,62 +563,6 @@ func _rebuild_selection_overlay() -> void:
 	selection_mesh.visible = false
 
 
-func _create_border_mesh() -> void:
-	border_mesh = MeshInstance3D.new()
-	add_child(border_mesh)
-	_rebuild_border_mesh()
-
-
-## Rebuild the border ring mesh to match current vertex heights
-func _rebuild_border_mesh() -> void:
-	if not border_mesh:
-		return
-	
-	const BORDER_OFFSET: float = 0.04 # Raised above surface
-	const OUTER_SCALE: float = 1.0
-	const INNER_SCALE: float = 0.88
-	
-	# Use stored vertex heights if available
-	var corner_heights: Array[float] = []
-	if stored_vertex_heights.size() == 6:
-		corner_heights = stored_vertex_heights.duplicate()
-	else:
-		for _i in range(6):
-			corner_heights.append(tile_height)
-	
-	var vertices = PackedVector3Array()
-	var indices = PackedInt32Array()
-	var normals = PackedVector3Array()
-	
-	# Create outer and inner rings at terrain height + offset
-	for i in range(6):
-		var angle = deg_to_rad(60 * i - 30)
-		var h = corner_heights[i] + BORDER_OFFSET
-		vertices.append(Vector3(hex_size * OUTER_SCALE * cos(angle), h, hex_size * OUTER_SCALE * sin(angle)))
-		vertices.append(Vector3(hex_size * INNER_SCALE * cos(angle), h, hex_size * INNER_SCALE * sin(angle)))
-		normals.append(Vector3.UP)
-		normals.append(Vector3.UP)
-	
-	# Create triangles for the ring (top face)
-	for i in range(6):
-		var outer1 = i * 2
-		var inner1 = i * 2 + 1
-		var outer2 = ((i + 1) % 6) * 2
-		var inner2 = ((i + 1) % 6) * 2 + 1
-		indices.append(outer1); indices.append(inner1); indices.append(outer2)
-		indices.append(inner1); indices.append(inner2); indices.append(outer2)
-	
-	var mesh = ArrayMesh.new()
-	var arrays = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_INDEX] = indices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	border_mesh.mesh = mesh
-	border_mesh.visible = false
-
-
 ## Create terrain collision body on Layer 1 & 16.
 ## Uses a ConcavePolygonShape3D (trimesh) that exactly matches the visible
 ## hex surface mesh. By making this pickable, we get 100% pixel-perfect
@@ -684,30 +618,39 @@ func _setup_particles() -> void:
 
 
 # =============================================================================
-# GRASS SYSTEM (WITCHER 3 STYLE)
+# FOREST DECORATION SYSTEM
 # =============================================================================
 
-## Setup procedural grass for appropriate biomes
-func _setup_grass() -> void:
-	# Remove existing grass if any
-	if grass_instance and is_instance_valid(grass_instance):
-		grass_instance.queue_free()
-		grass_instance = null
-	
-	# Check if we're in the scene tree (grass needs to be added as child)
+## Setup 3D environment decorations for this tile's biome.
+## The system is modular — each biome reads its own asset pool from
+## ForestDecorationSystem.BIOME_CONFIG and skips gracefully when no pool exists.
+func _setup_forest_decorations() -> void:
+	# Always clear leftover decorations first (handles biome reassignment too)
+	if forest_decorations and is_instance_valid(forest_decorations):
+		forest_decorations.queue_free()
+		forest_decorations = null
+
+	# Ensure we're in the scene tree before adding children.
+	# The deferred re-call keeps the biome guard consistent after mid-frame
+	# biome changes — ForestDecorationSystem.BIOME_CONFIG handles the guard now.
 	if not is_inside_tree():
-		# Defer until we're in the tree
-		call_deferred("_setup_grass")
+		call_deferred("_setup_forest_decorations")
 		return
-	
-	# Create grass for this biome if applicable
-	grass_instance = GrassSystem.create_grass_for_hex(biome_type, hex_size)
-	
-	if grass_instance:
-		# Add as child, slightly above the hex surface
-		grass_instance.position.y = 0.02 # Just above hex surface
-		add_child(grass_instance)
-		print("[HexTile] Grass added for biome: %s" % Biomes.get_biome_name(biome_type))
+
+	# Create a container node to hold all decoration children
+	forest_decorations = Node3D.new()
+	forest_decorations.name = "BiomeDecorations"
+	add_child(forest_decorations)
+
+	# Tile-seeded RNG → reproducible decoration layout across reloads
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(coordinates._to_key()) if coordinates else randi()
+
+	# Pass biome_type, height, and corner vertex heights so decorations sit on the surface
+	ForestDecorationSystem.decorate_tile(
+		forest_decorations, hex_size, rng, biome_type,
+		tile_height, stored_vertex_heights
+	)
 
 
 # =============================================================================
@@ -720,19 +663,16 @@ func _setup_materials() -> void:
 	base_material = BiomeMaterialManager.get_material_copy(biome_type)
 	mesh_instance.material_override = base_material
 	
-	# Selection material (golden yellow, semi-transparent)
+	# Selection material (using central UI gold, semi-transparent)
 	selection_material = StandardMaterial3D.new()
-	selection_material.albedo_color = Color(1.0, 0.85, 0.2, 0.4)
+	var sel_col = UITheme.C_GOLD
+	sel_col.a = 0.35 # Slightly more transparent for clarity
+	selection_material.albedo_color = sel_col
 	selection_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	selection_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	selection_material.no_depth_test = true
-	
-	# Border material (bright, emissive for visibility)
-	border_material = StandardMaterial3D.new()
-	border_material.albedo_color = Color(1.0, 0.9, 0.3, 1.0)
-	border_material.emission_enabled = true
-	border_material.emission = Color(1.0, 0.8, 0.2)
-	border_material.emission_energy_multiplier = 2.0
+	# CRITICAL: Depth test must be ON so entities on top (troops) aren't obscured
+	selection_material.no_depth_test = false
+	selection_material.render_priority = 10 # Draw over terrain but respects entities
 	
 	# Hover material (subtle white glow)
 	hover_material = StandardMaterial3D.new()
@@ -742,19 +682,21 @@ func _setup_materials() -> void:
 	
 	# Movement material (blue)
 	movement_material = StandardMaterial3D.new()
-	movement_material.albedo_color = Color(0.2, 0.5, 1.0, 0.5)
+	movement_material.albedo_color = Color(0.2, 0.5, 1.0, 0.4)
 	movement_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	movement_material.emission_enabled = true
 	movement_material.emission = Color(0.2, 0.4, 0.8)
 	movement_material.emission_energy_multiplier = 1.0
+	movement_material.render_priority = 10
 	
 	# Attack material (red)
 	attack_material = StandardMaterial3D.new()
-	attack_material.albedo_color = Color(1.0, 0.2, 0.2, 0.5)
+	attack_material.albedo_color = Color(1.0, 0.2, 0.2, 0.4)
 	attack_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	attack_material.emission_enabled = true
 	attack_material.emission = Color(0.8, 0.2, 0.2)
 	attack_material.emission_energy_multiplier = 1.0
+	attack_material.render_priority = 10
 
 
 func _update_visual() -> void:
@@ -766,22 +708,17 @@ func _update_visual() -> void:
 	
 	# Reset meshes
 	selection_mesh.visible = false
-	border_mesh.visible = false
 	selection_pulse_time = 0.0
 	
 	# Selected state - highest priority
 	if is_selected:
 		selection_mesh.visible = true
 		selection_mesh.material_override = selection_material
-		border_mesh.visible = true
-		border_mesh.material_override = border_material
 		set_process(true) # Enable pulse animation
 	# Attack highlight
 	elif is_attack_highlight:
 		selection_mesh.visible = true
 		selection_mesh.material_override = attack_material
-		border_mesh.visible = true
-		border_mesh.material_override = attack_material
 		set_process(false)
 	# Movement highlight
 	elif is_movement_highlight:
@@ -805,7 +742,7 @@ func _update_visual() -> void:
 func set_biome(biome: Biomes.Type) -> void:
 	biome_type = biome
 	_update_visual()
-	_setup_grass() # Regenerate grass for new biome
+	_setup_forest_decorations() # Regenerate decorations for new biome
 
 
 ## Set as spawn hex for a player

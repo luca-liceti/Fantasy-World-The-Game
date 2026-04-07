@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://b2vl8qvy3yxrj"
+path="res://.godot/imported/Footstep_Dirt_09.wav-8f7d6c9a068eb6b9fe9fef5ae2d8a873.sample"
+
+[deps]
+
+source_file="res://assets/sfx/Fantasy Sound Library (INCLUDES A LOT)/Fantasy Sound Library/Wav/Footsteps/Footstep_Dirt_09.wav"
+dest_files=["res://.godot/imported/Footstep_Dirt_09.wav-8f7d6c9a068eb6b9fe9fef5ae2d8a873.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

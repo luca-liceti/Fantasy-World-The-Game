@@ -188,10 +188,6 @@ func _make_btn(label: String, primary: bool) -> Button:
 
 	UITheme.apply_menu_button(btn, UITheme.BTN_FONT_SIZE)
 
-	# Bright gold text for the primary (Play) button
-	if primary:
-		btn.add_theme_color_override("font_color", UITheme.C_GOLD_BRIGHT)
-
 	# Hover: highlight only (texture swap via UITheme), NO scale change
 	# Press: shrink like a real button being pushed down
 	btn.button_down.connect(_on_btn_press.bind(btn))
@@ -435,10 +431,12 @@ func _open_play_mode_screen() -> void:
 
 
 func _on_quick_play_pressed() -> void:
-	# Skip config — start game with default settings
+	# Skip config — start game with default settings (Alternating Draft)
 	if _sub_screen:
 		_sub_screen.queue_free()
 		_sub_screen = null
+	# Ensure default draft mode
+	GameConfig.deck_selection_mode = GameConfig.DeckSelectionMode.ALTERNATING_DRAFT
 	var default_settings = {
 		"custom_mode": false,
 		"environment": 0,
@@ -449,6 +447,7 @@ func _on_quick_play_pressed() -> void:
 		"starting_gold": 100,
 		"npc_activity": true,
 		"bounty_system": true,
+		"deck_selection_mode": 0,
 	}
 	print("[StartMenu] Quick Play with defaults: %s" % str(default_settings))
 	_play_transition_to_game()
@@ -518,7 +517,9 @@ func _on_local_match_back() -> void:
 
 func _on_local_match_start(settings: Dictionary) -> void:
 	print("[StartMenu] Starting custom match with settings: %s" % str(settings))
-	# TODO: Pass settings to the game scene for configuration
+	# Apply deck selection mode from custom settings to GameConfig
+	var dsm = settings.get("deck_selection_mode", 0)
+	GameConfig.deck_selection_mode = dsm  # 0 = ALTERNATING_DRAFT, 1 = SEQUENTIAL
 	_play_transition_to_game()
 
 

@@ -1,13 +1,16 @@
 ## Card Selection UI
-## Pre-game deck builder for selecting 4 cards
-## Enforces deck-building rules: 1 Ground Tank, 1 Air/Hybrid, 1 Ranged/Magic, 1 Flex
+## Pre-game deck builder for selecting 4 cards.
+## Supports two modes (see GameConfig.DeckSelectionMode):
+##   ALTERNATING_DRAFT — one pick per turn, opponent's choice disables same-slot
+##   SEQUENTIAL        — one player picks full deck, then the other
 class_name CardSelectionUI
 extends CanvasLayer
 
 # =============================================================================
 # SIGNALS
 # =============================================================================
-signal deck_confirmed(deck: Array[String])
+signal deck_confirmed(deck: Array[String])  ## SEQUENTIAL mode: full deck done
+signal pick_made(player_id: int, slot_index: int, card_id: String) ## ALTERNATING mode: one pick
 signal selection_canceled()
 
 # =============================================================================
@@ -63,6 +66,14 @@ var selected_deck: Array[String] = ["", "", "", ""] # One slot per role
 var player_id: int = 0
 var is_visible_ui: bool = false
 var current_tween: Tween = null
+
+## ALTERNATING DRAFT state ──────────────────────────────────────────────────
+## Tracks which card each player picked per slot-index.
+## Shape: { player_id: { slot_index: card_id } }
+var opponent_picks: Dictionary = {}  # cross-player exclusion tracking
+var _draft_mode: bool = false        # true when using ALTERNATING_DRAFT
+var _draft_slot_restriction: int = -1 # -1 = free pick; >=0 = must pick this slot
+## ────────────────────────────────────────────────────────────────────────────
 
 # =============================================================================
 # CHARACTER PREVIEW (right panel)
@@ -158,7 +169,7 @@ func _create_header(parent: VBoxContainer) -> void:
 	
 	# Title
 	title_label = Label.new()
-	title_label.text = "⚔️ SELECT YOUR DECK ⚔️"
+	title_label.text = "\u2694\ufe0f SELECT YOUR DECK \u2694\ufe0f"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -167,7 +178,7 @@ func _create_header(parent: VBoxContainer) -> void:
 	
 	# Timer
 	timer_label = Label.new()
-	timer_label.text = "⏱ 30s"
+	timer_label.text = "\u23f1 30s"
 	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	timer_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -181,19 +192,10 @@ func _create_header(parent: VBoxContainer) -> void:
 	UITheme.style_label(instructions, 16, UITheme.C_DIM)
 	parent.add_child(instructions)
 	
-	# Info badges row
-	var badges_row = HBoxContainer.new()
-	badges_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	badges_row.add_theme_constant_override("separation", 20)
+	# Info badges row (Removed content but keeping space as requested)
+	var badges_row = Control.new()
+	badges_row.custom_minimum_size = Vector2(0, 40) # Height of the original badges row
 	parent.add_child(badges_row)
-	
-	# Simultaneous selection badge
-	var simul_badge = _create_info_badge("🔄 Both players select simultaneously", Color(0.4, 0.6, 1.0))
-	badges_row.add_child(simul_badge)
-	
-	# Duplicates allowed badge
-	var dupe_badge = _create_info_badge("✅ Duplicate troop picks allowed", Color(0.4, 0.8, 0.4))
-	badges_row.add_child(dupe_badge)
 
 
 # Replaces old _create_card_grid — now places cards left + preview right
@@ -405,20 +407,36 @@ func _show_character_preview(card_id: String, role_color: Color) -> void:
 	# Load + add new model
 	var model = CharacterModelLoader.load_character_model(card_id)
 	if model:
-		# Normalise scale so every character looks good in the small viewport.
-		# Target: the model's world-space height fits into ~3 units visible by camera.
-		var raw_scale = CharacterModelLoader.MODEL_SCALES.get(card_id, Vector3.ONE)
-		var world_h   = raw_scale.y          # approximate height in world units
-		var target_h  = 3.5                  # desired height in viewport units
-		var uniform   = target_h / max(world_h, 0.01)
-		model.scale    = raw_scale * uniform
-		model.position = Vector3(0.0, CharacterModelLoader.MODEL_Y_OFFSETS.get(card_id, 0.0) * uniform, 0.0)
+		# Use the actual model scale (no normalization here to reflect true size hirearchy)
+		# But we still need to position it correctly (grounded at Y=0)
+		model.position = Vector3(0.0, 0.0, 0.0) 
+		# MODEL_Y_OFFSETS is already handled inside load_character_model which returns 
+		# a node containing the scaled and offset model.
+		
 		# Front-left facing: base rotation + 60 degree anticlockwise turn
 		var base_rot = CharacterModelLoader.MODEL_ROTATIONS.get(card_id, 0.0)
-		model.rotation_degrees.y = base_rot + 60.0  # 60° extra = anticlockwise for a better quarter view
+		model.rotation_degrees.y = base_rot + 60.0 # Quarter view
 		_preview_viewport.add_child(model)
 		_preview_model_root = model
 		_preview_empty_lbl.visible = false
+		
+		# DYNAMIC CAMERA CALIBRATION
+		var camera = _preview_viewport.get_node("PreviewCamera")
+		if camera:
+			var raw_scale = CharacterModelLoader.MODEL_SCALES.get(card_id, Vector3.ONE)
+			var h = raw_scale.y
+			
+			# Amount of "zooming" based on height
+			# Larger characters get a more pulled-back view but still fill most of the frame
+			# Smaller characters get a tighter zoom to show detail
+			# FOV is 40.0. To fit height 'h' in FOV, distance 'd' = (h/2) / tan(20°) ≈ h / 0.728
+			# We'll add some padding (multiplier 2.5 was chosen back when h was ~2.0)
+			var dist_mult = 1.3 # Tight framing
+			if h > 1.2: dist_mult = 1.8 # Pull back for larger units
+			
+			camera.position.z = max(1.2, h * dist_mult + 1.0)
+			camera.position.y = h * 0.5 # Center at waist/chest
+			camera.look_at(Vector3(0, h * 0.45, 0), Vector3.UP)
 	else:
 		_preview_empty_lbl.visible = true
 
@@ -663,7 +681,11 @@ func _create_info_badge(text: String, color: Color) -> PanelContainer:
 # =============================================================================
 
 ## Show the card selection UI
-func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
+## In ALTERNATING_DRAFT mode, pass opponent_picks_dict to grey-out opponent choices.
+func show_selection(for_player_id: int = 0, timer_enabled: bool = true,
+		opponent_picks_dict: Dictionary = {},
+		draft_slot_restriction: int = -1,
+		draft_mode: bool = false) -> void:
 	print("CardSelectionUI.show_selection called for player %d" % for_player_id)
 	print("  root_control exists: %s" % (root_control != null))
 	print("  main_panel exists: %s" % (main_panel != null))
@@ -676,6 +698,9 @@ func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
 	player_id = for_player_id
 	selected_deck = ["", "", "", ""]
 	is_visible_ui = true
+	opponent_picks = opponent_picks_dict.duplicate(true)  # deep copy
+	_draft_mode = draft_mode
+	_draft_slot_restriction = draft_slot_restriction
 
 	# Clear any previous card preview from the last player's selection
 	_clear_preview()
@@ -683,7 +708,10 @@ func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
 	# Update title to show which player is selecting
 	var player_color = Color(0.2, 0.5, 1.0) if player_id == 0 else Color(1.0, 0.3, 0.2)
 	var player_name = "PLAYER 1" if player_id == 0 else "PLAYER 2"
-	title_label.text = "⚔️ %s - SELECT YOUR DECK ⚔️" % player_name
+	if draft_mode:
+		title_label.text = "\u2694\ufe0f %s — CHOOSE YOUR PICK \u2694\ufe0f" % player_name
+	else:
+		title_label.text = "\u2694\ufe0f %s - SELECT YOUR DECK \u2694\ufe0f" % player_name
 	title_label.add_theme_color_override("font_color", player_color)
 	
 	# Reset UI state
@@ -692,7 +720,7 @@ func show_selection(for_player_id: int = 0, timer_enabled: bool = true) -> void:
 	
 	if timer_enabled:
 		time_remaining = SELECTION_TIME
-		timer_label.text = "⏱ %ds" % int(time_remaining)
+		timer_label.text = "\u23f1 %ds" % int(time_remaining)
 		timer_label.visible = true
 		timer_label.add_theme_color_override("font_color", Color.YELLOW) # Reset timer color
 		selection_timer.start(1.0)
@@ -780,6 +808,37 @@ func is_deck_valid() -> bool:
 # =============================================================================
 
 func _on_card_selected(card_id: String, slot_index: int) -> void:
+	# In draft mode, only allow one pick and only from allowed slots
+	if _draft_mode:
+		# If a slot restriction is active, only allow that slot
+		if _draft_slot_restriction >= 0 and slot_index != _draft_slot_restriction:
+			return
+		# Current player can't re-pick a slot they already own
+		if _is_own_slot_taken(slot_index):
+			return
+		# Can't pick a card already chosen by the opponent
+		if _is_card_taken_by_opponent(card_id, slot_index):
+			return
+		# Allow deselect of the currently staged pick
+		if selected_deck[slot_index] == card_id:
+			selected_deck[slot_index] = ""
+			_clear_preview()
+			_update_deck_display()
+			_update_card_highlights()
+			return
+		# Stage this pick (clears any other pending pick this turn)
+		selected_deck = ["", "", "", ""]
+		selected_deck[slot_index] = card_id
+		if AudioManager and AudioManager.has_method("play_card_pick"):
+			AudioManager.play_card_pick()
+		var role_colors = [COLOR_GROUND_TANK, COLOR_AIR_HYBRID, COLOR_RANGED_MAGIC, COLOR_FLEX]
+		_show_character_preview(card_id, role_colors[slot_index])
+		_update_deck_display()
+		_update_card_highlights()
+		print("Draft pick staged: Player %d → slot %d → %s" % [player_id, slot_index, card_id])
+		return
+
+	# ── SEQUENTIAL mode (original logic) ──
 	# Toggle selection
 	if selected_deck[slot_index] == card_id:
 		# Deselect
@@ -806,23 +865,65 @@ func _update_deck_display() -> void:
 	var role_colors = [COLOR_GROUND_TANK, COLOR_AIR_HYBRID, COLOR_RANGED_MAGIC, COLOR_FLEX]
 	
 	for i in range(4):
+		# In draft mode, merge committed picks with the current staged pick
 		var card_id = selected_deck[i]
+		if _draft_mode and card_id == "":
+			# Check if committed in earlier draft turn
+			var own_picks: Dictionary = opponent_picks.get(player_id, {})
+			card_id = own_picks.get(i, "")
+		
 		if card_id != "":
 			var card_data = CardData.get_troop(card_id)
 			var display_name = card_data.get("display_name", card_id.replace("_", " ").capitalize())
 			deck_slot_labels[i].text = display_name
 			deck_slot_labels[i].add_theme_color_override("font_color", role_colors[i])
-			
-			# Update slot border
-			deck_slots[i].add_theme_stylebox_override("panel", UITheme.section_panel(COLOR_SELECTED))
+			# Committed picks get a green-tinted "done" border; staged pick gets gold
+			var is_committed = _is_own_slot_taken(i)
+			if is_committed:
+				var done_style = UITheme.section_panel(Color(0.2, 0.7, 0.3))
+				done_style.border_color = Color(0.3, 0.9, 0.4)
+				deck_slots[i].add_theme_stylebox_override("panel", done_style)
+			else:
+				deck_slots[i].add_theme_stylebox_override("panel", UITheme.section_panel(COLOR_SELECTED))
 		else:
 			deck_slot_labels[i].text = "Empty"
 			deck_slot_labels[i].add_theme_color_override("font_color", UITheme.C_DIM)
-			
 			deck_slots[i].add_theme_stylebox_override("panel", UITheme.section_panel(role_colors[i]))
 	
 	# Update confirm button
-	confirm_button.disabled = not is_deck_valid()
+	if _draft_mode:
+		# In draft mode the confirm button is active as soon as one card is pending
+		var has_pick = false
+		for cid in selected_deck:
+			if cid != "":
+				has_pick = true
+				break
+		confirm_button.disabled = not has_pick
+		confirm_button.text = "CONFIRM PICK"
+	else:
+		confirm_button.disabled = not is_deck_valid()
+		confirm_button.text = "CONFIRM DECK"
+
+
+## Returns true if the opponent has already claimed this specific card in this slot.
+func _is_card_taken_by_opponent(card_id: String, slot_index: int) -> bool:
+	if not _draft_mode:
+		return false
+	for p_id in opponent_picks:
+		if p_id == player_id:
+			continue  # Only check opponent
+		var picks: Dictionary = opponent_picks[p_id]
+		if picks.get(slot_index, "") == card_id:
+			return true
+	return false
+
+## Returns true if the current player already filled this slot in a previous draft turn.
+func _is_own_slot_taken(slot_index: int) -> bool:
+	if not _draft_mode:
+		return false
+	var own_picks: Dictionary = opponent_picks.get(player_id, {})
+	return own_picks.has(slot_index)
+
 
 
 func _update_card_highlights() -> void:
@@ -837,36 +938,100 @@ func _update_card_highlights() -> void:
 			if button == null:
 				continue
 			
-			# Update button style based on selection
+			# Check if this card is taken by the opponent (draft mode)
+			var opp_took = _is_card_taken_by_opponent(card_id, slot_index)
+			# Current player already filled this slot in an earlier draft turn
+			var own_slot_taken = _is_own_slot_taken(slot_index)
+			# In draft mode, also grey out slots that aren't allowed this pick
+			var slot_locked = _draft_mode and _draft_slot_restriction >= 0 and slot_index != _draft_slot_restriction
+			
 			if card_id == selected_id:
-				# Selected - highlighted border and dark background
+				# Selected — highlighted border and dark background
 				var style = UITheme.section_panel(role_colors[slot_index])
 				style.border_color = COLOR_SELECTED
 				style.set_border_width_all(3)
 				style.bg_color = role_colors[slot_index].darkened(0.7)
 				button.add_theme_stylebox_override("normal", style)
 				button.add_theme_color_override("font_color", COLOR_SELECTED)
+				button.disabled = false
+			elif own_slot_taken:
+				# This player already picked from this category — lock entire column
+				var style = UITheme.section_panel(role_colors[slot_index].darkened(0.55))
+				style.bg_color = role_colors[slot_index].darkened(0.80)
+				button.add_theme_stylebox_override("normal", style)
+				button.add_theme_color_override("font_color", Color(0.45, 0.7, 0.45, 0.9))  # greenish "done" tint
+				button.disabled = true
+			elif opp_took:
+				# Opponent already picked this card — grey it out
+				var style = UITheme.section_panel(Color(0.3, 0.3, 0.3))
+				style.bg_color = Color(0.15, 0.15, 0.15, 0.7)
+				button.add_theme_stylebox_override("normal", style)
+				button.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+				button.disabled = true
+			elif slot_locked:
+				# Slot not available this pick (draft slot restriction) — dim it
+				var style = UITheme.section_panel(role_colors[slot_index].darkened(0.6))
+				style.bg_color = role_colors[slot_index].darkened(0.85)
+				button.add_theme_stylebox_override("normal", style)
+				button.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+				button.disabled = true
 			else:
-				# Not selected - default hud button style
+				# Normal — default hud button style
 				UITheme.apply_hud_button(button, role_colors[slot_index], 14)
 				button.remove_theme_color_override("font_color")
+				button.disabled = false
 
 
 func _on_timer_tick() -> void:
 	time_remaining -= 1.0
-	timer_label.text = "⏱ %ds" % int(time_remaining)
+	timer_label.text = "\u23f1 %ds" % int(time_remaining)
 	
 	if time_remaining <= 10:
 		timer_label.add_theme_color_override("font_color", COLOR_INVALID)
 	
 	if time_remaining <= 0:
 		selection_timer.stop()
-		# Auto-confirm if deck is valid, otherwise select random cards
-		if is_deck_valid():
+		if _draft_mode:
+			# Draft mode: auto-pick a random available card for this turn
+			_auto_draft_pick()
 			_on_confirm_pressed()
 		else:
-			_auto_select_remaining()
-			_on_confirm_pressed()
+			# Sequential mode: auto-fill remaining slots then confirm
+			if is_deck_valid():
+				_on_confirm_pressed()
+			else:
+				_auto_select_remaining()
+				_on_confirm_pressed()
+
+
+## Auto-pick one random valid card for draft mode when timer expires.
+func _auto_draft_pick() -> void:
+	var role_cards = [GROUND_TANK_CARDS, AIR_HYBRID_CARDS, RANGED_MAGIC_CARDS, FLEX_CARDS]
+	# Determine which slots are eligible
+	var eligible_slots: Array[int] = []
+	for i in range(4):
+		if _draft_slot_restriction >= 0 and i != _draft_slot_restriction:
+			continue
+		# Find available cards in this slot
+		var available: Array[String] = []
+		for card_id in role_cards[i]:
+			if not _is_card_taken_by_opponent(card_id, i):
+				available.append(card_id)
+		if available.size() > 0:
+			eligible_slots.append(i)
+	if eligible_slots.is_empty():
+		return
+	var slot = eligible_slots[randi() % eligible_slots.size()]
+	var available_in_slot: Array[String] = []
+	for card_id in role_cards[slot]:
+		if not _is_card_taken_by_opponent(card_id, slot):
+			available_in_slot.append(card_id)
+	if available_in_slot.is_empty():
+		return
+	selected_deck = ["", "", "", ""]
+	selected_deck[slot] = available_in_slot[randi() % available_in_slot.size()]
+	_update_deck_display()
+
 
 
 func _auto_select_remaining() -> void:
@@ -883,6 +1048,23 @@ func _auto_select_remaining() -> void:
 
 
 func _on_confirm_pressed() -> void:
+	if _draft_mode:
+		# Draft mode: emit pick_made for the single selected card
+		var pick_slot: int = -1
+		var pick_card: String = ""
+		for i in range(4):
+			if selected_deck[i] != "":
+				pick_slot = i
+				pick_card = selected_deck[i]
+				break
+		if pick_slot < 0:
+			return # Nothing selected yet
+		selection_timer.stop()
+		# Keep panel visible (main.gd will show_selection again for next pick)
+		pick_made.emit(player_id, pick_slot, pick_card)
+		return
+
+	# Sequential mode: full deck confirm
 	if not is_deck_valid():
 		return
 	

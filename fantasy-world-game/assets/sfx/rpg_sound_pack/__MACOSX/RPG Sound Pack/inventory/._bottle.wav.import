@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://crllf12am2lvf"
+path="res://.godot/imported/._bottle.wav-98775fe0f2512f4a609f4ab738c1fa61.sample"
+
+[deps]
+
+source_file="res://assets/sfx/rpg_sound_pack/__MACOSX/RPG Sound Pack/inventory/._bottle.wav"
+dest_files=["res://.godot/imported/._bottle.wav-98775fe0f2512f4a609f4ab738c1fa61.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

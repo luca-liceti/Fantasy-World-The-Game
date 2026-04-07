@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://db74micx5v1ms"
+path="res://.godot/imported/._Menu_Select_00.wav-625e4f80d73244544759e385529986f5.sample"
+
+[deps]
+
+source_file="res://assets/sfx/Fantasy Sound Library (INCLUDES A LOT)/__MACOSX/Fantasy Sound Library/Wav/._Menu_Select_00.wav"
+dest_files=["res://.godot/imported/._Menu_Select_00.wav-625e4f80d73244544759e385529986f5.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

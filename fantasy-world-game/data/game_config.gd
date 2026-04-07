@@ -12,6 +12,15 @@ const BOARD_LIFT: float = 1.0 # Height of hex tiles above table (matches border 
 const BORDER_HEIGHT: float = 1.0 # Fixed height of the board border rim (edge tiles connect here)
 const TERRAIN_HEIGHT_MULTIPLIER: float = 1 # Global multiplier for terrain height exaggeration (2.0 = smooth slopes, 4.0+ = dramatic cliffs)
 
+## Master toggle for biome 3D decorations (trees, grass, rocks…).
+## Set false on low-end hardware or during performance profiling.
+const DECORATIONS_ENABLED: bool = true
+
+## 0.0 = no decorations, 1.0 = full density.  Multiplied against each spawn
+## probability so you can tune the visual density project-wide without changing
+## the decoration script constants.
+const DECORATION_DENSITY: float = 1.0
+
 # =============================================================================
 # GRAPHICS SETTINGS
 # =============================================================================
@@ -184,7 +193,7 @@ const DEF_INCREASE_FLAT: int = 3 # +3 DEF per level
 # =============================================================================
 # NPC CONFIGURATION
 # =============================================================================
-const NPC_SPAWN_CHANCE: float = 0.05 # 5% chance when troop moves
+const NPC_SPAWN_CHANCE: float = 0.10 # 10% chance when troop moves
 
 # =============================================================================
 # BIOME MODIFIERS
@@ -236,3 +245,16 @@ const PHOENIX_FEATHER_DROP_CHANCE: float = 0.20 # 20%
 # DECK SELECTION
 # =============================================================================
 const DECK_SELECTION_TIMER: int = 30 # seconds
+
+## Deck selection mode determines how players choose their 4-card decks.
+## ALTERNATING_DRAFT: A random player picks first from any category. The
+##   chosen character is disabled for the opponent in that category. Then
+##   the opponent picks. Picks alternate until all 8 slots are filled.
+## SEQUENTIAL: Player 1 selects their entire deck, then Player 2 (old mode).
+enum DeckSelectionMode {
+	ALTERNATING_DRAFT = 0,  ## Default — snake/alternating pick
+	SEQUENTIAL       = 1,  ## Old mode — one full deck then the other
+}
+
+## Runtime selection mode (can be changed by Custom Match settings).
+static var deck_selection_mode: int = DeckSelectionMode.ALTERNATING_DRAFT

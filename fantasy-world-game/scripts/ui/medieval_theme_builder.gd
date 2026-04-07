@@ -57,6 +57,9 @@ static func create_theme() -> Theme:
 	# Configure TabContainer/TabBar styles
 	_setup_tab_styles(theme)
 	
+	# Configure CheckButton styles (Toggles)
+	_setup_check_button_styles(theme)
+	
 	return theme
 
 
@@ -142,26 +145,21 @@ static func _setup_progress_bar_styles(theme: Theme) -> void:
 
 
 static func _setup_slider_styles(theme: Theme) -> void:
-	var slider_style := UITheme.slider_h()
-	var v_slider_style := UITheme.slider_v()
+	var h_empty = UITheme.slider_empty_style()
+	var h_filled = UITheme.slider_filled_style()
+	var grabber = UITheme.tex_slider_handle()
 	
-	var grabber_area := StyleBoxEmpty.new()
+	theme.set_stylebox("slider", "HSlider", h_empty)
+	theme.set_stylebox("grabber_area", "HSlider", h_filled)
+	theme.set_stylebox("grabber_area_highlight", "HSlider", h_filled)
 	
-	theme.set_stylebox("slider", "HSlider", slider_style)
-	theme.set_stylebox("grabber_area", "HSlider", grabber_area)
-	theme.set_stylebox("slider", "VSlider", v_slider_style)
-	theme.set_stylebox("grabber_area", "VSlider", grabber_area)
+	if grabber:
+		theme.set_icon("grabber", "HSlider", grabber)
+		theme.set_icon("grabber_highlight", "HSlider", grabber)
 	
-	var slider_comps = UITheme.tex_slider_comps()
-	if slider_comps:
-		var grabber_tex = AtlasTexture.new()
-		grabber_tex.atlas = slider_comps
-		# Generic assumption for horizontal layout in grabber atlas: top left sprite
-		grabber_tex.region = Rect2(0, 0, 48, 48)
-		theme.set_icon("grabber", "HSlider", grabber_tex)
-		theme.set_icon("grabber_highlight", "HSlider", grabber_tex)
-		theme.set_icon("grabber", "VSlider", grabber_tex)
-		theme.set_icon("grabber_highlight", "VSlider", grabber_tex)
+	# VSlider uses fallback or the old style for now as we only have HSlider components
+	theme.set_stylebox("slider", "VSlider", UITheme.slider_v())
+	theme.set_stylebox("grabber_area", "VSlider", StyleBoxEmpty.new())
 
 
 static func _setup_tab_styles(theme: Theme) -> void:
@@ -178,3 +176,50 @@ static func _setup_tab_styles(theme: Theme) -> void:
 	theme.set_color("font_unselected_color", "TabContainer", COLOR_TEXT_MUTED)
 	theme.set_color("font_selected_color", "TabContainer", COLOR_TEXT)
 	theme.set_color("font_hovered_color", "TabContainer", COLOR_TEXT_GOLD)
+	
+
+static func _setup_check_button_styles(theme: Theme) -> void:
+	var on_tex = UITheme.tex_toggle_on()
+	var off_tex = UITheme.tex_toggle_off()
+	
+	if on_tex and off_tex:
+		# For theme-wide icons, we can't easily resize per-resolution here 
+		# as cleanly as in apply_toggle, but we can set the default icons.
+		# Note: The theme will use the textures as-is unless we create ImageTextures here.
+		# However, for consistency with apply_toggle, we'll try to provide scaled versions.
+		
+		var img_on = on_tex.get_image()
+		var img_off = off_tex.get_image()
+		
+		var target_h = 22
+		var target_w = int(target_h * (792.0 / 243.0))
+		
+		img_on.resize(target_w, target_h, Image.INTERPOLATE_LANCZOS)
+		img_off.resize(target_w, target_h, Image.INTERPOLATE_LANCZOS)
+		
+		# Apply same programmatical gold tint for "Glow"
+		for y in range(img_on.get_height()):
+			for x in range(img_on.get_width()):
+				var c = img_on.get_pixel(x, y)
+				if c.a > 0.01:
+					c.r = min(1.0, c.r * 1.25)
+					c.g = min(1.0, c.g * 1.15)
+					c.b = min(1.0, c.b * 0.90)
+					img_on.set_pixel(x, y, c)
+		
+		var scaled_on = ImageTexture.create_from_image(img_on)
+		var scaled_off = ImageTexture.create_from_image(img_off)
+		
+		theme.set_icon("switch_on", "CheckButton", scaled_on)
+		theme.set_icon("switch_off", "CheckButton", scaled_off)
+		theme.set_icon("switch_on_disabled", "CheckButton", scaled_on)
+		theme.set_icon("switch_off_disabled", "CheckButton", scaled_off)
+		
+		# Also set Checked icons just in case it falls back
+		theme.set_icon("checked", "CheckButton", scaled_on)
+		theme.set_icon("unchecked", "CheckButton", scaled_off)
+		theme.set_icon("checked_disabled", "CheckButton", scaled_on)
+		theme.set_icon("unchecked_disabled", "CheckButton", scaled_off)
+	
+	theme.set_color("font_color", "CheckButton", COLOR_TEXT)
+	theme.set_color("font_hover_color", "CheckButton", COLOR_TEXT_GOLD)

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bshvox5wcsiwt"
+path="res://.godot/imported/._giant3.wav-6ee1e71220741ca4b6b8fb58741db56b.sample"
+
+[deps]
+
+source_file="res://assets/sfx/rpg_sound_pack/__MACOSX/RPG Sound Pack/NPC/giant/._giant3.wav"
+dest_files=["res://.godot/imported/._giant3.wav-6ee1e71220741ca4b6b8fb58741db56b.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2
