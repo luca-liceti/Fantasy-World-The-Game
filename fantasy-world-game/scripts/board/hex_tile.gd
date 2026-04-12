@@ -41,7 +41,7 @@ var selection_mesh: MeshInstance3D # Full tile overlay for selection
 var terrain_collision_body: StaticBody3D # Camera collision (Layer 16)
 var terrain_collision_shape: CollisionShape3D # Trimesh matching terrain surface
 var particle_emitter: BiomeParticleEmitter # Ambient particle effects
-var forest_decorations: Node3D = null  # Forest biome 3D prop decorations
+var grass_node: MultiMeshInstance3D # Dense grass for forest floors
 
 # Materials
 var base_material: Material # Enhanced biome material with strong normals/AO (ShaderMaterial or StandardMaterial3D)
@@ -92,8 +92,7 @@ func setup(coords: HexCoordinates, biome: Biomes.Type) -> void:
 	# Setup ambient particles for atmospheric biomes
 	_setup_particles()
 	
-	# Setup forest decorations (replaces old grass system)
-	_setup_forest_decorations()
+	# Note: Forest decorations are now triggered in update_mesh_with_vertex_heights()
 
 
 # =============================================================================
@@ -307,7 +306,7 @@ const SURFACE_HEIGHT_BUFFER: float = 0.05
 
 ## Update mesh with vertex heights from vertex-based displacement system
 ## This creates a seamless terrain using pre-calculated vertex heights
-func update_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
+func update_mesh_with_vertex_heights(vertex_heights: Array[float], manager: Node3D = null) -> void:
 	if vertex_heights.size() != 6:
 		push_error("update_mesh_with_vertex_heights requires exactly 6 vertex heights")
 		return
@@ -323,6 +322,9 @@ func update_mesh_with_vertex_heights(vertex_heights: Array[float]) -> void:
 	
 	# Rebuild terrain collision trimesh to match the new surface
 	_rebuild_terrain_collision()
+	
+	# SETUP FOREST DECORATIONS AFTER HEIGHTS ARE KNOWN
+	_setup_forest_decorations(manager)
 	
 	# Re-apply material
 	if base_material and mesh_instance:
@@ -624,33 +626,36 @@ func _setup_particles() -> void:
 ## Setup 3D environment decorations for this tile's biome.
 ## The system is modular — each biome reads its own asset pool from
 ## ForestDecorationSystem.BIOME_CONFIG and skips gracefully when no pool exists.
-func _setup_forest_decorations() -> void:
-	# Always clear leftover decorations first (handles biome reassignment too)
-	if forest_decorations and is_instance_valid(forest_decorations):
-		forest_decorations.queue_free()
-		forest_decorations = null
-
-	# Ensure we're in the scene tree before adding children.
-	# The deferred re-call keeps the biome guard consistent after mid-frame
-	# biome changes — ForestDecorationSystem.BIOME_CONFIG handles the guard now.
-	if not is_inside_tree():
-		call_deferred("_setup_forest_decorations")
-		return
-
-	# Create a container node to hold all decoration children
-	forest_decorations = Node3D.new()
-	forest_decorations.name = "BiomeDecorations"
-	add_child(forest_decorations)
-
+func _setup_forest_decorations(manager: Node3D = null) -> void:
 	# Tile-seeded RNG → reproducible decoration layout across reloads
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(coordinates._to_key()) if coordinates else randi()
 
+	# Create dense grass for applicable biomes
+	_setup_grass()
+
 	# Pass biome_type, height, and corner vertex heights so decorations sit on the surface
-	ForestDecorationSystem.decorate_tile(
-		forest_decorations, hex_size, rng, biome_type,
-		tile_height, stored_vertex_heights
-	)
+	if manager:
+		ForestDecorationSystem.decorate_tile(
+			manager, hex_size, rng, biome_type,
+			tile_height, stored_vertex_heights, global_transform
+		)
+
+
+## Create dense grass using GrassSystem
+func _setup_grass() -> void:
+	if grass_node:
+		grass_node.queue_free()
+		grass_node = null
+	
+	# Only create grass for FOREST biome (enabled in GrassSystem)
+	if biome_type != Biomes.Type.FOREST:
+		return
+	
+	grass_node = GrassSystem.create_grass_for_hex(biome_type, hex_size, stored_vertex_heights)
+	if grass_node:
+		add_child(grass_node)
+		print("[HexTile] Created grass for %s at %s" % [Biomes.get_biome_name(biome_type), coordinates._to_string() if coordinates else "null"])
 
 
 # =============================================================================
@@ -742,7 +747,7 @@ func _update_visual() -> void:
 func set_biome(biome: Biomes.Type) -> void:
 	biome_type = biome
 	_update_visual()
-	_setup_forest_decorations() # Regenerate decorations for new biome
+	# Note: Manual biome change may require manual MultiMesh rebuild at board level
 
 
 ## Set as spawn hex for a player

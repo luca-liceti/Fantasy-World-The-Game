@@ -44,8 +44,8 @@ const TEXTURE_SCALE := 0.3  # Realistic 1:1 scale - visible rocks, leaves, terra
 ## Normal map intensity multiplier (Manor Lords: 1.2x - 1.5x for top-down visibility)
 const NORMAL_MAP_OVERDRIVE := 1.3  # Slightly over-driven for camera angle
 
-## Global saturation reduction (Manor Lords: reduce by ~15%)
-const SATURATION_REDUCTION := 0.15  # How much to desaturate base colors
+## Global saturation reduction (Used to be 0.15 for Manor Lords, now 0.0 for vibrant daylight)
+const SATURATION_REDUCTION := 0.0  # How much to desaturate base colors
 
 ## Muted earth tone color palette (Manor Lords style)
 ## Colors: Umber, Sage, Slate, and Charcoal
@@ -384,6 +384,10 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 	else:
 		mat.set_shader_parameter("roughness_override", props.get("roughness", 0.75))
 
+	# Metallic and Specular properties for reflectivity
+	mat.set_shader_parameter("metallic_override", props.get("metallic", 0.0))
+	mat.set_shader_parameter("specular_override", props.get("specular", 0.5))
+
 	# Ambient occlusion
 	var ao_tex: Texture2D = _load_texture_any_ext(base_path, "ao")
 	if ao_tex:
@@ -416,19 +420,19 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 static func _get_biome_tint(biome_type: Biomes.Type) -> Color:
 	match biome_type:
 		Biomes.Type.FOREST:
-			return Color(0.88, 0.92, 0.82)   # Slight green–brown desaturation
+			return Color(1.00, 0.98, 0.90)   # Warm sunlight
 		Biomes.Type.PEAKS:
-			return Color(0.92, 0.94, 1.00)   # Cold blue–white tint
+			return Color(0.95, 0.98, 1.00)   # Crisp daylight
 		Biomes.Type.WASTES:
-			return Color(0.95, 0.90, 0.82)   # Warm sandy ochre
+			return Color(1.00, 0.95, 0.85)   # Hot sun
 		Biomes.Type.PLAINS:
-			return Color(0.90, 0.92, 0.80)   # Faintly golden sage
+			return Color(1.00, 1.00, 0.90)   # Bright golden sunlight
 		Biomes.Type.ASHLANDS:
-			return Color(0.78, 0.76, 0.74)   # Heavy desaturation — "dead" look
+			return Color(0.90, 0.85, 0.85)   # Slightly warmer, less dead
 		Biomes.Type.HILLS:
-			return Color(0.88, 0.92, 0.84)   # Sage green
+			return Color(1.00, 0.98, 0.92)   # Vibrant daylight
 		Biomes.Type.SWAMP:
-			return Color(0.82, 0.88, 0.76)   # Murky greenish
+			return Color(0.95, 0.98, 0.90)   # Humid bright daylight
 		_:
 			return Color.WHITE
 

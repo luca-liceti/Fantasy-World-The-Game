@@ -34,7 +34,7 @@
 ##   Add a new biome by adding a Biomes.Type key to BIOME_CONFIG below.
 ##   All pool arrays, chances, and radii are read at runtime — no other
 ##   code changes needed.
-##
+
 class_name ForestDecorationSystem
 extends RefCounted
 
@@ -42,31 +42,76 @@ extends RefCounted
 # ASSET PATHS  (Forest only — other biomes can add their own paths later)
 # =============================================================================
 
-const BASE_PATH := "res://assets/models/enviroment/forest/"
+const BASE_PATH := "res://assets/models/enviroment/forest/optimized_assets/"
+
+# ----- GRASS LOD VARIANTS -----
+# Large grass (a-c): Tall, dense grass clumps for close-up
+const GRASS_LARGE := [
+	BASE_PATH + "grass_medium_01_2k_opt.glb",
+]
+
+# Mid grass (a-c): Medium height grass for mid-distance
+const GRASS_MID := [
+	BASE_PATH + "grass_medium_01_2k_opt.glb",
+]
+
+# Small grass (a-b): Compact grass for background fill
+const GRASS_SMALL := [
+	BASE_PATH + "grass_medium_01_2k_opt.glb",
+]
+
+# Tall grass (a-c): Upright tall grass variations
+const GRASS_TALL := [
+	BASE_PATH + "grass_medium_01_2k_opt.glb",
+]
+
+# Tiny grass (a-f): Very small grass tufts for dense fill
+const GRASS_TINY := [
+	BASE_PATH + "grass_medium_01_2k_opt.glb",
+]
 
 # ----- ground cover (low poly, center-safe) ----------------------------------
-const PATH_GRASS          := BASE_PATH + "grass_medium_01_2k.gltf"
-const PATH_FERN           := BASE_PATH + "fern_02_2k.gltf"
-const PATH_MOSS           := BASE_PATH + "moss_01_2k.gltf"
+const PATH_FERN := BASE_PATH + "fern_02_2k_opt.glb"
+const PATH_MOSS := BASE_PATH + "moss_01_2k_opt.glb"
 
 # ----- medium debris (outer zone) --------------------------------------------
-const PATH_ROCK_SET_01    := BASE_PATH + "rock_moss_set_01_2k.gltf"
-const PATH_ROCK_SET_02    := BASE_PATH + "rock_moss_set_02_2k.gltf"
-const PATH_STUMP_01       := BASE_PATH + "tree_stump_01_2k.gltf"
-const PATH_STUMP_02       := BASE_PATH + "tree_stump_02_2k.gltf"
-const PATH_DEAD_TRUNK     := BASE_PATH + "dead_tree_trunk_2k.gltf"
-const PATH_PINE_ROOTS     := BASE_PATH + "pine_roots_2k.gltf"
-const PATH_DRY_BRANCHES   := BASE_PATH + "dry_branches_medium_01_2k.gltf"
+const PATH_ROCK_SET_01 := BASE_PATH + "rock_moss_set_01_2k_opt.glb"
+const PATH_ROCK_SET_02 := BASE_PATH + "rock_moss_set_02_2k_opt.glb"
+const PATH_STUMP_01 := BASE_PATH + "tree_stump_01_2k_opt.glb"
+const PATH_STUMP_02 := BASE_PATH + "tree_stump_02_2k_opt.glb"
+const PATH_PINE_ROOTS := BASE_PATH + "pine_roots_2k_opt.glb"
+const PATH_DRY_BRANCHES := BASE_PATH + "dry_branches_medium_01_2k_opt.glb"
+const PATH_FIR_SAPLING := BASE_PATH + "fir_sapling_2k_opt.glb"
+const PATH_FIR_SAPLING_MED := BASE_PATH + "fir_sapling_medium_2k_opt.glb"
+const PATH_PINE_SAPLING_SML := BASE_PATH + "pine_sapling_small_2k_opt.glb"
+const PATH_PINE_SAPLING_MED := BASE_PATH + "pine_sapling_medium_2k_opt.glb"
 
-# ----- tall items (far-outer zone) — SAPLINGS ONLY, no mature trees ----------
-## ⚠️  fir_tree_01 / pine_tree_01 are excluded: their twig surface alone has
-##     5,368,447 vertices per variant × 3 variants = 16 M verts per GLTF load.
-##     Use saplings until lower-poly tree assets are available.
-const PATH_FIR_SAPLING        := BASE_PATH + "fir_sapling_2k.gltf"
-const PATH_FIR_SAPLING_MED    := BASE_PATH + "fir_sapling_medium_2k.gltf"
-const PATH_PINE_SAPLING_SML   := BASE_PATH + "pine_sapling_small_2k.gltf"
-const PATH_PINE_SAPLING_MED   := BASE_PATH + "pine_sapling_medium_2k.gltf"
 
+# =============================================================================
+# GRASS LOD CONFIGURATION
+## ============================================================================
+## LOD levels determine which grass mesh variant to use based on camera distance.
+## Farther = simpler mesh = better performance.
+## Distance thresholds in world units from camera.
+# =============================================================================
+
+enum GrassLOD {
+	LARGE = 0,   # Close-up: 0-15 units
+	MID,         # Mid-range: 15-30 units
+	SMALL,       # Far: 30-50 units
+	TALL,        # Very far: 50-70 units
+	TINY,        # Extreme distance: 70+ units
+}
+
+const LOD_DISTANCES: Array[float] = [15.0, 30.0, 50.0, 70.0, 1000000.0]
+
+const GRASS_LOD_POOLS: Dictionary = {
+	GrassLOD.LARGE: GRASS_LARGE,
+	GrassLOD.MID: GRASS_MID,
+	GrassLOD.SMALL: GRASS_SMALL,
+	GrassLOD.TALL: GRASS_TALL,
+	GrassLOD.TINY: GRASS_TINY,
+}
 
 # =============================================================================
 # SCALE TABLE
@@ -77,79 +122,95 @@ const PATH_PINE_SAPLING_MED   := BASE_PATH + "pine_sapling_medium_2k.gltf"
 # =============================================================================
 
 const DECO_SCALE: Dictionary = {
-	"grass_medium_01_2k.gltf": { "base": 0.136 },
-	"fern_02_2k.gltf":          { "base": 0.210 },
-	"moss_01_2k.gltf":          { "base": 0.250 },
-	"rock_moss_set_01_2k.gltf": { "base": 0.400 },
-	"rock_moss_set_02_2k.gltf": { "base": 0.467 },
-	"tree_stump_01_2k.gltf":    { "base": 0.300 },
-	"tree_stump_02_2k.gltf":    { "base": 0.300 },
-	"dead_tree_trunk_2k.gltf":  { "base": 0.300 },
-	"pine_roots_2k.gltf":       { "base": 0.175 },
-	"dry_branches_medium_01_2k.gltf": { "base": 0.225 },
-	# Saplings
-	"fir_sapling_2k.gltf":          { "base": 0.120 },
-	"fir_sapling_medium_2k.gltf":   { "base": 0.150 },
-	"pine_sapling_small_2k.gltf":   { "base": 0.158 },
-	"pine_sapling_medium_2k.gltf":  { "base": 0.185 },
+	"grass_medium_01_2k_opt.glb": {"base": 0.45},  # 1/4 knight height (~45cm grass)
+	"fern_02_2k_opt.glb": {"base": 0.350},  # Increased for visibility
+	"moss_01_2k_opt.glb": {"base": 0.400},  # Increased for visibility
+	"rock_moss_set_01_2k_opt.glb": {"base": 0.240},
+	"rock_moss_set_02_2k_opt.glb": {"base": 0.280},
+	"tree_stump_01_2k_opt.glb": {"base": 0.300},
+	"tree_stump_02_2k_opt.glb": {"base": 0.300},
+	"pine_roots_2k_opt.glb": {"base": 0.175},
+	"dry_branches_medium_01_2k_opt.glb": {"base": 0.225},
+	# Saplings (Scaled up for taller forests)
+	"fir_sapling_2k_opt.glb": {"base": 0.180},
+	"fir_sapling_medium_2k_opt.glb": {"base": 0.225},
+	"pine_sapling_small_2k_opt.glb": {"base": 0.237},
+	"pine_sapling_medium_2k_opt.glb": {"base": 0.277},
 }
 
 ## ±15 % scale jitter so no two instances look identical.
 const SCALE_JITTER := 0.15
+
+## Grass-specific scale multipliers per LOD level (larger at close range, smaller at far)
+const GRASS_LOD_SCALE: Dictionary = {
+	GrassLOD.LARGE: 1.5,  # 9cm close grass
+	GrassLOD.MID: 1.0,     # 6cm mid grass
+	GrassLOD.SMALL: 0.6,   # 3.6cm far grass
+	GrassLOD.TALL: 0.8,    # 4.8cm tall grass
+	GrassLOD.TINY: 0.4,    # 2.4cm distant grass
+}
 
 
 # =============================================================================
 # PLACEMENT CONSTANTS
 # =============================================================================
 
-const CENTER_EXCLUSION_RADIUS := 0.35   # fraction of hex_size — only grass here
-const SURFACE_OFFSET          := 0.02   # Y lift above tile surface
+const CENTER_EXCLUSION_RADIUS := 0.35 # fraction of hex_size — only grass here
+const SURFACE_OFFSET := 0.02 # Y lift above tile surface
 
 
 # =============================================================================
 # BIOME CONFIG
 ## ============================================================================
-## Performance-tuned spawn counts:
-##   center  : 0–1  (80 % probability)
-##   small   : 3 attempts, 55 % each  → avg 1.65 items per tile
-##   large   : 1 attempt, 45 % each, only 45 % of tiles → avg 0.20 per tile
+## Performance-tuned spawn counts for DENSE FOREST:
+##   center    : 3-5 grass items (LOD variants)
+##   grass_ground: 8-12 tiny grass tufts for dense coverage
+##   small     : 4-6 ground cover items
+##   large     : 2-4 saplings per tile
 ##
-## TOTAL expected decorations per Forest tile ≈ 1.85 nodes (down from ~6).
-## At 60 forest tiles: ~111 decoration nodes total.  Very manageable.
-##
-## Each node uses ONE mesh from a reasonably-poly GLTF.  The ultra-poly
-## mature trees are intentionally omitted (see PATH comments above).
+## TOTAL expected decorations per Forest tile ≈ 15-25 nodes.
+## At 60 forest tiles: ~900-1200 decoration nodes total.
+## LOD system ensures close grass is detailed, distant grass is simple.
 # =============================================================================
 
 const BIOME_CONFIG: Dictionary = {
 	Biomes.Type.FOREST: {
-		# Center (overlap-safe)
-		"center_pool":    [ PATH_GRASS, PATH_GRASS, PATH_MOSS ],
-		"center_weights": [ 4,          4,          1 ],
-		"center_chance":  0.80,
+		# CENTER: No grass clumps - grass is handled by GrassSystem
+		"center_pool": [],
+		"center_weights": [],
+		"center_chance": 0.0,
+		"center_count_min": 0,
+		"center_count_max": 0,
 
-		# Small ground-cover in outer zone
+		# GROUND FILL: Dense grass handled by GrassSystem - disable here
+		"grass_ground_enabled": false,
+		"grass_ground_pool": [],
+		"grass_ground_attempts": 0,
+		"grass_ground_chance": 0.0,
+
+		# Small ground-cover in outer zone (ferns, moss, rocks)
 		"small_pool": [
-			PATH_FERN,  PATH_FERN,          # most common undergrowth
-			PATH_MOSS,
+			PATH_FERN, PATH_FERN, PATH_FERN, PATH_FERN,
+			PATH_FERN, PATH_FERN,
+			PATH_MOSS, PATH_MOSS, PATH_MOSS, PATH_MOSS,
 			PATH_ROCK_SET_01, PATH_ROCK_SET_02,
-			PATH_STUMP_01,
-			PATH_DEAD_TRUNK,
+			PATH_STUMP_01, PATH_STUMP_02,
 			PATH_PINE_ROOTS,
 			PATH_DRY_BRANCHES,
 		],
-		"small_attempts": 3,    # ↓ from 6
-		"small_chance":   0.55, # ↓ from 0.60
+		"small_attempts": 8,
+		"small_chance": 0.75,
 
-		# Large (saplings only) in far-outer / corner zone
+		# Large (saplings) in far-outer / corner zone
 		"large_pool": [
-			PATH_FIR_SAPLING,  PATH_PINE_SAPLING_SML,
-			PATH_FIR_SAPLING_MED, PATH_PINE_SAPLING_MED,
+			PATH_FIR_SAPLING, PATH_PINE_SAPLING_SML, PATH_FIR_SAPLING,
+			PATH_FIR_SAPLING_MED, PATH_PINE_SAPLING_MED, PATH_FIR_SAPLING_MED,
+			PATH_FIR_SAPLING, PATH_FIR_SAPLING_MED,
 		],
-		"large_max":            1,     # ↓ from 2 — one sapling per tile max
-		"large_attempt_chance": 0.45,  # skip large entirely on 55 % of tiles
-		"large_chance":         0.50,  # when attempted, 50 % success
-		"large_min_radius":     0.60,
+		"large_max": 4, # Dense clusters
+		"large_attempt_chance": 0.98, # Almost always place
+		"large_chance": 0.85, # High success rate
+		"large_min_radius": 0.55,
 	},
 
 	# Placeholders — fill pools with biome-specific asset paths when assets land
@@ -192,35 +253,30 @@ const BIOME_CONFIG: Dictionary = {
 }
 
 
-# =============================================================================
-# RESOURCE CACHE
-# =============================================================================
-
-## PackedScene cache — each GLTF is loaded from disk only once.
-static var _scene_cache: Dictionary = {}
 
 
 # =============================================================================
 # PUBLIC API
 # =============================================================================
 
-## Main entry point.  Spawns decorations as children of `tile`.
+## Main entry point.  Registers decoration transforms with the central `manager`.
 ##
-##   tile            – Node3D container that will own the spawned props
+##   manager         – The central DecorationManager node
 ##   hex_size        – center-to-corner radius (world units)
 ##   rng             – seeded RandomNumberGenerator for reproducible results
 ##   biome_type      – the tile's biome (controls which asset pool is used)
 ##   tile_height     – local-space Y of the tile center vertex
 ##   vertex_heights  – local-space Y of the 6 corner vertices (index 0-5)
+##   tile_transform  – the tile's global transform for world-space conversion
 static func decorate_tile(
-		tile:           Node3D,
-		hex_size:       float,
-		rng:            RandomNumberGenerator,
-		biome_type:     Biomes.Type,
-		tile_height:    float = 0.0,
-		vertex_heights: Array = []
+		manager: Node,
+		hex_size: float,
+		rng: RandomNumberGenerator,
+		biome_type: Biomes.Type,
+		tile_height: float,
+		vertex_heights: Array,
+		tile_transform: Transform3D
 ) -> void:
-
 	# --- Master kill-switch (GameConfig.DECORATIONS_ENABLED) ------------------
 	if not GameConfig.DECORATIONS_ENABLED:
 		return
@@ -232,46 +288,93 @@ static func decorate_tile(
 
 	# Density multiplier (0.0 – 1.0) from GameConfig.DECORATION_DENSITY
 	var density: float = clampf(GameConfig.DECORATION_DENSITY, 0.0, 1.0)
+	
+	var placed_count = 0
 
-	# ---- 1. Center item (grass / ground scatter) ------------------------------
-	if not cfg.center_pool.is_empty():
-		if rng.randf() < cfg.center_chance * density:
-			var path = _weighted_pick(cfg.center_pool, cfg.center_weights, rng)
-			if path != "":
-				var prop = _spawn_prop(path, rng)
-				if prop:
-					var sd = _get_surface_data(Vector2.ZERO, tile_height, vertex_heights, hex_size)
-					prop.position = Vector3(0, sd["y"] + SURFACE_OFFSET, 0)
-					prop.rotation_degrees.y = rng.randf_range(0.0, 360.0)
-					_apply_slope_rotation(prop, sd["normal"], path, false)
-					prop.name = "Deco_Center"
-					tile.add_child(prop)
+	# ---- 1. CENTER GRASS: Multiple grass clumps at hex center (LOD LARGE/MID) ----
+	if not cfg.center_pool.is_empty() and cfg.has("center_chance"):
+		var center_count: int = cfg.get("center_count_min", 1)
+		var center_max: int = cfg.get("center_count_max", 1)
+		var actual_count: int = center_count
+		
+		# Randomize count between min and max
+		if center_max > center_count:
+			actual_count = rng.randi_range(center_count, center_max)
+		
+		for i in range(actual_count):
+			if rng.randf() < cfg.center_chance * density:
+				var path = _weighted_pick(cfg.center_pool, cfg.get("center_weights", []), rng)
+				if path != "":
+					# Slight offset from center for variety
+					var offset = Vector2(
+						rng.randf_range(-0.15, 0.15) * hex_size,
+						rng.randf_range(-0.15, 0.15) * hex_size
+					)
+					var sd = _get_surface_data(offset, tile_height, vertex_heights, hex_size)
+					var pos = Vector3(offset.x, sd["y"] + SURFACE_OFFSET, offset.y)
+					var lod_level = _get_grass_lod_for_position(tile_transform * Transform3D().translated(pos))
+					var lod_path = _get_lod_path(path, lod_level)
+					var transform = _get_decoration_transform(lod_path, pos, sd["normal"], rng, false, GrassLOD.MID)
+					manager.add_decoration(lod_path, tile_transform * transform)
+					placed_count += 1
+
+	# ---- 1b. GROUND FILL: Dense tiny grass for carpet effect ----
+	if cfg.get("grass_ground_enabled", false) and not cfg.grass_ground_pool.is_empty():
+		var gg_attempts: int = cfg.get("grass_ground_attempts", 10)
+		var gg_chance: float = cfg.get("grass_ground_chance", 0.7) * density
+		
+		for _i in range(gg_attempts):
+			# Always place (no random chance check) for dense coverage
+			var path: String = cfg.grass_ground_pool[rng.randi() % cfg.grass_ground_pool.size()]
+			var uv_pos: Vector2 = _random_position_in_hex(rng, hex_size, 0.05, 0.95)
+			
+			if uv_pos == Vector2.INF:
+				continue
+			
+			var sd = _get_surface_data(uv_pos, tile_height, vertex_heights, hex_size)
+			var pos = Vector3(uv_pos.x, sd["y"] + SURFACE_OFFSET * 0.5, uv_pos.y)
+			var lod_level = _get_grass_lod_for_position(tile_transform * Transform3D().translated(pos))
+			var lod_path = _get_lod_path(path, lod_level)
+			var transform = _get_decoration_transform(lod_path, pos, sd["normal"], rng, false, GrassLOD.TINY)
+			manager.add_decoration(lod_path, tile_transform * transform)
+			placed_count += 1
 
 	# ---- 2. Small ground-cover in the outer zone -----------------------------
 	var small_pool: Array = cfg.small_pool
 	if not small_pool.is_empty():
 		var attempts: int = cfg.small_attempts
-		var chance: float  = cfg.small_chance * density
+		var chance: float = cfg.small_chance * density
+		
+		# Used to group small items together into clusters
+		var cluster_center := Vector2.INF
 
 		for _i in range(attempts):
 			if rng.randf() > chance:
 				continue
 
 			var path: String = small_pool[rng.randi() % small_pool.size()]
-			var pos := _random_outer_position(rng, hex_size, CENTER_EXCLUSION_RADIUS, 0.92)
-			if pos == Vector2.INF:
+			var uv_pos: Vector2
+			
+			if cluster_center != Vector2.INF and rng.randf() < 0.65:
+				# 65% chance to cluster near the first item
+				var offset_angle = rng.randf() * TAU
+				var offset_dist = rng.randf_range(0.08, 0.25)
+				uv_pos = cluster_center + Vector2(cos(offset_angle), sin(offset_angle)) * (offset_dist * hex_size)
+				if not _in_hex(uv_pos.x, uv_pos.y, hex_size) or uv_pos.length() < hex_size * CENTER_EXCLUSION_RADIUS:
+					uv_pos = _random_outer_position(rng, hex_size, CENTER_EXCLUSION_RADIUS, 0.92)
+			else:
+				uv_pos = _random_outer_position(rng, hex_size, CENTER_EXCLUSION_RADIUS, 0.92)
+				
+			if uv_pos == Vector2.INF:
 				continue
+				
+			if cluster_center == Vector2.INF:
+				cluster_center = uv_pos
 
-			var prop = _spawn_prop(path, rng)
-			if not prop:
-				continue
-
-			var sd = _get_surface_data(pos, tile_height, vertex_heights, hex_size)
-			prop.position = Vector3(pos.x, sd["y"] + SURFACE_OFFSET, pos.y)
-			prop.rotation_degrees.y = rng.randf_range(0.0, 360.0)
-			_apply_slope_rotation(prop, sd["normal"], path, false)
-			prop.name = "Deco_Small"
-			tile.add_child(prop)
+			var sd = _get_surface_data(uv_pos, tile_height, vertex_heights, hex_size)
+			var pos = Vector3(uv_pos.x, sd["y"] + SURFACE_OFFSET, uv_pos.y)
+			var transform = _get_decoration_transform(path, pos, sd["normal"], rng, false)
+			manager.add_decoration(path, tile_transform * transform)
 
 	# ---- 3. Large item in the far-outer zone (saplings only) -----------------
 	var large_pool: Array = cfg.large_pool
@@ -280,10 +383,11 @@ static func decorate_tile(
 	if rng.randf() > cfg.large_attempt_chance * density:
 		return
 
-	var large_placed   := 0
-	var large_max: int  = cfg.large_max
-	var attempts2      := 0
-	var max_attempts2  := large_max * 3
+	var large_placed := 0
+	var large_max: int = cfg.large_max
+	var attempts2 := 0
+	var max_attempts2 := large_max * 3
+	var large_cluster_center := Vector2.INF
 
 	while large_placed < large_max and attempts2 < max_attempts2:
 		attempts2 += 1
@@ -292,26 +396,30 @@ static func decorate_tile(
 
 		var path: String = large_pool[rng.randi() % large_pool.size()]
 
-		var pos: Vector2
-		if rng.randf() < 0.6:
-			pos = _corner_position(rng, hex_size)
+		var uv_pos: Vector2
+		if large_cluster_center != Vector2.INF and rng.randf() < 0.5:
+			# Cluster tree near first tree
+			var offset_angle = rng.randf() * TAU
+			var offset_dist = rng.randf_range(0.12, 0.3)
+			uv_pos = large_cluster_center + Vector2(cos(offset_angle), sin(offset_angle)) * (offset_dist * hex_size)
+			if not _in_hex(uv_pos.x, uv_pos.y, hex_size) or uv_pos.length() < hex_size * cfg.large_min_radius:
+				uv_pos = _corner_position(rng, hex_size)
 		else:
-			pos = _random_outer_position(rng, hex_size, cfg.large_min_radius, 0.88)
+			if rng.randf() < 0.6:
+				uv_pos = _corner_position(rng, hex_size)
+			else:
+				uv_pos = _random_outer_position(rng, hex_size, cfg.large_min_radius, 0.88)
 
-		if pos == Vector2.INF:
+		if uv_pos == Vector2.INF:
 			continue
+			
+		if large_cluster_center == Vector2.INF:
+			large_cluster_center = uv_pos
 
-		var prop = _spawn_prop(path, rng)
-		if not prop:
-			continue
-
-		var sd = _get_surface_data(pos, tile_height, vertex_heights, hex_size)
-		prop.position = Vector3(pos.x, sd["y"] + SURFACE_OFFSET, pos.y)
-		prop.rotation_degrees.y = rng.randf_range(0.0, 360.0)
-		# Trees (saplings) stay upright; other large props tilt with the slope
-		_apply_slope_rotation(prop, sd["normal"], path, true)
-		prop.name = "Deco_Large"
-		tile.add_child(prop)
+		var sd = _get_surface_data(uv_pos, tile_height, vertex_heights, hex_size)
+		var pos = Vector3(uv_pos.x, sd["y"] + SURFACE_OFFSET, uv_pos.y)
+		var transform = _get_decoration_transform(path, pos, sd["normal"], rng, true)
+		manager.add_decoration(path, tile_transform * transform)
 		large_placed += 1
 
 
@@ -324,14 +432,14 @@ static func decorate_tile(
 ## We find which triangle contains `pos` and do barycentric interpolation.
 ## Falls back to tile_height / Vector3.UP if vertex_heights is empty or out-of-bounds.
 static func _get_surface_data(
-		pos:            Vector2,
-		tile_height:    float,
+		pos: Vector2,
+		tile_height: float,
 		vertex_heights: Array,
-		hex_size:       float
+		hex_size: float
 ) -> Dictionary:
 	if vertex_heights.size() != 6:
 		# No vertex data — flat tile
-		return { "y": tile_height, "normal": Vector3.UP }
+		return {"y": tile_height, "normal": Vector3.UP}
 
 	# Build the 6 corner positions (local space, matching _rebuild_hex_mesh_with_vertex_heights)
 	var corners: Array[Vector3] = []
@@ -379,97 +487,62 @@ static func _get_surface_data(
 			var n := edge1.cross(edge2).normalized()
 			if n.y < 0.0:
 				n = -n
-			return { "y": y, "normal": n }
+			return {"y": y, "normal": n}
 
 	# Fallback (point outside hex, shouldn't happen for valid placements)
-	return { "y": tile_height, "normal": Vector3.UP }
+	return {"y": tile_height, "normal": Vector3.UP}
 
 
-## Rotate `prop` so its up-axis aligns with `surface_normal`.
-## For tree/sapling assets the rotation is skipped so they stay vertical.
-## The existing Y-rotation (random azimuth) is restored after tilting.
-static func _apply_slope_rotation(
-		prop:          Node3D,
+## Calculates the final local transform (basis + position) including:
+## 1. Random Y rotation
+## 2. Slope alignment (optional)
+## 3. Calibrated scale with jitter
+## 4. Grass LOD scale modifier
+static func _get_decoration_transform(
+		path: String,
+		pos: Vector3,
 		surface_normal: Vector3,
-		path:          String,
-		is_large:      bool
-) -> void:
-	# Trees always stay upright: skip slope rotation for sapling paths
-	if is_large and (
+		rng: RandomNumberGenerator,
+		is_large: bool,
+		grass_lod: int = -1
+) -> Transform3D:
+	# 1. Base Basis with random Y rotation
+	var current_y_rot := rng.randf() * TAU
+	var basis := Basis.from_euler(Vector3(0, current_y_rot, 0))
+	
+	# 2. Add slope tilt if not an upright-only asset
+	var is_upright = is_large and (
 			path.find("sapling") != -1 or
 			path.find("fir_tree") != -1 or
 			path.find("pine_tree") != -1
-	):
-		return
-
-	# If the surface is essentially flat, skip the maths
-	if surface_normal.distance_to(Vector3.UP) < 0.001:
-		return
-
-	# Build a rotation that maps Vector3.UP → surface_normal,
-	# then additionally apply the already-set Y azimuth rotation.
-	var current_y_rot := prop.rotation.y
-	var tilt := Quaternion(Vector3.UP, surface_normal)
-	prop.quaternion = tilt * Quaternion.from_euler(Vector3(0, current_y_rot, 0))
-
-
-## Load (cache), pick a random child variant, apply calibrated scale.
-## Returns null if the resource cannot be loaded.
-static func _spawn_prop(path: String, rng: RandomNumberGenerator) -> Node3D:
-	# Load / retrieve cached PackedScene
-	if not _scene_cache.has(path):
-		if not ResourceLoader.exists(path):
-			_scene_cache[path] = null
-		else:
-			var res = load(path)
-			_scene_cache[path] = res if res is PackedScene else null
-
-	var scene: PackedScene = _scene_cache[path] as PackedScene
-	if scene == null:
-		return null
-
-	# --- Requirement 4: Sub-node variant selection ----------------------------
-	# Instantiate the full scene into a temporary holder, detach ONE variant,
-	# reset its position (Quixel packs variants with X offsets), free the rest.
-	var root: Node3D = scene.instantiate() as Node3D
-	if root == null:
-		return null
-
-	var children: Array[Node] = root.get_children()
-	var chosen: Node3D
-
-	if children.is_empty():
-		# Scene is a single mesh — use it directly
-		chosen = root
-		root = null
-	else:
-		var pick_idx: int = rng.randi() % children.size()
-		var variant_node = children[pick_idx] as Node3D
-		if variant_node == null:
-			root.queue_free()
-			return null
-
-		root.remove_child(variant_node)
-		variant_node.position = Vector3.ZERO  # clear inter-variant X offset
-		root.queue_free()                      # frees all remaining siblings
-		chosen = variant_node
-
-	# --- Requirement 3: Calibrated 1:1 realistic scale with ±15 % jitter ------
+	)
+	
+	if not is_upright and surface_normal.distance_to(Vector3.UP) > 0.001:
+		var tilt := Quaternion(Vector3.UP, surface_normal)
+		basis = Basis(tilt) * basis
+		
+	# 3. Apply Calibrated Scale (matching DECO_SCALE table)
 	var scale_key := path.get_file()
+	var s := 1.0
 	if DECO_SCALE.has(scale_key):
 		var base_s: float = DECO_SCALE[scale_key]["base"]
 		var jitter: float = rng.randf_range(-SCALE_JITTER, SCALE_JITTER)
-		var s: float      = base_s * (1.0 + jitter)
-		chosen.scale = Vector3(s, s, s)
-
-	return chosen
+		s = base_s * (1.0 + jitter)
+	
+	# 4. Apply grass LOD scale modifier
+	if grass_lod >= 0 and GRASS_LOD_SCALE.has(grass_lod):
+		s *= GRASS_LOD_SCALE[grass_lod]
+	
+	basis = basis.scaled(Vector3(s, s, s))
+	
+	return Transform3D(basis, pos)
 
 
 ## Weighted random pick from parallel pool + weights arrays.
 static func _weighted_pick(
-		pool:    Array,
+		pool: Array,
 		weights: Array,
-		rng:     RandomNumberGenerator
+		rng: RandomNumberGenerator
 ) -> String:
 	if pool.is_empty():
 		return ""
@@ -482,7 +555,7 @@ static func _weighted_pick(
 	if total <= 0:
 		return pool[rng.randi() % pool.size()]
 
-	var roll: int      = rng.randi() % total
+	var roll: int = rng.randi() % total
 	var cumulative: int = 0
 	for i in range(pool.size()):
 		cumulative += int(weights[i])
@@ -494,20 +567,20 @@ static func _weighted_pick(
 ## Random 2D position in the annular band [min_r, max_r] * hex_size.
 ## Returns Vector2.INF when no valid position found.
 static func _random_outer_position(
-		rng:       RandomNumberGenerator,
-		hex_size:  float,
-		min_r:     float,
-		max_r:     float,
+		rng: RandomNumberGenerator,
+		hex_size: float,
+		min_r: float,
+		max_r: float,
 		max_tries: int = 10
 ) -> Vector2:
 	var inner := hex_size * min_r
 	var outer := hex_size * max_r
 
 	for _t in range(max_tries):
-		var angle  := rng.randf() * TAU
+		var angle := rng.randf() * TAU
 		var radius := rng.randf_range(inner, outer)
-		var px     := cos(angle) * radius
-		var pz     := sin(angle) * radius
+		var px := cos(angle) * radius
+		var pz := sin(angle) * radius
 		if _in_hex(px, pz, hex_size):
 			return Vector2(px, pz)
 
@@ -516,10 +589,45 @@ static func _random_outer_position(
 
 ## Position near one of the 6 hex corners (slightly inward from the edge).
 static func _corner_position(rng: RandomNumberGenerator, hex_size: float) -> Vector2:
-	var idx   := rng.randi() % 6
+	var idx := rng.randi() % 6
 	var angle := deg_to_rad(60.0 * idx - 30.0)
-	var r     := rng.randf_range(hex_size * 0.60, hex_size * 0.85)
+	var r := rng.randf_range(hex_size * 0.60, hex_size * 0.85)
 	return Vector2(cos(angle) * r, sin(angle) * r)
+
+
+## Random position anywhere within the hex (not just outer band).
+static func _random_position_in_hex(
+		rng: RandomNumberGenerator,
+		hex_size: float,
+		min_r: float = 0.0,
+		max_r: float = 1.0,
+		max_tries: int = 10
+) -> Vector2:
+	var outer := hex_size * max_r
+	var inner := hex_size * min_r
+
+	for _t in range(max_tries):
+		var angle := rng.randf() * TAU
+		var radius := rng.randf_range(inner, outer)
+		var px := cos(angle) * radius
+		var pz := sin(angle) * radius
+		if _in_hex(px, pz, hex_size):
+			return Vector2(px, pz)
+
+	return Vector2.INF
+
+
+## Determines the grass LOD level based on world position.
+## For static decorations, this uses a default LOD level (can be overridden by camera distance).
+static func _get_grass_lod_for_position(world_transform: Transform3D) -> int:
+	return GrassLOD.MID
+
+
+## Returns the LOD-appropriate path for a given grass path.
+## Currently uses the same mesh for all LODs (placeholder for actual LOD meshes).
+## In production, this would swap to lower-poly variants for distant grass.
+static func _get_lod_path(base_path: String, lod_level: int) -> String:
+	return base_path
 
 
 ## Pointy-top hex containment test.

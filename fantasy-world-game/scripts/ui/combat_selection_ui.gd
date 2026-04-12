@@ -52,6 +52,10 @@ var current_time: float = CombatBalanceConfig.SELECTION_TIME_LIMIT
 var max_time: float = CombatBalanceConfig.SELECTION_TIME_LIMIT
 var timer_running: bool = false
 
+var _bar_fill_normal: StyleBoxFlat
+var _bar_fill_warning: StyleBoxFlat
+var _bar_fill_critical: StyleBoxFlat
+
 # State
 var is_attacker: bool = true
 var current_troop: Node = null
@@ -92,7 +96,21 @@ const STANCE_COLORS = {
 
 func _ready() -> void:
 	visible = false
+	_create_precomputed_styles()
 	_create_ui()
+
+func _create_precomputed_styles() -> void:
+	_bar_fill_normal = StyleBoxFlat.new()
+	_bar_fill_normal.bg_color = Color(0.2, 0.7, 0.3)
+	_bar_fill_normal.set_corner_radius_all(4)
+	
+	_bar_fill_warning = StyleBoxFlat.new()
+	_bar_fill_warning.bg_color = Color(0.9, 0.7, 0.2)
+	_bar_fill_warning.set_corner_radius_all(4)
+	
+	_bar_fill_critical = StyleBoxFlat.new()
+	_bar_fill_critical.bg_color = Color(0.9, 0.2, 0.2)
+	_bar_fill_critical.set_corner_radius_all(4)
 
 
 func _process(delta: float) -> void:
@@ -214,10 +232,7 @@ func _create_timer() -> void:
 	bar_bg.set_corner_radius_all(4)
 	timer_bar.add_theme_stylebox_override("background", bar_bg)
 	
-	var bar_fill = StyleBoxFlat.new()
-	bar_fill.bg_color = Color(0.2, 0.7, 0.3)
-	bar_fill.set_corner_radius_all(4)
-	timer_bar.add_theme_stylebox_override("fill", bar_fill)
+	timer_bar.add_theme_stylebox_override("fill", _bar_fill_normal)
 	
 	# Timer label
 	timer_label = Label.new()
@@ -640,21 +655,15 @@ func _update_timer_display() -> void:
 		_last_timer_seconds = display_seconds
 		timer_label.text = " %ds" % display_seconds
 		
-		# Change color based on time remaining
-		var bar_fill = StyleBoxFlat.new()
-		bar_fill.set_corner_radius_all(4)
-		
 		if display_seconds <= 3:
-			bar_fill.bg_color = Color(0.9, 0.2, 0.2)
+			timer_bar.add_theme_stylebox_override("fill", _bar_fill_critical)
 			timer_label.add_theme_color_override("font_color", Color.RED)
 		elif display_seconds <= 5:
-			bar_fill.bg_color = Color(0.9, 0.7, 0.2)
+			timer_bar.add_theme_stylebox_override("fill", _bar_fill_warning)
 			timer_label.add_theme_color_override("font_color", Color.YELLOW)
 		else:
-			bar_fill.bg_color = Color(0.2, 0.7, 0.3)
+			timer_bar.add_theme_stylebox_override("fill", _bar_fill_normal)
 			timer_label.add_theme_color_override("font_color", Color.WHITE)
-		
-		timer_bar.add_theme_stylebox_override("fill", bar_fill)
 
 
 func _on_move_button_pressed(index: int) -> void:

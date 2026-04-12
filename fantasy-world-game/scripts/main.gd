@@ -3,6 +3,12 @@
 ## This is the playable test scene with GameManager integration
 extends Node3D
 
+const DEBUG_ENABLED := true
+
+func debug_print(msg: String) -> void:
+	if DEBUG_ENABLED:
+		print(msg)
+
 # Preload dependencies
 const SettingsMenuScene = preload("res://scripts/ui/settings_menu.gd")
 const CardSelectionUIScene = preload("res://scripts/ui/card_selection_ui.gd")
@@ -25,6 +31,14 @@ var first_move_dice_ui: FirstMoveDiceUI # UI for initial turn order roll
 var combat_selection_ui: CombatSelectionUI # Enhanced combat UI for move/stance selection
 var combat_resolution_ui: Node # Enhanced combat resolution display
 var terrain_loading_screen: CanvasLayer = null # Loading screen during terrain generation
+
+# Dynamic lighting state
+var board_world_env: WorldEnvironment = null  # World environment for board lighting
+var _current_biome_environment: Biomes.Type = Biomes.Type.PLAINS  # Current active biome
+const BIOME_ENVIRONMENT_TRANSITION_SPEED: float = 2.0  # Smooth transition speed
+const BIOME_DETECTION_RADIUS: float = 8.0  # Radius to detect dominant biome
+const BIOME_DETECTION_INTERVAL: float = 0.5  # Detection check interval (seconds)
+var _last_biome_detection_time: float = 0.0  # Last detection time
 
 # Deck selection state
 var is_selecting_decks: bool = false
@@ -129,6 +143,8 @@ var action_mode: String = "none"
 var is_paused: bool = false
 var pause_menu: CanvasLayer = null
 var ignore_camera_process: bool = false
+var _last_timer_update: float = 0.0
+const TIMER_UPDATE_INTERVAL: float = 0.1
 
 # Team Colors
 const PLAYER1_COLOR = Color(0.2, 0.5, 1.0) # Blue
@@ -295,13 +311,13 @@ func _setup_board_lighting() -> void:
 	var fill_light = LightingManager.create_fill_light()
 	add_child(fill_light)
 	
-	# Set up world environment for atmospheric lighting
-	var world_env = WorldEnvironment.new()
+	# Set up world environment for atmospheric golden hour lighting
+	board_world_env = WorldEnvironment.new()
 	var environment = LightingManager.create_environment()
 	
 	# Apply to world
-	world_env.environment = environment
-	add_child(world_env)
+	board_world_env.environment = environment
+	add_child(board_world_env)
 	
 	print("Board lighting setup complete!")
 
@@ -1042,9 +1058,94 @@ func _process(delta: float) -> void:
 	# Camera collision is handled inside _update_camera_transform() via
 	# CharacterBody3D.move_and_collide() — no separate step needed.
 	
-	# Update timer display
-	if game_ui and game_manager and game_manager.turn_manager:
-		game_ui.update_timer(game_manager.turn_manager.turn_timer_remaining)
+	# Update timer display periodically instead of every frame
+	_last_timer_update += delta
+	if _last_timer_update >= TIMER_UPDATE_INTERVAL:
+		_last_timer_update = 0.0
+		if game_ui and game_manager and game_manager.turn_manager:
+			game_ui.update_timer(game_manager.turn_manager.turn_timer_remaining)
+	
+	# Update dynamic biome lighting
+	_update_biome_lighting(delta)
+
+
+func _update_biome_lighting(delta: float) -> void:
+	if not board_world_env or not hex_board or not board_generation_complete:
+		return
+	
+	if not camera:
+		camera = get_viewport().get_camera_3d()
+	if not camera:
+		return
+	
+	_last_biome_detection_time += delta
+	if _last_biome_detection_time < BIOME_DETECTION_INTERVAL:
+		return
+	
+	_last_biome_detection_time = 0.0
+	var camera_pos = camera.global_position
+	var dominant_biome = _get_dominant_biome_near_position(camera_pos)
+	
+	if dominant_biome != _current_biome_environment:
+		_current_biome_environment = dominant_biome
+		_apply_biome_environment(dominant_biome, delta)
+
+
+func _get_dominant_biome_near_position(world_pos: Vector3) -> Biomes.Type:
+	if not hex_board:
+		return Biomes.Type.PLAINS
+	
+	var biome_counts = {}
+	var search_radius = BIOME_DETECTION_RADIUS
+	
+	var all_tiles = hex_board.get_all_tiles()
+	for i in range(all_tiles.size()):
+		var tile = all_tiles[i]
+		var tile_pos = tile.global_position
+		var dist = world_pos.distance_to(tile_pos)
+		if dist <= search_radius:
+			var biome = tile.biome_type
+			if not biome_counts.has(biome):
+				biome_counts[biome] = 0
+			biome_counts[biome] = biome_counts[biome] + 1
+	
+	if biome_counts.is_empty():
+		return Biomes.Type.PLAINS
+	
+	var max_count = 0
+	var dominant = Biomes.Type.PLAINS
+	var biome_keys = biome_counts.keys()
+	for i in range(biome_keys.size()):
+		var biome = biome_keys[i]
+		var count = biome_counts[biome]
+		if count > max_count:
+			max_count = count
+			dominant = biome
+	
+	return dominant
+
+
+func _apply_biome_environment(biome: Biomes.Type, delta: float) -> void:
+	if not board_world_env:
+		return
+	
+	var current_env = board_world_env.environment
+	if not current_env:
+		return
+	
+	var target_env = LightingManager.create_environment_for_biome(biome)
+	if not target_env:
+		return
+	
+	var t = delta * BIOME_ENVIRONMENT_TRANSITION_SPEED
+	
+	current_env.ambient_light_energy = lerp(current_env.ambient_light_energy, target_env.ambient_light_energy, t)
+	current_env.ambient_light_color = current_env.ambient_light_color.lerp(target_env.ambient_light_color, t)
+	current_env.fog_density = lerp(current_env.fog_density, target_env.fog_density, t)
+	current_env.fog_light_color = current_env.fog_light_color.lerp(target_env.fog_light_color, t)
+	current_env.adjustment_saturation = lerp(current_env.adjustment_saturation, target_env.adjustment_saturation, t)
+	current_env.ssao_intensity = lerp(current_env.ssao_intensity, target_env.ssao_intensity, t)
+	current_env.glow_intensity = lerp(current_env.glow_intensity, target_env.glow_intensity, t)
 
 
 func _handle_keyboard_movement(delta: float) -> void:

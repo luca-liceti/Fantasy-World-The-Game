@@ -11,6 +11,7 @@ const SFX_CARD_PICK = "res://assets/sfx/card_pick.mp3"
 const FADE_IN_DURATION = 1 # Fades in music over 1.5 seconds
 const AUDIO_BUS_MUSIC = "Music"
 const AUDIO_BUS_SFX = "SFX"
+const MAX_SFX_PLAYERS: int = 8
 
 # =============================================================================
 # STATE
@@ -18,6 +19,10 @@ const AUDIO_BUS_SFX = "SFX"
 var bgm_player: AudioStreamPlayer = null
 var bgm_stream: AudioStream = null
 var _is_initialized: bool = false
+
+var _sfx_cache: Dictionary = {}
+var _sfx_players: Array[AudioStreamPlayer] = []
+var _sfx_player_bus: String = "Master"
 
 # =============================================================================
 # INITIALIZATION
@@ -45,6 +50,22 @@ func _initialize_player() -> void:
 		print("[AudioManager] Warning: 'Music' bus not found, using 'Master'")
 	
 	add_child(bgm_player)
+	
+	# Set SFX bus for pooled players
+	if AudioServer.get_bus_index(AUDIO_BUS_SFX) != -1:
+		_sfx_player_bus = AUDIO_BUS_SFX
+	else:
+		_sfx_player_bus = "Master"
+	
+	# Pre-create SFX player pool
+	for i in range(MAX_SFX_PLAYERS):
+		var player = AudioStreamPlayer.new()
+		player.name = "SFXPlayer%d" % i
+		player.bus = _sfx_player_bus
+		player.process_mode = Node.PROCESS_MODE_PAUSABLE
+		_sfx_players.append(player)
+		add_child(player)
+	
 	_is_initialized = true
 
 
@@ -53,6 +74,21 @@ func _prepare_stream() -> void:
 	if ResourceLoader.exists(BGM_PATH):
 		ResourceLoader.load_threaded_request(BGM_PATH)
 		print("[AudioManager] Background loading BGM: %s" % BGM_PATH)
+	
+	# Pre-cache SFX files
+	_cache_sfx(SFX_HOVER)
+	_cache_sfx(SFX_CARD_PICK)
+
+func _cache_sfx(path: String) -> void:
+	if not _sfx_cache.has(path):
+		if ResourceLoader.exists(path):
+			_sfx_cache[path] = load(path)
+
+func _get_available_sfx_player() -> AudioStreamPlayer:
+	for player in _sfx_players:
+		if not player.playing:
+			return player
+	return null
 
 
 # =============================================================================
@@ -130,30 +166,25 @@ func fade_out_music(duration: float = 2.0) -> void:
 
 ## Play a one-shot sound effect
 func play_sfx(path: String, pitch_scale: float = 1.0, volume_db: float = 0.0) -> void:
-	if not ResourceLoader.exists(path):
-		push_error("[AudioManager] SFX not found: %s" % path)
+	var player = _get_available_sfx_player()
+	if not player:
 		return
-		
-	var stream = load(path)
+	
+	if not _sfx_cache.has(path):
+		if ResourceLoader.exists(path):
+			_sfx_cache[path] = load(path)
+		else:
+			push_error("[AudioManager] SFX not found: %s" % path)
+			return
+	
+	var stream = _sfx_cache[path]
 	if not stream:
 		return
-		
-	var sfx_player = AudioStreamPlayer.new()
-	sfx_player.stream = stream
-	sfx_player.pitch_scale = pitch_scale
-	sfx_player.volume_db = volume_db
 	
-	# Verify SFX bus
-	if AudioServer.get_bus_index(AUDIO_BUS_SFX) != -1:
-		sfx_player.bus = AUDIO_BUS_SFX
-	else:
-		sfx_player.bus = "Master"
-		
-	add_child(sfx_player)
-	sfx_player.play()
-	
-	# Clean up after playing
-	sfx_player.finished.connect(sfx_player.queue_free)
+	player.stream = stream
+	player.pitch_scale = pitch_scale
+	player.volume_db = volume_db
+	player.play()
 
 
 ## Play the UI button hover sound

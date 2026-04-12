@@ -115,6 +115,7 @@ func apply(env_model: Node3D = null, world_env: WorldEnvironment = null) -> void
 		return
 
 	_remove_previous_lights()
+	_apply_layer_separation()
 	_spawn_chandelier_lights()
 	_apply_world_environment()
 	_ensure_lightmap_gi()
@@ -137,8 +138,20 @@ func is_applied() -> bool:
 
 
 # =============================================================================
-# CHANDELIER LIGHT SPAWNING
+# CHANDELIER LIGHT SPAWNING & LAYER SEPARATION
 # =============================================================================
+
+func _apply_layer_separation() -> void:
+	if not environment_model:
+		return
+	_recursively_set_layer(environment_model, 2)
+	print("[TavernLighting] Assigned Tavern environment to Visual Layer 2.")
+
+func _recursively_set_layer(node: Node, target_layer: int) -> void:
+	if node is VisualInstance3D:
+		node.layers = target_layer
+	for child in node.get_children():
+		_recursively_set_layer(child, target_layer)
 
 func _spawn_chandelier_lights() -> void:
 	if not environment_model:
@@ -203,6 +216,9 @@ func _spawn_light_on_mesh(mi: MeshInstance3D) -> void:
 
 	# Static bake mode — participates in LightmapGI baking
 	light.light_bake_mode = Light3D.BAKE_STATIC
+	
+	# Restrict light only to the Tavern (Layer 2)
+	light.light_cull_mask = 2
 
 	# Place the light at the mesh's global centre, slightly above
 	# We parent to the mesh itself so it inherits position/scale changes
@@ -247,27 +263,30 @@ func _apply_world_environment() -> void:
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 
 	# ── Tonemapping (warm amber ACES) ─────────────────────────────────────────
-	env.tonemap_mode = tonemap_mode as Environment.ToneMapper
+	env.tonemap_mode = tonemap_mode
 	env.tonemap_exposure = tonemap_exposure
 	env.tonemap_white = tonemap_white
 
 	# ── SSAO — subtle contact shadows in corners / under furniture ───────────
-	# Reference has soft, natural AO — not dramatic dark halos.
+	# Reduced intensity to fix extreme black halos around characters and edges of the screen
 	env.ssao_enabled = true
-	env.ssao_radius = 1.0
-	env.ssao_intensity = 2.5       # stronger contact shadows for stone texture depth
-	env.ssao_power = 1.5
+	env.ssao_radius = 0.5          # Reduced radius
+	env.ssao_intensity = 0.5       # Drastically reduced intensity (was 2.5)
+	env.ssao_power = 1.0
 	env.ssao_detail = 0.5
-	env.ssao_horizon = 0.06
+	env.ssao_horizon = 0.2
 	env.ssao_sharpness = 0.98
-	env.ssao_light_affect = 0.0
+	env.ssao_light_affect = 0.5    # Ensure light washes out AO naturally
 
 	# ── SSIL — very subtle warm bounce ────────────────────────────────────────
-	env.ssil_enabled = true
-	env.ssil_radius = 3.0
-	env.ssil_intensity = 0.4       # stronger warm bounce for a richer look
-	env.ssil_sharpness = 0.9
-	env.ssil_normal_rejection = 1.0
+	if RenderingServer.get_rendering_device() != null:
+		env.ssil_enabled = true
+		env.ssil_radius = 3.0
+		env.ssil_intensity = 0.4       # stronger warm bounce for a richer look
+		env.ssil_sharpness = 0.9
+		env.ssil_normal_rejection = 1.0
+	else:
+		env.ssil_enabled = false
 
 	# ── Glow — soft candle halos, not a bloom explosion ───────────────────────
 	env.glow_enabled = true
@@ -293,10 +312,13 @@ func _apply_world_environment() -> void:
 	env.sdfgi_enabled = false
 
 	# ── Volumetric fog — adds that "hazy tavern" atmosphere ──────────────────
-	env.volumetric_fog_enabled = true
-	env.volumetric_fog_density = 0.005  # subtle, but visible near lights
-	env.volumetric_fog_albedo = Color(0.18, 0.16, 0.14)  # neutral-warm dust color
-	env.volumetric_fog_emission = Color(0.05, 0.04, 0.02) # slight self-illumination
+	if RenderingServer.get_rendering_device() != null:
+		env.volumetric_fog_enabled = true
+		env.volumetric_fog_density = 0.005  # subtle, but visible near lights
+		env.volumetric_fog_albedo = Color(0.18, 0.16, 0.14)  # neutral-warm dust color
+		env.volumetric_fog_emission = Color(0.05, 0.04, 0.02) # slight self-illumination
+	else:
+		env.volumetric_fog_enabled = false
 
 	world_environment.environment = env
 	print("[TavernLighting] WorldEnvironment replaced with atmospheric preset.")

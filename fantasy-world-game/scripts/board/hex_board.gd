@@ -30,6 +30,8 @@ var board_radius: int:
 # =============================================================================
 # Dictionary mapping coordinate key to HexTile
 var tiles: Dictionary = {}
+# Central manager for MultiMesh decorations
+var decoration_manager: Node3D = null
 # Array of all hex coordinates
 var all_coordinates: Array[HexCoordinates] = []
 # Height map for all tiles (coordinate key -> height value)
@@ -86,6 +88,11 @@ func generate_board() -> void:
 		var height = height_map.get(key, 0.0)
 		_create_tile(coord, biome, height)
 	
+	# Initialize Decoration Manager
+	decoration_manager = load("res://scripts/board/decoration_manager.gd").new()
+	decoration_manager.name = "DecorationManager"
+	add_child(decoration_manager)
+	
 	# VERTEX-BASED DISPLACEMENT SYSTEM
 	# Generate vertex heights based on biome interpolation
 	_generate_vertex_heights()
@@ -98,6 +105,10 @@ func generate_board() -> void:
 	
 	# Set up spawn positions
 	_setup_spawn_positions()
+	
+	# FINAL STEP: Build decoration MultiMeshes
+	if decoration_manager:
+		decoration_manager.build()
 	
 	print("Board generation complete!")
 
@@ -141,6 +152,11 @@ func generate_board_async() -> void:
 		if count % 30 == 0:
 			await get_tree().process_frame
 	
+	# Initialize Decoration Manager
+	decoration_manager = load("res://scripts/board/decoration_manager.gd").new()
+	decoration_manager.name = "DecorationManager"
+	add_child(decoration_manager)
+	
 	# VERTEX-BASED DISPLACEMENT SYSTEM
 	# Generate vertex heights based on biome interpolation
 	_generate_vertex_heights()
@@ -160,8 +176,8 @@ func generate_board_async() -> void:
 			var vertex_height = vertex_map.get(vertex_key, 0.0)
 			vertex_heights.append(vertex_height)
 		
-		# Update the tile mesh with these vertex heights
-		tile.update_mesh_with_vertex_heights(vertex_heights)
+		# Update the tile mesh with these vertex heights and pass the decoration manager
+		tile.update_mesh_with_vertex_heights(vertex_heights, decoration_manager)
 		
 		count += 1
 		if count % 30 == 0:
@@ -170,12 +186,21 @@ func generate_board_async() -> void:
 	# Set up spawn positions
 	_setup_spawn_positions()
 	
+	# FINAL STEP: Build decoration MultiMeshes
+	if decoration_manager:
+		decoration_manager.build()
+	
 	print("Async board generation complete!")
 	board_generated.emit()
 
 
 ## Clear existing board
 func _clear_board() -> void:
+	# Clear decorations first
+	if decoration_manager:
+		decoration_manager.queue_free()
+		decoration_manager = null
+		
 	for key in tiles:
 		tiles[key].queue_free()
 	tiles.clear()
@@ -357,8 +382,8 @@ func _update_tile_meshes_with_vertex_heights() -> void:
 			var vertex_height = vertex_map.get(vertex_key, 0.0)
 			vertex_heights.append(vertex_height)
 		
-		# Update the tile mesh with these vertex heights
-		tile.update_mesh_with_vertex_heights(vertex_heights)
+		# Update the tile mesh with these vertex heights and pass the decoration manager
+		tile.update_mesh_with_vertex_heights(vertex_heights, decoration_manager)
 
 
 ## Get world position of a hex vertex (corner)

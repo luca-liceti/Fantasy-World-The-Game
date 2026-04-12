@@ -168,8 +168,8 @@ func initialize_game(game_settings: Dictionary = {}) -> void:
 	# Initialize players
 	var player_names: Array[String] = []
 	var raw_names = settings.get("player_names", ["Player 1", "Player 2"])
-	for name in raw_names:
-		player_names.append(name)
+	for p_name in raw_names:
+		player_names.append(p_name)
 	player_manager.initialize_players(player_names)
 	
 	# Setup turn manager

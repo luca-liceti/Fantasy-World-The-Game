@@ -1,0 +1,44 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://tgpnxto0fuep"
+path.s3tc="res://.godot/imported/pine_roots_2k_opt_pine_roots_b_nor_gl_2k.jpg-c94f10f4663f1e843b1996ccf3b557e2.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "3e2b4b3e8426149e66327a9a7e5c9cf6"
+}
+
+[deps]
+
+source_file="res://assets/models/enviroment/forest/optimized_assets/pine_roots_2k_opt_pine_roots_b_nor_gl_2k.jpg"
+dest_files=["res://.godot/imported/pine_roots_2k_opt_pine_roots_b_nor_gl_2k.jpg-c94f10f4663f1e843b1996ccf3b557e2.s3tc.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/uastc_level=0
+compress/rdo_quality_loss=0.0
+compress/hdr_compression=1
+compress/normal_map=1
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=1
+roughness/src_normal="res://assets/models/enviroment/forest/optimized_assets/pine_roots_2k_opt_pine_roots_b_nor_gl_2k.jpg"
+process/channel_remap/red=0
+process/channel_remap/green=1
+process/channel_remap/blue=2
+process/channel_remap/alpha=3
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=0

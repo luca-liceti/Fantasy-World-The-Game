@@ -28,7 +28,7 @@ uniform sampler2D texture_ao       : hint_default_white,   filter_linear_mipmap_
 uniform float texture_scale : hint_range(0.05, 2.0) = 0.3;
 
 // --- Triplanar blending sharpness (higher = sharper XYZ seams) ---
-uniform float triplanar_sharpness : hint_range(1.0, 16.0) = 4.0;
+uniform float triplanar_sharpness : hint_range(1.0, 16.0) = 8.0;
 
 // --- Stochastic sampling strength ---
 // 0 = disabled (original tiling), 1 = full stochastic randomisation
@@ -45,6 +45,8 @@ uniform float normal_scale       : hint_range(0.0, 3.0)  = 1.3;
 uniform float ao_intensity       : hint_range(0.0, 1.0)  = 0.5;
 uniform float brightness         : hint_range(0.5, 2.0)  = 1.25;
 uniform vec4  albedo_tint        : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform float specular_override  : hint_range(0.0, 1.0)  = 0.5;
+uniform float metallic_override  : hint_range(0.0, 1.0)  = 0.0;
 
 // =============================================================================
 // HASH / NOISE HELPERS
@@ -366,9 +368,9 @@ void fragment() {
 	}
 	float ao_val = mix(ao_plain, ao_stoch, stochastic_strength);
 	AO = ao_val;
-	// Halve the AO light affect so the board isn't crushed to black
-	AO_LIGHT_AFFECT = ao_intensity * 0.5;
+	// Apply AO heavily to direct light to ground decorations and terrain details
+	AO_LIGHT_AFFECT = ao_intensity;
 
-	METALLIC = 0.0;
-	SPECULAR = 0.5;
+	METALLIC = metallic_override;
+	SPECULAR = specular_override;
 }

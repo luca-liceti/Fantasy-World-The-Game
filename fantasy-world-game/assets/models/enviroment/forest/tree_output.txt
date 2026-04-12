@@ -1,0 +1,224 @@
+[ 12K]  .
+├── [5.7K]  dry_branches_medium_01_2k.gltf
+├── [1.1K]  dry_branches_medium_01_2k.gltf.import
+├── [454K]  dry_branches_medium_01.bin
+├── [6.7K]  fern_02_2k.gltf
+├── [1.0K]  fern_02_2k.gltf.import
+├── [172K]  fern_02.bin
+├── [ 11K]  fir_sapling_2k.gltf
+├── [1.1K]  fir_sapling_2k.gltf.import
+├── [ 21M]  fir_sapling.bin
+├── [ 17K]  fir_sapling_medium_2k.gltf
+├── [1.1K]  fir_sapling_medium_2k.gltf.import
+├── [ 71M]  fir_sapling_medium.bin
+├── [ 30K]  fir_tree_01_2k.gltf
+├── [1.1K]  fir_tree_01_2k.gltf.import
+├── [456M]  fir_tree_01.bin
+├── [ 26K]  grass_medium_01_2k.gltf
+├── [1.1K]  grass_medium_01_2k.gltf.import
+├── [983K]  grass_medium_01.bin
+├── [ 18K]  moss_01_2k.gltf
+├── [1.0K]  moss_01_2k.gltf.import
+├── [7.1K]  moss_01.bin
+├── [5.0K]  pine_roots_2k.gltf
+├── [1.1K]  pine_roots_2k.gltf.import
+├── [3.6M]  pine_roots.bin
+├── [ 16K]  pine_sapling_medium_2k.gltf
+├── [1.1K]  pine_sapling_medium_2k.gltf.import
+├── [251M]  pine_sapling_medium.bin
+├── [ 11K]  pine_sapling_small_2k.gltf
+├── [1.1K]  pine_sapling_small_2k.gltf.import
+├── [ 17M]  pine_sapling_small.bin
+├── [ 30K]  pine_tree_01_2k.gltf
+├── [1.1K]  pine_tree_01_2k.gltf.import
+├── [905M]  pine_tree_01.bin
+├── [9.8K]  rock_moss_set_01_2k.gltf
+├── [1.1K]  rock_moss_set_01_2k.gltf.import
+├── [1.4M]  rock_moss_set_01.bin
+├── [ 11K]  rock_moss_set_02_2k.gltf
+├── [1.1K]  rock_moss_set_02_2k.gltf.import
+├── [1.3M]  rock_moss_set_02.bin
+├── [ 44K]  textures
+│   ├── [2.8M]  dry_branches_medium_01_arm_2k.jpg
+│   ├── [1.1K]  dry_branches_medium_01_arm_2k.jpg.import
+│   ├── [2.7M]  dry_branches_medium_01_diff_2k.jpg
+│   ├── [1.1K]  dry_branches_medium_01_diff_2k.jpg.import
+│   ├── [4.3M]  dry_branches_medium_01_nor_gl_2k.jpg
+│   ├── [1.1K]  dry_branches_medium_01_nor_gl_2k.jpg.import
+│   ├── [831K]  fern_02_arm_2k.jpg
+│   ├── [1.0K]  fern_02_arm_2k.jpg.import
+│   ├── [970K]  fern_02_diff_2k.jpg
+│   ├── [1.0K]  fern_02_diff_2k.jpg.import
+│   ├── [1.3M]  fern_02_nor_gl_2k.jpg
+│   ├── [1.1K]  fern_02_nor_gl_2k.jpg.import
+│   ├── [2.7M]  fir_sapling_branches_arm_2k.jpg
+│   ├── [1.0K]  fir_sapling_branches_arm_2k.jpg.import
+│   ├── [2.7M]  fir_sapling_branches_diff_2k.jpg
+│   ├── [1.1K]  fir_sapling_branches_diff_2k.jpg.import
+│   ├── [3.7M]  fir_sapling_branches_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_sapling_branches_nor_gl_2k.jpg.import
+│   ├── [2.7M]  fir_sapling_medium_branches_arm_2k.jpg
+│   ├── [1.1K]  fir_sapling_medium_branches_arm_2k.jpg.import
+│   ├── [2.7M]  fir_sapling_medium_branches_diff_2k.jpg
+│   ├── [1.1K]  fir_sapling_medium_branches_diff_2k.jpg.import
+│   ├── [3.7M]  fir_sapling_medium_branches_nor_gl_2k.jpg
+│   ├── [1.2K]  fir_sapling_medium_branches_nor_gl_2k.jpg.import
+│   ├── [1.2M]  fir_sapling_medium_twigs_arm_2k.jpg
+│   ├── [1.1K]  fir_sapling_medium_twigs_arm_2k.jpg.import
+│   ├── [887K]  fir_sapling_medium_twigs_diff_2k.jpg
+│   ├── [1.1K]  fir_sapling_medium_twigs_diff_2k.jpg.import
+│   ├── [1.5M]  fir_sapling_medium_twigs_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_sapling_medium_twigs_nor_gl_2k.jpg.import
+│   ├── [900K]  fir_sapling_twigs_arm_2k.jpg
+│   ├── [1.0K]  fir_sapling_twigs_arm_2k.jpg.import
+│   ├── [734K]  fir_sapling_twigs_diff_2k.jpg
+│   ├── [1.0K]  fir_sapling_twigs_diff_2k.jpg.import
+│   ├── [1.6M]  fir_sapling_twigs_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_sapling_twigs_nor_gl_2k.jpg.import
+│   ├── [2.7M]  fir_tree_01_bark_arm_2k.jpg
+│   ├── [1.0K]  fir_tree_01_bark_arm_2k.jpg.import
+│   ├── [2.7M]  fir_tree_01_bark_diff_2k.jpg
+│   ├── [1.0K]  fir_tree_01_bark_diff_2k.jpg.import
+│   ├── [3.7M]  fir_tree_01_bark_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_tree_01_bark_nor_gl_2k.jpg.import
+│   ├── [2.8M]  fir_tree_01_trunk_a_arm_2k.jpg
+│   ├── [1.0K]  fir_tree_01_trunk_a_arm_2k.jpg.import
+│   ├── [2.9M]  fir_tree_01_trunk_a_diff_2k.jpg
+│   ├── [1.0K]  fir_tree_01_trunk_a_diff_2k.jpg.import
+│   ├── [3.5M]  fir_tree_01_trunk_a_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_tree_01_trunk_a_nor_gl_2k.jpg.import
+│   ├── [2.6M]  fir_tree_01_trunk_b_arm_2k.jpg
+│   ├── [1.0K]  fir_tree_01_trunk_b_arm_2k.jpg.import
+│   ├── [2.4M]  fir_tree_01_trunk_b_diff_2k.jpg
+│   ├── [1.0K]  fir_tree_01_trunk_b_diff_2k.jpg.import
+│   ├── [3.1M]  fir_tree_01_trunk_b_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_tree_01_trunk_b_nor_gl_2k.jpg.import
+│   ├── [1.2M]  fir_tree_01_twig_arm_2k.jpg
+│   ├── [1.0K]  fir_tree_01_twig_arm_2k.jpg.import
+│   ├── [1.1M]  fir_tree_01_twig_diff_2k.jpg
+│   ├── [1.0K]  fir_tree_01_twig_diff_2k.jpg.import
+│   ├── [1.5M]  fir_tree_01_twig_nor_gl_2k.jpg
+│   ├── [1.1K]  fir_tree_01_twig_nor_gl_2k.jpg.import
+│   ├── [4.3M]  forest_ground_04_diff_2k.jpg
+│   ├── [1.0K]  forest_ground_04_diff_2k.jpg.import
+│   ├── [5.0M]  forest_ground_04_nor_gl_2k.jpg
+│   ├── [1.1K]  forest_ground_04_nor_gl_2k.jpg.import
+│   ├── [2.4M]  forest_ground_04_rough_2k.jpg
+│   ├── [1.0K]  forest_ground_04_rough_2k.jpg.import
+│   ├── [1.2M]  forest_leaves_04_arm_2k.jpg
+│   ├── [1.0K]  forest_leaves_04_arm_2k.jpg.import
+│   ├── [1.5M]  forest_leaves_04_diff_2k.jpg
+│   ├── [1.0K]  forest_leaves_04_diff_2k.jpg.import
+│   ├── [2.1M]  forest_leaves_04_nor_gl_2k.jpg
+│   ├── [1.1K]  forest_leaves_04_nor_gl_2k.jpg.import
+│   ├── [2.2M]  grass_medium_01_arm_2k.jpg
+│   ├── [1.0K]  grass_medium_01_arm_2k.jpg.import
+│   ├── [1.1M]  grass_medium_01_diff_2k.jpg
+│   ├── [1.0K]  grass_medium_01_diff_2k.jpg.import
+│   ├── [3.4M]  grass_medium_01_nor_gl_2k.jpg
+│   ├── [1.1K]  grass_medium_01_nor_gl_2k.jpg.import
+│   ├── [1.0M]  moss_01_arm_2k.jpg
+│   ├── [1.0K]  moss_01_arm_2k.jpg.import
+│   ├── [500K]  moss_01_diff_2k.jpg
+│   ├── [1.0K]  moss_01_diff_2k.jpg.import
+│   ├── [1.6M]  moss_01_nor_gl_2k.jpg
+│   ├── [1.1K]  moss_01_nor_gl_2k.jpg.import
+│   ├── [2.9M]  pine_bark_arm_2k.jpg
+│   ├── [1.0K]  pine_bark_arm_2k.jpg.import
+│   ├── [3.0M]  pine_bark_diff_2k.jpg
+│   ├── [1.0K]  pine_bark_diff_2k.jpg.import
+│   ├── [4.4M]  pine_bark_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_bark_nor_gl_2k.jpg.import
+│   ├── [3.1M]  pine_roots_a_arm_2k.jpg
+│   ├── [1.0K]  pine_roots_a_arm_2k.jpg.import
+│   ├── [2.7M]  pine_roots_a_diff_2k.jpg
+│   ├── [1.0K]  pine_roots_a_diff_2k.jpg.import
+│   ├── [5.1M]  pine_roots_a_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_roots_a_nor_gl_2k.jpg.import
+│   ├── [3.1M]  pine_roots_b_arm_2k.jpg
+│   ├── [1.0K]  pine_roots_b_arm_2k.jpg.import
+│   ├── [2.7M]  pine_roots_b_diff_2k.jpg
+│   ├── [1.0K]  pine_roots_b_diff_2k.jpg.import
+│   ├── [5.1M]  pine_roots_b_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_roots_b_nor_gl_2k.jpg.import
+│   ├── [2.8M]  pine_sapling_medium_bark_arm_2k.jpg
+│   ├── [1.1K]  pine_sapling_medium_bark_arm_2k.jpg.import
+│   ├── [2.6M]  pine_sapling_medium_bark_diff_2k.jpg
+│   ├── [1.1K]  pine_sapling_medium_bark_diff_2k.jpg.import
+│   ├── [3.2M]  pine_sapling_medium_bark_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_sapling_medium_bark_nor_gl_2k.jpg.import
+│   ├── [1.5M]  pine_sapling_medium_twig_arm_2k.jpg
+│   ├── [1.1K]  pine_sapling_medium_twig_arm_2k.jpg.import
+│   ├── [1.5M]  pine_sapling_medium_twig_diff_2k.jpg
+│   ├── [1.1K]  pine_sapling_medium_twig_diff_2k.jpg.import
+│   ├── [2.8M]  pine_sapling_medium_twig_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_sapling_medium_twig_nor_gl_2k.jpg.import
+│   ├── [2.8M]  pine_sapling_small_bark_arm_2k.jpg
+│   ├── [1.1K]  pine_sapling_small_bark_arm_2k.jpg.import
+│   ├── [2.6M]  pine_sapling_small_bark_diff_2k.jpg
+│   ├── [1.1K]  pine_sapling_small_bark_diff_2k.jpg.import
+│   ├── [3.2M]  pine_sapling_small_bark_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_sapling_small_bark_nor_gl_2k.jpg.import
+│   ├── [1.2M]  pine_sapling_small_twig_arm_2k.jpg
+│   ├── [1.1K]  pine_sapling_small_twig_arm_2k.jpg.import
+│   ├── [1.5M]  pine_sapling_small_twig_diff_2k.jpg
+│   ├── [1.1K]  pine_sapling_small_twig_diff_2k.jpg.import
+│   ├── [2.4M]  pine_sapling_small_twig_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_sapling_small_twig_nor_gl_2k.jpg.import
+│   ├── [2.8M]  pine_tree_01_bark_arm_2k.jpg
+│   ├── [1.0K]  pine_tree_01_bark_arm_2k.jpg.import
+│   ├── [2.6M]  pine_tree_01_bark_diff_2k.jpg
+│   ├── [1.0K]  pine_tree_01_bark_diff_2k.jpg.import
+│   ├── [3.2M]  pine_tree_01_bark_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_tree_01_bark_nor_gl_2k.jpg.import
+│   ├── [2.8M]  pine_tree_01_trunk_a_arm_2k.jpg
+│   ├── [1.0K]  pine_tree_01_trunk_a_arm_2k.jpg.import
+│   ├── [2.9M]  pine_tree_01_trunk_a_diff_2k.jpg
+│   ├── [1.1K]  pine_tree_01_trunk_a_diff_2k.jpg.import
+│   ├── [3.5M]  pine_tree_01_trunk_a_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_tree_01_trunk_a_nor_gl_2k.jpg.import
+│   ├── [2.6M]  pine_tree_01_trunk_b_arm_2k.jpg
+│   ├── [1.0K]  pine_tree_01_trunk_b_arm_2k.jpg.import
+│   ├── [2.4M]  pine_tree_01_trunk_b_diff_2k.jpg
+│   ├── [1.1K]  pine_tree_01_trunk_b_diff_2k.jpg.import
+│   ├── [3.1M]  pine_tree_01_trunk_b_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_tree_01_trunk_b_nor_gl_2k.jpg.import
+│   ├── [1.5M]  pine_tree_01_twig_arm_2k.jpg
+│   ├── [1.0K]  pine_tree_01_twig_arm_2k.jpg.import
+│   ├── [1.5M]  pine_tree_01_twig_diff_2k.jpg
+│   ├── [1.0K]  pine_tree_01_twig_diff_2k.jpg.import
+│   ├── [2.8M]  pine_tree_01_twig_nor_gl_2k.jpg
+│   ├── [1.1K]  pine_tree_01_twig_nor_gl_2k.jpg.import
+│   ├── [634K]  rock_moss_set_01_diff_2k.jpg
+│   ├── [1.0K]  rock_moss_set_01_diff_2k.jpg.import
+│   ├── [821K]  rock_moss_set_01_nor_gl_2k.jpg
+│   ├── [1.1K]  rock_moss_set_01_nor_gl_2k.jpg.import
+│   ├── [287K]  rock_moss_set_01_rough_2k.jpg
+│   ├── [1.0K]  rock_moss_set_01_rough_2k.jpg.import
+│   ├── [733K]  rock_moss_set_02_diff_2k.jpg
+│   ├── [1.0K]  rock_moss_set_02_diff_2k.jpg.import
+│   ├── [977K]  rock_moss_set_02_nor_gl_2k.jpg
+│   ├── [1.1K]  rock_moss_set_02_nor_gl_2k.jpg.import
+│   ├── [490K]  rock_moss_set_02_rough_2k.jpg
+│   ├── [1.0K]  rock_moss_set_02_rough_2k.jpg.import
+│   ├── [2.7M]  tree_stump_01_arm_2k.jpg
+│   ├── [1.0K]  tree_stump_01_arm_2k.jpg.import
+│   ├── [3.0M]  tree_stump_01_diff_2k.jpg
+│   ├── [1.0K]  tree_stump_01_diff_2k.jpg.import
+│   ├── [4.2M]  tree_stump_01_nor_gl_2k.jpg
+│   ├── [1.1K]  tree_stump_01_nor_gl_2k.jpg.import
+│   ├── [2.8M]  tree_stump_02_arm_2k.jpg
+│   ├── [1.0K]  tree_stump_02_arm_2k.jpg.import
+│   ├── [3.3M]  tree_stump_02_diff_2k.jpg
+│   ├── [1.0K]  tree_stump_02_diff_2k.jpg.import
+│   ├── [5.0M]  tree_stump_02_nor_gl_2k.jpg
+│   └── [1.1K]  tree_stump_02_nor_gl_2k.jpg.import
+├── [   0]  tree_output.txt
+├── [2.7K]  tree_stump_01_2k.gltf
+├── [1.1K]  tree_stump_01_2k.gltf.import
+├── [943K]  tree_stump_01.bin
+├── [2.7K]  tree_stump_02_2k.gltf
+├── [1.1K]  tree_stump_02_2k.gltf.import
+└── [1.4M]  tree_stump_02.bin
+
+2 directories, 220 files
