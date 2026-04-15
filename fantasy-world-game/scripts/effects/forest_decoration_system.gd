@@ -45,29 +45,44 @@ extends RefCounted
 const BASE_PATH := "res://assets/models/enviroment/forest/optimized_assets/"
 
 # ----- GRASS LOD VARIANTS -----
+# Pipe syntax: "path|MeshNodeName" targets a specific sub-mesh inside the GLB.
+const GRASS_GLB := BASE_PATH + "grass_medium_01_2k_opt.glb"
+
 # Large grass (a-c): Tall, dense grass clumps for close-up
 const GRASS_LARGE := [
-	BASE_PATH + "grass_medium_01_2k_opt.glb",
+	GRASS_GLB + "|grass_medium_01_large_a_LOD0",
+	GRASS_GLB + "|grass_medium_01_large_b_LOD0",
+	GRASS_GLB + "|grass_medium_01_large_c_LOD0",
 ]
 
 # Mid grass (a-c): Medium height grass for mid-distance
 const GRASS_MID := [
-	BASE_PATH + "grass_medium_01_2k_opt.glb",
+	GRASS_GLB + "|grass_medium_01_mid_a_LOD0",
+	GRASS_GLB + "|grass_medium_01_mid_b_LOD0",
+	GRASS_GLB + "|grass_medium_01_mid_c_LOD0",
 ]
 
 # Small grass (a-b): Compact grass for background fill
 const GRASS_SMALL := [
-	BASE_PATH + "grass_medium_01_2k_opt.glb",
+	GRASS_GLB + "|grass_medium_01_small_a_LOD0",
+	GRASS_GLB + "|grass_medium_01_small_b_LOD0",
 ]
 
 # Tall grass (a-c): Upright tall grass variations
 const GRASS_TALL := [
-	BASE_PATH + "grass_medium_01_2k_opt.glb",
+	GRASS_GLB + "|grass_medium_01_tall_a_LOD0",
+	GRASS_GLB + "|grass_medium_01_tall_b_LOD0",
+	GRASS_GLB + "|grass_medium_01_tall_c_LOD0",
 ]
 
 # Tiny grass (a-f): Very small grass tufts for dense fill
 const GRASS_TINY := [
-	BASE_PATH + "grass_medium_01_2k_opt.glb",
+	GRASS_GLB + "|grass_medium_01_tiny_a_LOD0",
+	GRASS_GLB + "|grass_medium_01_tiny_b_LOD0",
+	GRASS_GLB + "|grass_medium_01_tiny_c_LOD0",
+	GRASS_GLB + "|grass_medium_01_tiny_d_LOD0",
+	GRASS_GLB + "|grass_medium_01_tiny_e_LOD0",
+	GRASS_GLB + "|grass_medium_01_tiny_f_LOD0",
 ]
 
 # ----- ground cover (low poly, center-safe) ----------------------------------
@@ -122,7 +137,7 @@ const GRASS_LOD_POOLS: Dictionary = {
 # =============================================================================
 
 const DECO_SCALE: Dictionary = {
-	"grass_medium_01_2k_opt.glb": {"base": 0.45},  # 1/4 knight height (~45cm grass)
+	"grass_medium_01_2k_opt.glb": {"base": 0.80},  # Properly sized floor clump (~80cm spread)
 	"fern_02_2k_opt.glb": {"base": 0.350},  # Increased for visibility
 	"moss_01_2k_opt.glb": {"base": 0.400},  # Increased for visibility
 	"rock_moss_set_01_2k_opt.glb": {"base": 0.240},
@@ -175,28 +190,31 @@ const SURFACE_OFFSET := 0.02 # Y lift above tile surface
 
 const BIOME_CONFIG: Dictionary = {
 	Biomes.Type.FOREST: {
-		# CENTER: No grass clumps - grass is handled by GrassSystem
+		# CENTER: No grass clumps - grass is handled by the blade-based GrassSystem
 		"center_pool": [],
 		"center_weights": [],
 		"center_chance": 0.0,
 		"center_count_min": 0,
 		"center_count_max": 0,
 
-		# GROUND FILL: Dense grass handled by GrassSystem - disable here
+		# GROUND FILL: Disabled — blade-based GrassSystem now handles all grass.
+		# Keeping the config keys so the code path doesn't error, just disabled.
 		"grass_ground_enabled": false,
-		"grass_ground_pool": [],
+		"grass_ground_pool": GRASS_MID,
 		"grass_ground_attempts": 0,
 		"grass_ground_chance": 0.0,
 
 		# Small ground-cover in outer zone (ferns, moss, rocks)
 		"small_pool": [
 			PATH_FERN, PATH_FERN, PATH_FERN, PATH_FERN,
-			PATH_FERN, PATH_FERN,
+			PATH_FERN, PATH_FERN, PATH_FERN, PATH_FERN,
+			PATH_FERN, PATH_FERN, PATH_FERN, PATH_FERN,
+			PATH_MOSS, PATH_MOSS, PATH_MOSS, PATH_MOSS,
 			PATH_MOSS, PATH_MOSS, PATH_MOSS, PATH_MOSS,
 			PATH_ROCK_SET_01, PATH_ROCK_SET_02,
-			PATH_STUMP_01, PATH_STUMP_02,
-			PATH_PINE_ROOTS,
-			PATH_DRY_BRANCHES,
+			PATH_STUMP_01, PATH_STUMP_02, PATH_STUMP_01, PATH_STUMP_02,
+			PATH_PINE_ROOTS, PATH_PINE_ROOTS,
+			PATH_DRY_BRANCHES, PATH_DRY_BRANCHES,
 		],
 		"small_attempts": 8,
 		"small_chance": 0.75,
@@ -335,7 +353,8 @@ static func decorate_tile(
 			var pos = Vector3(uv_pos.x, sd["y"] + SURFACE_OFFSET * 0.5, uv_pos.y)
 			var lod_level = _get_grass_lod_for_position(tile_transform * Transform3D().translated(pos))
 			var lod_path = _get_lod_path(path, lod_level)
-			var transform = _get_decoration_transform(lod_path, pos, sd["normal"], rng, false, GrassLOD.TINY)
+			# Pass -1 (no LOD scale) so the base DECO_SCALE size is used as-is.
+			var transform = _get_decoration_transform(lod_path, pos, sd["normal"], rng, false, -1)
 			manager.add_decoration(lod_path, tile_transform * transform)
 			placed_count += 1
 
@@ -522,7 +541,10 @@ static func _get_decoration_transform(
 		basis = Basis(tilt) * basis
 		
 	# 3. Apply Calibrated Scale (matching DECO_SCALE table)
+	# Strip the "|MeshName" suffix if present — scale table is keyed by .glb filename only.
 	var scale_key := path.get_file()
+	if "|" in scale_key:
+		scale_key = scale_key.split("|")[0]
 	var s := 1.0
 	if DECO_SCALE.has(scale_key):
 		var base_s: float = DECO_SCALE[scale_key]["base"]

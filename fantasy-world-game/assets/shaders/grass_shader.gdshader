@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode cull_disabled, ensure_correct_normals;
 
+// Heightmap global — set heightmap_scale=0.0 in project settings to disable.
+// A dummy 1×1 texture is fine when no real heightmap is provided.
 global uniform sampler2D heightmap : filter_linear, repeat_enable;
 global uniform float heightmap_scale;
 global uniform vec3 player_position;
@@ -14,7 +16,7 @@ uniform sampler2D wind_noise;
 group_uniforms GrassColor;
 uniform vec3 base_color : source_color = vec3(0.2, 0.38, 0.12);
 uniform vec3 tip_color : source_color = vec3(0.55, 0.55, 0.25);
-uniform vec3 subsurface_scattering_color : source_color = vec3(1.0,0.85,0.4);
+uniform vec3 subsurface_scattering_color : source_color = vec3(1.0, 0.85, 0.4);
 uniform float brightness : hint_range(0.0, 3.0) = 1.2;
 
 float hash12(vec2 x) {
@@ -63,26 +65,30 @@ void vertex() {
 
 	vec3 camera_offset = NODE_POSITION_WORLD - CAMERA_POSITION_WORLD;
 	float camera_distance = length(camera_offset);
-	float height_offset = mix(0.4, 2.0, mix(hash0, clump0, 0.8));
+	float height_offset = mix(0.2, 1.0, mix(hash0, clump0, 0.8));
 
 	VERTEX.x *= mix(0.6, 1.0, hash1);
 	VERTEX.x *= 1.0 + min(ease_in_quartic(0.033*camera_distance), 75.0);
 	VERTEX.y *= height_offset;
 	vec3 vertex_model = VERTEX;
 
-	float heightmap_offset = (texture(heightmap, NODE_POSITION_WORLD.xz / vec2(textureSize(heightmap, 0))).x - 0.5) * heightmap_scale;
+	// Heightmap offset — evaluates to 0 when heightmap_scale == 0.0
+	float heightmap_offset = 0.0;
+	if (heightmap_scale > 0.001) {
+		heightmap_offset = (texture(heightmap, NODE_POSITION_WORLD.xz / vec2(textureSize(heightmap, 0))).x - 0.5) * heightmap_scale;
+	}
 	float player_distance = length(player_position - (NODE_POSITION_WORLD + vec3(0, heightmap_offset, 0)));
 	float crushed_factor = min(player_distance*player_distance*1.2, 1.0);
 
 	float turn_angle_base = (mix(-0.15, 0.15, hash0) + clump2*clumping_factor)*TAU;
-	float wind_direction = texture(wind_noise, NODE_POSITION_WORLD.zx*0.005/wind_speed + TIME*0.005*wind_speed).x*TAU;
-	float wind_strength = mix(0.25, 1.0, texture(wind_noise, NODE_POSITION_WORLD.xz*0.025/wind_speed + TIME*0.05).x)*crushed_factor;
+	float wind_direction = texture(wind_noise, NODE_POSITION_WORLD.zx*0.005/max(wind_speed, 0.01) + TIME*0.005*wind_speed).x*TAU;
+	float wind_strength = mix(0.25, 1.0, texture(wind_noise, NODE_POSITION_WORLD.xz*0.025/max(wind_speed, 0.01) + TIME*0.05).x)*crushed_factor;
 	wind_strength *= wind_strength;
 	wind_strength *= mix(0.6, 0.7, hash1) * wind_speed;
 	mat3 grass_rotate = rotate_y(mix(turn_angle_base, wind_direction, wind_strength));
 
 	float bend_angle_base = mix(0.12, 0.25, hash1 + height_offset*0.1)*PI*height_factor;
-	float wind_strength_turbulence = mix(0.25, 1.0, texture(wind_noise, NODE_POSITION_WORLD.xz*0.025/wind_speed + (TIME + height_factor*height_factor*0.25)*0.05).x);
+	float wind_strength_turbulence = mix(0.25, 1.0, texture(wind_noise, NODE_POSITION_WORLD.xz*0.025/max(wind_speed, 0.01) + (TIME + height_factor*height_factor*0.25)*0.05).x);
 	wind_strength_turbulence *= wind_strength_turbulence;
 	wind_strength_turbulence *= mix(0.16, 0.25*hash0, clump1)*PI * min(wind_speed, 1.0);
 	mat3 grass_bend = rotate_x(mix(0.45*PI, bend_angle_base + wind_strength_turbulence, crushed_factor));

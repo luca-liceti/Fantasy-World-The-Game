@@ -642,20 +642,16 @@ func _setup_forest_decorations(manager: Node3D = null) -> void:
 		)
 
 
-## Create dense grass using GrassSystem
+## Create grass blades using GrassSystem (GodotGrass blade-shader approach).
+## GrassSystem.BIOME_GRASS_CONFIG controls which biomes actually get grass.
 func _setup_grass() -> void:
 	if grass_node:
 		grass_node.queue_free()
 		grass_node = null
-	
-	# Only create grass for FOREST biome (enabled in GrassSystem)
-	if biome_type != Biomes.Type.FOREST:
-		return
-	
+
 	grass_node = GrassSystem.create_grass_for_hex(biome_type, hex_size, stored_vertex_heights)
 	if grass_node:
 		add_child(grass_node)
-		print("[HexTile] Created grass for %s at %s" % [Biomes.get_biome_name(biome_type), coordinates._to_string() if coordinates else "null"])
 
 
 # =============================================================================
