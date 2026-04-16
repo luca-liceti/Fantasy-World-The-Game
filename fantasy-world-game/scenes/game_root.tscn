@@ -1,3 +1,5 @@
-[gd_scene load_steps=0 format=3 uid="uid://clk3y85m2a6cd"]
+[gd_scene format=3 uid="uid://clk3y85m2a6cd"]
 
-[node name="GameRoot" type="Node"]
+[node name="GameRoot" type="Node" unique_id=1825133947]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1995854973]

@@ -191,6 +191,7 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	# under-represented neighbors. This keeps shapes organic (only boundary
 	# tiles move) while enforcing roughly equal distribution.
 	# ==========================================================================
+	@warning_ignore("integer_division")
 	var target_per_biome: int = TOTAL_TILES / NUM_BIOMES  # ~56
 	var tolerance: int = 8  # Allow ±8 tiles from target (~±2%)
 	var max_rebalance_iters: int = 200  # Safety cap
@@ -745,10 +746,12 @@ func print_adjacency_violations(coordinates: Array[HexCoordinates], biome_map: D
 					var pair_key: String = str(mini(current, nb)) + "_" + str(maxi(current, nb))
 					violation_pairs[pair_key] = violation_pairs.get(pair_key, 0) + 1
 	
+	@warning_ignore("integer_division")
 	print("=== Adjacency Violations: %d ===" % [violations / 2])
 	if violations > 0:
 		print("  Forbidden pairs found:")
 		for pair_key in violation_pairs:
+			@warning_ignore("integer_division")
 			print("    %s: %d borders" % [pair_key, violation_pairs[pair_key] / 2])
 	else:
 		print("  ✓ All biome borders are valid!")
@@ -783,6 +786,7 @@ func get_statistics(coordinates: Array[HexCoordinates], biome_map: Dictionary) -
 		if same_count == 0:
 			stats["isolated_tiles"] += 1
 	
+	@warning_ignore("integer_division")
 	stats["adjacency_violations"] /= 2
 	
 	return stats

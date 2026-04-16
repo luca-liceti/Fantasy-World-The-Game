@@ -696,11 +696,25 @@ func _show_terrain_loading_screen() -> void:
 	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_property(root, "modulate:a", 1.0, 0.4)
 	
-	# Pulsing bar animation
-	var bar_tw = create_tween()
+	# Pulsing bar animation.
+	# IMPORTANT: tween_property on layout properties (custom_minimum_size) with
+	# set_loops() can trigger "Infinite loop detected" (tween.cpp:406) on freshly-
+	# added nodes whose layout hasn't flushed yet.  Use tween_method instead.
+	var bar_tw = bar_fill.create_tween()
 	bar_tw.set_loops()
-	bar_tw.tween_property(bar_fill, "custom_minimum_size", Vector2(398.0, 6.0), 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	bar_tw.tween_property(bar_fill, "custom_minimum_size", Vector2(40.0, 6.0), 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bar_tw.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
+	bar_tw.tween_method(
+		func(v: Vector2) -> void:
+			if is_instance_valid(bar_fill):
+				bar_fill.custom_minimum_size = v,
+		Vector2(40.0, 6.0), Vector2(398.0, 6.0), 1.5
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bar_tw.tween_method(
+		func(v: Vector2) -> void:
+			if is_instance_valid(bar_fill):
+				bar_fill.custom_minimum_size = v,
+		Vector2(398.0, 6.0), Vector2(40.0, 6.0), 1.5
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	
 	print("[TerrainLoadingScreen] Shown")
 
@@ -2100,7 +2114,7 @@ func _on_tile_selected(tile: HexTile) -> void:
 	_update_ui()
 
 
-func _on_tile_hovered(tile: HexTile) -> void:
+func _on_tile_hovered(_tile: HexTile) -> void:
 	# Could show tooltip or hover info
 	pass
 
@@ -2623,7 +2637,7 @@ func _switch_camera_to_player(player_id: int) -> void:
 	
 	# Show turn change notification
 	if game_ui:
-		var player_color = PLAYER1_COLOR if player_id == 0 else PLAYER2_COLOR
+		var _player_color = PLAYER1_COLOR if player_id == 0 else PLAYER2_COLOR
 		game_ui.show_info("⚔️ PLAYER %d's TURN ⚔️" % (player_id + 1))
 		get_tree().create_timer(2.0).timeout.connect(func():
 			if game_ui and action_mode == "none":

@@ -9,6 +9,7 @@ extends Node
 # SIGNALS
 # =============================================================================
 signal game_initialized()
+@warning_ignore("unused_signal")
 signal game_ready_to_start()
 signal game_started()
 signal game_ended(winner_id: int)
@@ -668,17 +669,17 @@ func _on_player_turn_started(player: Player) -> void:
 		troop.tick_buffs()
 
 
-func _on_player_turn_ended(player: Player) -> void:
+func _on_player_turn_ended(_player: Player) -> void:
 	# Process NPC actions at end of each turn
 	process_npc_actions()
 
 
-func _on_action_performed(player_id: int, action_type: String, data: Dictionary) -> void:
+func _on_action_performed(_player_id: int, _action_type: String, _data: Dictionary) -> void:
 	# Can be used for logging, replay, or network sync
 	pass
 
 
-func _on_turn_phase_changed(new_phase: TurnManager.Phase) -> void:
+func _on_turn_phase_changed(_new_phase: TurnManager.Phase) -> void:
 	pass
 
 

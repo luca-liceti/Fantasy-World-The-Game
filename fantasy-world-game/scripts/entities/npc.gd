@@ -235,7 +235,7 @@ static func get_random_npc_type() -> String:
 
 ## Try to spawn an NPC at a hex
 ## Returns: The spawned NPC or null if spawn failed
-static func try_spawn_at(hex: Node, hex_board: Node) -> NPC:
+static func try_spawn_at(hex: Node, _hex_board: Node) -> NPC:
 	# Cannot spawn on occupied hex
 	if hex.is_occupied():
 		return null

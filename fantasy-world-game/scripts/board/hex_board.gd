@@ -659,7 +659,7 @@ func get_perimeter_points() -> Array[Vector3]:
 			if neighbor_key not in tiles:
 				# Calculate the two corners of this edge
 				var tile_pos = coord.to_pixel(hex_size)
-				var tile_height = height_map.get(key, 0.0)
+				var _tile_height = height_map.get(key, 0.0)
 				
 				# Corner angles: flat-top hex starts at -30 degrees
 				var angle1 = deg_to_rad(60 * i - 30)
@@ -880,7 +880,7 @@ func has_line_of_sight(from: HexCoordinates, to: HexCoordinates) -> bool:
 # =============================================================================
 
 ## Get valid mine placement tiles
-func get_valid_mine_placements(player_id: int, existing_mines: Array) -> Array[HexTile]:
+func get_valid_mine_placements(_player_id: int, existing_mines: Array) -> Array[HexTile]:
 	var result: Array[HexTile] = []
 	
 	for key in tiles:

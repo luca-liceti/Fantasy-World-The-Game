@@ -45,7 +45,7 @@ static func get_stunned_defender_stance() -> int:
 # =============================================================================
 
 ## Handle troop dying from status effect damage
-static func handle_status_death(troop: Node, effect_id: String, player_manager) -> Dictionary:
+static func handle_status_death(troop: Node, effect_id: String, _player_manager) -> Dictionary:
 	var result = {
 		"troop_died": false,
 		"killer_effect": effect_id,
@@ -277,7 +277,7 @@ static func can_resurrect(caster: Node, player: Node) -> Dictionary:
 
 
 ## Execute resurrection
-static func resurrect_troop(troop_id: String, player: Node, spawn_tile: Node) -> Dictionary:
+static func resurrect_troop(troop_id: String, _player: Node, spawn_tile: Node) -> Dictionary:
 	var result = {
 		"success": false,
 		"troop": null,
@@ -357,7 +357,7 @@ static func execute_self_destruct(caster: Node, hex_board: Node) -> Dictionary:
 # =============================================================================
 
 ## Check if a combat scenario has any edge cases that need special handling
-static func analyze_combat(attacker: Node, defender: Node, move: MoveData.Move) -> Dictionary:
+static func analyze_combat(_attacker: Node, defender: Node, move: MoveData.Move) -> Dictionary:
 	var analysis = {
 		"is_self_targeting": false,
 		"is_aoe": false,

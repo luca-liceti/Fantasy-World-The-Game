@@ -238,6 +238,7 @@ func resume_timer() -> void:
 ## Get remaining time as formatted string (MM:SS)
 func get_timer_string() -> String:
 	var seconds = int(turn_timer_remaining)
+	@warning_ignore("integer_division")
 	var mins = seconds / 60
 	var secs = seconds % 60
 	return "%d:%02d" % [mins, secs]

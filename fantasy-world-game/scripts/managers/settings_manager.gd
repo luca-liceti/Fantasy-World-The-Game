@@ -247,7 +247,7 @@ func set_setting(path: String, value: Variant, auto_save: bool = true) -> void:
 	if not settings.has(section):
 		settings[section] = {}
 	
-	var old_value = settings[section].get(key)
+	var _old_value = settings[section].get(key)
 	settings[section][key] = value
 	
 	# Apply the setting immediately
@@ -387,6 +387,7 @@ func _apply_graphics_setting(key: String, value: Variant) -> void:
 				DisplayServer.window_set_size(res)
 				# Center window
 				var screen_size = DisplayServer.screen_get_size()
+				@warning_ignore("integer_division")
 				var pos = (screen_size - res) / 2
 				DisplayServer.window_set_position(pos)
 		"vsync":
@@ -419,17 +420,17 @@ func _apply_graphics_setting(key: String, value: Variant) -> void:
 			print("[SettingsManager] Groove textures: %s" % ("Enabled" if value else "Disabled"))
 
 
-func _apply_controls_setting(key: String, _value: Variant) -> void:
+func _apply_controls_setting(_key: String, _value: Variant) -> void:
 	# Controls are applied when checking input
 	pass
 
 
-func _apply_gameplay_setting(key: String, _value: Variant) -> void:
+func _apply_gameplay_setting(_key: String, _value: Variant) -> void:
 	# Gameplay settings are read when needed
 	pass
 
 
-func _apply_accessibility_setting(key: String, _value: Variant) -> void:
+func _apply_accessibility_setting(_key: String, _value: Variant) -> void:
 	# Accessibility settings are applied by UI components
 	pass
 

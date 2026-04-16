@@ -138,9 +138,9 @@ func _create_ui() -> void:
 	
 	# Center panel
 	background_panel = PanelContainer.new()
-	background_panel.set_anchors_preset(Control.PRESET_CENTER)
+	background_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	background_panel.custom_minimum_size = Vector2(650, 500)
-	background_panel.position = Vector2(-325, -250)
+	background_panel.position = Vector2(-325, -520) # 20px padding from bottom
 	main_container.add_child(background_panel)
 	
 	background_panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))

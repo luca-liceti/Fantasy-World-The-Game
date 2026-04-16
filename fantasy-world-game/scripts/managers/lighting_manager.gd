@@ -43,7 +43,7 @@ const GOLDEN_HOUR_PROFILE: Dictionary = {
 	"fog_sky_affect": 0.7,
 	
 	# Tonemap - ACES Filmic
-	"tonemap_mode": 3,  # ACES Filmic
+	"tonemap_mode": Environment.TONE_MAPPER_ACES,  # ACES Filmic
 	"tonemap_exposure": 1.0,
 	"tonemap_white": 0.85,
 	
@@ -77,7 +77,7 @@ const GOLDEN_HOUR_PROFILE: Dictionary = {
 	"glow_intensity": 0.7,
 	"glow_strength": 0.85,
 	"glow_bloom": 0.08,
-	"glow_blend_mode": 1,  # Additive
+	"glow_blend_mode": Environment.GLOW_BLEND_MODE_ADDITIVE,  # Additive
 	
 	# SSR - wet surface reflections
 	"ssr_enabled": true,
@@ -211,7 +211,7 @@ static func create_golden_hour_environment() -> Environment:
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	
 	# Tonemap
-	env.tonemap_mode = GOLDEN_HOUR_PROFILE.tonemap_mode
+	env.tonemap_mode = GOLDEN_HOUR_PROFILE.tonemap_mode as Environment.ToneMapper
 	env.tonemap_exposure = GOLDEN_HOUR_PROFILE.tonemap_exposure
 	env.tonemap_white = GOLDEN_HOUR_PROFILE.tonemap_white
 	
@@ -254,7 +254,7 @@ static func create_golden_hour_environment() -> Environment:
 	env.glow_intensity = GOLDEN_HOUR_PROFILE.glow_intensity
 	env.glow_strength = GOLDEN_HOUR_PROFILE.glow_strength
 	env.glow_bloom = GOLDEN_HOUR_PROFILE.glow_bloom
-	env.glow_blend_mode = GOLDEN_HOUR_PROFILE.glow_blend_mode
+	env.glow_blend_mode = GOLDEN_HOUR_PROFILE.glow_blend_mode as Environment.GlowBlendMode
 	
 	# SSR
 	env.ssr_enabled = GOLDEN_HOUR_PROFILE.ssr_enabled

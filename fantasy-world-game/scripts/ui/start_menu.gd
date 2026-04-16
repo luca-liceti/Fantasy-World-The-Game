@@ -175,7 +175,7 @@ func _build_buttons(parent: Control) -> void:
 	_make_btn("CREDITS",            false).pressed.connect(_on_credits_pressed)
 	_make_btn("QUIT GAME",          false).pressed.connect(_on_quit_pressed)
 
-func _make_btn(label: String, primary: bool) -> Button:
+func _make_btn(label: String, _primary: bool) -> Button:
 	var btn = Button.new()
 	btn.name = label.replace(" ", "") + "Btn"
 	btn.text = label

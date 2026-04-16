@@ -28,10 +28,10 @@ func _init(q_coord: int = 0, r_coord: int = 0) -> void:
 
 
 ## Create from cube coordinates
-static func from_cube(x: int, y: int, z: int) -> HexCoordinates:
+static func from_cube(cx: int, cy: int, cz: int) -> HexCoordinates:
 	# Validate cube coordinates sum to 0
-	assert(x + y + z == 0, "Cube coordinates must sum to 0")
-	return HexCoordinates.new(x, z)
+	assert(cx + cy + cz == 0, "Cube coordinates must sum to 0")
+	return HexCoordinates.new(cx, cz)
 
 
 ## Create a copy of this hex coordinate
@@ -357,6 +357,7 @@ static func get_spawn_positions(radius: int, side: int) -> Array[HexCoordinates]
 		# Left edge (q = -radius)
 		# For q = -radius, valid r values are: 0 to radius
 		# Pick 4 positions centered around middle
+		@warning_ignore("integer_division")
 		var start_r = (radius - 3) / 2 # Center the 4 spawns
 		for i in range(4):
 			spawns.append(HexCoordinates.new(-radius, start_r + i))
@@ -364,6 +365,7 @@ static func get_spawn_positions(radius: int, side: int) -> Array[HexCoordinates]
 		# Right edge (q = radius)
 		# For q = radius, valid r values are: -radius to 0
 		# Pick 4 positions centered around middle
+		@warning_ignore("integer_division")
 		var start_r = (-radius + 3) / 2 - 3 # Center the 4 spawns
 		for i in range(4):
 			spawns.append(HexCoordinates.new(radius, start_r + i))

@@ -461,7 +461,9 @@ func _on_troop_card_pressed(slot_index: int) -> void:
 
 
 func _tween_card(card: Control, target_pos: Vector2, target_rot: float, target_scale: float, duration: float) -> void:
-	var tween = card.get_meta("tween", null) as Tween
+	var tween: Tween = null
+	if card.has_meta("tween"):
+		tween = card.get_meta("tween") as Tween
 	if tween and tween.is_valid():
 		tween.kill()
 		
@@ -940,7 +942,7 @@ func show_toast(message: String, color: Color = Color(0.3, 0.6, 1.0), duration: 
 	label.text = message
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(label, 13, Color(0.9, 0.9, 0.95))
+	UITheme.style_label(label, 13, color)
 	toast.add_child(label)
 	
 	toast_container.add_child(toast)

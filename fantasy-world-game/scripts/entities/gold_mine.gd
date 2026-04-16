@@ -185,7 +185,7 @@ static func can_place_at(hex: Node, player: Player, hex_board: Node) -> Dictiona
 
 
 ## Check if hex is at least MIN_DISTANCE_BETWEEN_MINES away from all player mines
-static func _check_mine_distance(hex: Node, player: Player, hex_board: Node) -> bool:
+static func _check_mine_distance(hex: Node, player: Player, _hex_board: Node) -> bool:
 	if not "coordinates" in hex:
 		return true
 	

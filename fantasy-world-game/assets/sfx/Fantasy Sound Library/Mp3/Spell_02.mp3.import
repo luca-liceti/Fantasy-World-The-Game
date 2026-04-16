@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://pv4ow3u545ba"
+path="res://.godot/imported/Spell_02.mp3-3af7755b9377a29451fcdf8972948687.mp3str"
+
+[deps]
+
+source_file="res://assets/sfx/Fantasy Sound Library/Mp3/Spell_02.mp3"
+dest_files=["res://.godot/imported/Spell_02.mp3-3af7755b9377a29451fcdf8972948687.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

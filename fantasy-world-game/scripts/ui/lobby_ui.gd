@@ -146,7 +146,7 @@ func _build_page_title() -> void:
 
 func _build_panels() -> void:
 	var panel_top = 300.0
-	var total_w   = LEFT_W + GAP + RIGHT_W
+	var _total_w   = LEFT_W + GAP + RIGHT_W
 	
 	# Create a centering anchor that covers the screen width at the target Y
 	# Even if the content grows (like the 3-button host lobby), it stays centered.

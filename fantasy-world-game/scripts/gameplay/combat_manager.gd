@@ -356,7 +356,7 @@ func _resolve_enhanced_combat() -> void:
 	# Check for self-targeting moves (heals, buffs, stealth)
 	if move and move.targets_self:
 		var self_result = CombatEdgeCases.execute_self_targeting_move(attacker, move)
-		var result = {
+		var self_targeting_result = {
 			"success": self_result.get("success", false),
 			"attacker": attacker,
 			"defender": null,  # No defender for self-targeting
@@ -371,7 +371,7 @@ func _resolve_enhanced_combat() -> void:
 			"modifiers": {}
 		}
 		combat_state = CombatState.COMPLETE
-		combat_resolved.emit(result)
+		combat_resolved.emit(self_targeting_result)
 		current_attacker = null
 		current_defender = null
 		return
@@ -402,9 +402,9 @@ func _resolve_enhanced_combat() -> void:
 		"modifiers": {}
 	}
 	
-	# Get biomes for positioning
-	var attacker_biome = _get_unit_biome(attacker)
-	var defender_biome = _get_unit_biome(defender)
+	# Get biomes for positioning (used internally by calculate_positioning_bonus)
+	var _attacker_biome = _get_unit_biome(attacker)
+	var _defender_biome = _get_unit_biome(defender)
 	
 	# Calculate all modifiers (Phase 2.3)
 	var modifiers = calculate_final_modifiers(attacker, defender, move, stance)
@@ -521,7 +521,7 @@ func calculate_positioning_bonus(attacker: Node, defender: Node) -> Dictionary:
 	if hex_board == null or attacker.current_hex == null or defender.current_hex == null:
 		return bonus
 	
-	var attacker_coord = attacker.current_hex.coordinates
+	var _attacker_coord = attacker.current_hex.coordinates
 	var defender_coord = defender.current_hex.coordinates
 	
 	# Check flanking: ally adjacent to defender
@@ -627,7 +627,7 @@ func calculate_final_modifiers(attacker: Node, defender: Node, move: MoveData.Mo
 # =============================================================================
 
 ## Calculate attack roll with natural roll tracking
-func calculate_attack_roll(attacker: Node, move: MoveData.Move, modifiers: Dictionary) -> Dictionary:
+func calculate_attack_roll(attacker: Node, _move: MoveData.Move, modifiers: Dictionary) -> Dictionary:
 	var natural_roll = randi_range(1, GameConfig.DICE_TYPE)
 	
 	var atk_stat = int(attacker.get_modified_stat("atk")) if attacker else 0
@@ -656,7 +656,7 @@ func calculate_attack_roll(attacker: Node, move: MoveData.Move, modifiers: Dicti
 
 
 ## Calculate defense DC (Difficulty Class to hit)
-func calculate_defense_dc(defender: Node, stance: int, modifiers: Dictionary) -> int:
+func calculate_defense_dc(defender: Node, _stance: int, modifiers: Dictionary) -> int:
 	var base_dc = 10  # Base DC
 	
 	var def_stat = int(defender.get_modified_stat("def")) if defender else 0

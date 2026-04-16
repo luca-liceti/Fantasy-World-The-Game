@@ -335,6 +335,7 @@ func _create_platform_with_straight_outer(perimeter: Array[Vector3], outer_radiu
 	
 	# Generate subdivided outer hexagon ring to match inner perimeter density
 	var outer_ring_points: Array[Vector3] = []
+	@warning_ignore("integer_division")
 	var points_per_edge: int = max(4, inner_size / 6 + 2)
 	for i in range(6):
 		var angle1 = deg_to_rad(60 * i)
@@ -472,6 +473,7 @@ func _create_fixed_height_frame_mesh(perimeter: Array[Vector3], outer_radius: fl
 	# Generate outer hexagon points - but with MANY subdivisions to match perimeter density
 	# This prevents degenerate triangles in the top face
 	var outer_ring_points: Array[Vector3] = []
+	@warning_ignore("integer_division")
 	var points_per_edge: int = max(4, inner_size / 6 + 2) # Roughly match inner density
 	for i in range(6):
 		var angle1 = deg_to_rad(60 * i)

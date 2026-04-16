@@ -184,12 +184,28 @@ func _highlight_troop(troop: Node, color: Color, pulse: bool) -> void:
 	
 	mesh_instance.material_override = highlight_mat
 	
-	# Add pulsing animation for attacker
+	# Add pulsing animation for attacker.
+	# IMPORTANT: tween must be created on a Node (mesh_instance), NOT on the
+	# material Resource directly.  Tweening a Resource property with set_loops()
+	# can cause Godot to detect a zero-duration infinite loop (tween.cpp:406).
 	if pulse:
-		var tween = create_tween()
+		var tween = mesh_instance.create_tween()
 		tween.set_loops()
-		tween.tween_property(highlight_mat, "emission_energy_multiplier", 2.5, 0.5)
-		tween.tween_property(highlight_mat, "emission_energy_multiplier", 1.0, 0.5)
+		tween.set_process_mode(Tween.TWEEN_PROCESS_IDLE)
+		# We can't tween a Resource property directly with set_loops() safely,
+		# so we drive the pulse via a method callback on this node.
+		tween.tween_method(
+			func(v: float) -> void:
+				if is_instance_valid(highlight_mat):
+					highlight_mat.emission_energy_multiplier = v,
+			1.5, 2.5, 0.5
+		)
+		tween.tween_method(
+			func(v: float) -> void:
+				if is_instance_valid(highlight_mat):
+					highlight_mat.emission_energy_multiplier = v,
+			2.5, 1.0, 0.5
+		)
 
 
 func _remove_highlight(troop: Node) -> void:

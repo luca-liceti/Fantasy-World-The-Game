@@ -197,7 +197,7 @@ func force_end_game(winning_player: Player) -> void:
 ## Private: Start a player's turn
 func _start_player_turn(player: Player) -> void:
 	# Collect gold from mines
-	var gold_collected = player.collect_mine_gold()
+	var _gold_collected = player.collect_mine_gold()
 	
 	# Reset troop actions
 	player.reset_troop_actions()
@@ -254,7 +254,7 @@ func award_first_blood(player: Player) -> void:
 
 ## Process a kill for bounty rewards
 ## Returns: Dictionary with gold and XP awarded
-func process_kill(killer: Player, victim_player: Player, killed_troop: Node) -> Dictionary:
+func process_kill(killer: Player, victim_player: Player, _killed_troop: Node) -> Dictionary:
 	var rewards = {
 		"gold": 0,
 		"xp": 0,

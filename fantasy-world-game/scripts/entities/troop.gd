@@ -9,6 +9,7 @@ extends Node3D
 # =============================================================================
 signal hp_changed(current_hp: int, max_hp: int)
 signal troop_died(troop: Troop)
+@warning_ignore("unused_signal")
 signal troop_attacked(target: Node)
 signal troop_moved(from_hex: Node, to_hex: Node)
 signal troop_upgraded(new_level: int)
@@ -260,7 +261,7 @@ func get_effective_atk(biome_type: Biomes.Type) -> int:
 
 ## Get effective defense value (including biome modifier)
 func get_effective_def(biome_type: Biomes.Type) -> int:
-	var modifier = Biomes.get_troop_modifier(troop_id, biome_type)
+	var _modifier = Biomes.get_troop_modifier(troop_id, biome_type)
 	
 	# D modifier affects incoming damage (handled in combat, not here)
 	return current_def
@@ -889,10 +890,10 @@ func _apply_team_tint_to_model(node: Node) -> void:
 	# Find all MeshInstance3D children and apply a subtle tint
 	for child in node.get_children():
 		if child is MeshInstance3D:
-			var mesh_inst = child as MeshInstance3D
+			var _mesh_inst = child as MeshInstance3D
 			# Apply a subtle team color overlay using modulate
 			# Blend team color at ~20% to keep original texture visible
-			var tint = team_color.lerp(Color.WHITE, 0.7)
+			var _tint = team_color.lerp(Color.WHITE, 0.7)
 			# We use a separate material override approach to avoid modifying
 			# the shared resource. Skip if the model has its own materials.
 			# For now, just modulate the node.

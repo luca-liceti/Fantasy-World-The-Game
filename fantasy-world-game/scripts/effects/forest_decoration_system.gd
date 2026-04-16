@@ -307,7 +307,7 @@ static func decorate_tile(
 	# Density multiplier (0.0 – 1.0) from GameConfig.DECORATION_DENSITY
 	var density: float = clampf(GameConfig.DECORATION_DENSITY, 0.0, 1.0)
 	
-	var placed_count = 0
+	var _placed_count = 0
 
 	# ---- 1. CENTER GRASS: Multiple grass clumps at hex center (LOD LARGE/MID) ----
 	if not cfg.center_pool.is_empty() and cfg.has("center_chance"):
@@ -334,12 +334,12 @@ static func decorate_tile(
 					var lod_path = _get_lod_path(path, lod_level)
 					var transform = _get_decoration_transform(lod_path, pos, sd["normal"], rng, false, GrassLOD.MID)
 					manager.add_decoration(lod_path, tile_transform * transform)
-					placed_count += 1
+					_placed_count += 1
 
 	# ---- 1b. GROUND FILL: Dense tiny grass for carpet effect ----
 	if cfg.get("grass_ground_enabled", false) and not cfg.grass_ground_pool.is_empty():
 		var gg_attempts: int = cfg.get("grass_ground_attempts", 10)
-		var gg_chance: float = cfg.get("grass_ground_chance", 0.7) * density
+		var _gg_chance: float = cfg.get("grass_ground_chance", 0.7) * density
 		
 		for _i in range(gg_attempts):
 			# Always place (no random chance check) for dense coverage
@@ -356,7 +356,7 @@ static func decorate_tile(
 			# Pass -1 (no LOD scale) so the base DECO_SCALE size is used as-is.
 			var transform = _get_decoration_transform(lod_path, pos, sd["normal"], rng, false, -1)
 			manager.add_decoration(lod_path, tile_transform * transform)
-			placed_count += 1
+			_placed_count += 1
 
 	# ---- 2. Small ground-cover in the outer zone -----------------------------
 	var small_pool: Array = cfg.small_pool
@@ -641,14 +641,14 @@ static func _random_position_in_hex(
 
 ## Determines the grass LOD level based on world position.
 ## For static decorations, this uses a default LOD level (can be overridden by camera distance).
-static func _get_grass_lod_for_position(world_transform: Transform3D) -> int:
+static func _get_grass_lod_for_position(_world_transform: Transform3D) -> int:
 	return GrassLOD.MID
 
 
 ## Returns the LOD-appropriate path for a given grass path.
 ## Currently uses the same mesh for all LODs (placeholder for actual LOD meshes).
 ## In production, this would swap to lower-poly variants for distant grass.
-static func _get_lod_path(base_path: String, lod_level: int) -> String:
+static func _get_lod_path(base_path: String, _lod_level: int) -> String:
 	return base_path
 
 
