@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyr0rfrjsa2vw"
-path="res://.godot/imported/main menu deforested woods.png-7ce38c2ca8c83e1119135e780e65ac56.ctex"
+uid="uid://cas8pq5ekrqpq"
+path="res://.godot/imported/cursor_final.png-b3adfb7fbdf49d54e619b9d4e1f7181e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/ui/gemin pics of ui/main menu deforested woods.png"
-dest_files=["res://.godot/imported/main menu deforested woods.png-7ce38c2ca8c83e1119135e780e65ac56.ctex"]
+source_file="res://assets/textures/ui/components/cursor_final.png"
+dest_files=["res://.godot/imported/cursor_final.png-b3adfb7fbdf49d54e619b9d4e1f7181e.ctex"]
 
 [params]
 

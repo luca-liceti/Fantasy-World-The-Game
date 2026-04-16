@@ -1,0 +1,3 @@
+cursor asset: Snabish
+
+board textures and biome decorations: Rico Cilliers, Rob Tuytel
