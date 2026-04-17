@@ -178,15 +178,15 @@ func _ready() -> void:
 		hex_board.process_mode = Node.PROCESS_MODE_PAUSABLE
 		# Ensure board is at origin so BOARD_LIFT (1.0) is accurate world height
 		hex_board.position.y = 0.0
-		# Board generation is deferred to _finalize_game_start() (after deck selection)
+		# Board generation happens in _generate_board_concurrently() during preload
 	else:
 		push_error("HexBoard node not found!")
 	
 	# Create game UI
 	_setup_game_ui()
 	
-	# Start test game (deck selection — board generation deferred until after)
-	_start_test_game()
+	# Start environment load with loading screen, then deck selection
+	_start_preload_flow()
 	
 	print("Game initialization complete!")
 	print("")
@@ -263,6 +263,10 @@ func _setup_camera_system() -> void:
 
 
 func _generate_board_concurrently() -> void:
+	# Update loading stage via SceneManager
+	if SceneManagerAutoload and SceneManagerAutoload.has_method("update_loading_stage"):
+		SceneManagerAutoload.update_loading_stage(1)
+	
 	await hex_board.generate_board_async()
 	hex_board.print_board_stats()
 	
@@ -273,6 +277,9 @@ func _generate_board_concurrently() -> void:
 	# Always create the stone border frame around the hex board
 	var board_radius = GameConfig.BOARD_SIZE - 1
 	var perimeter = hex_board.get_perimeter_points()
+	
+	if SceneManagerAutoload and SceneManagerAutoload.has_method("update_loading_stage"):
+		SceneManagerAutoload.update_loading_stage(2)
 	
 	# Check if an environment model provides the table
 	var medieval_room = get_node_or_null("MedievalRoom")
@@ -297,9 +304,7 @@ func _generate_board_concurrently() -> void:
 	print("Board generated successfully!")
 	board_generation_complete = true
 	
-	# Generation is always triggered from _finalize_game_start, so proceed now
-	_hide_terrain_loading_screen()
-	_proceed_to_first_move()
+	_on_environment_ready()
 
 
 func _setup_board_lighting() -> void:
@@ -382,6 +387,55 @@ func _setup_game_ui() -> void:
 
 
 # =============================================================================
+# PRELOAD FLOW
+# =============================================================================
+
+func _start_preload_flow() -> void:
+	print("Starting preload flow...")
+	
+	# Use loading screen from SceneManager (shown in start_menu during transition)
+	if SceneManagerAutoload and SceneManagerAutoload.has_method("update_loading_stage"):
+		SceneManagerAutoload.update_loading_stage(0)
+	
+	if hex_board:
+		_generate_board_concurrently()
+	else:
+		push_error("HexBoard node not found — cannot generate board!")
+
+
+func _update_loading_stage(stage: int) -> void:
+	if not terrain_loading_screen:
+		return
+	
+	var title_control = terrain_loading_screen.find_child("LoadingTitle", true, false)
+	if title_control:
+		match stage:
+			0:
+				title_control.text = "Loading environment..."
+			1:
+				title_control.text = "Generating biomes..."
+			2:
+				title_control.text = "Adding decorations..."
+	
+	var bar_fill = terrain_loading_screen.find_child("LoadingBarFill", true, false)
+	if bar_fill:
+		match stage:
+			0:
+				bar_fill.custom_minimum_size.x = 80
+			1:
+				bar_fill.custom_minimum_size.x = 240
+			2:
+				bar_fill.custom_minimum_size.x = 360
+
+
+func _on_environment_ready() -> void:
+	# Hide loading screen from SceneManager
+	if SceneManagerAutoload and SceneManagerAutoload.has_method("hide_loading_screen"):
+		SceneManagerAutoload.hide_loading_screen()
+	
+	_start_test_game()
+
+
 # TEST GAME SETUP
 # =============================================================================
 
@@ -578,7 +632,7 @@ func _on_deck_selection_canceled() -> void:
 
 
 ## Finalize game start after both players selected decks.
-## Board generation is DEFERRED to here so deck selection loads instantly.
+## Board generation already happened in preload flow.
 func _finalize_game_start() -> void:
 	is_selecting_decks = false
 	decks_confirmed = true
@@ -589,13 +643,7 @@ func _finalize_game_start() -> void:
 	if card_selection_ui:
 		card_selection_ui.hide_immediate()
 	
-	# Show the terrain loading screen, then start board + environment generation
-	_show_terrain_loading_screen()
-	
-	if hex_board:
-		_generate_board_concurrently()
-	else:
-		push_error("HexBoard node not found — cannot generate board!")
+	_proceed_to_first_move()
 
 
 # =============================================================================
@@ -659,7 +707,7 @@ func _show_terrain_loading_screen() -> void:
 	# Status label
 	var status = Label.new()
 	status.name = "LoadingStatus"
-	status.text = "Generating terrain, biomes, and elevation..."
+	status.text = "This may take a moment..."
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UITheme.style_label(status, 16, UITheme.C_WARM_WHITE)
 	center.add_child(status)

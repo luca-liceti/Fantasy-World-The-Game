@@ -12,6 +12,7 @@ var _progress = []
 func _ready():
 	_progress.resize(1)
 	_progress[0] = 0.0
+	progress_bar.visible = false
 	
 	# Start loading in background after a brief visual delay to show UI immediately
 	await get_tree().create_timer(0.2).timeout
@@ -22,11 +23,9 @@ func _process(_delta):
 	_loading_status = ResourceLoader.load_threaded_get_status(next_scene_path, _progress)
 	
 	if _loading_status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-		progress_bar.value = _progress[0] * 100
-		status_label.text = "Loading... %d%%" % progress_bar.value
+		status_label.text = "Loading environment..."
 	elif _loading_status == ResourceLoader.THREAD_LOAD_LOADED:
 		set_process(false)
-		progress_bar.value = 100
 		status_label.text = "Loading Complete!"
 		call_deferred("_transition_to_next_scene")
 	elif _loading_status == ResourceLoader.THREAD_LOAD_FAILED:

@@ -31,6 +31,10 @@ var is_transitioning: bool = false
 var fade_overlay: ColorRect = null
 var fade_canvas: CanvasLayer = null
 
+# Loading screen for scene transitions
+var loading_screen: Control = null
+var loading_title: Label = null
+
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
@@ -58,6 +62,92 @@ func _create_fade_overlay() -> void:
 	fade_overlay.color = Color(0.0, 0.0, 0.0, 0.0) # Pure black, start transparent
 	fade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fade_canvas.add_child(fade_overlay)
+
+
+func show_loading_screen() -> void:
+	if loading_screen:
+		return
+	
+	loading_screen = Control.new()
+	loading_screen.name = "LoadingScreen"
+	loading_screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_screen.mouse_filter = Control.MOUSE_FILTER_STOP
+	fade_canvas.add_child(loading_screen)
+	
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.0, 0.0, 0.0, 0.95)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loading_screen.add_child(bg)
+	
+	var center = VBoxContainer.new()
+	center.set_anchors_preset(Control.PRESET_CENTER)
+	center.custom_minimum_size = Vector2(800, 500)
+	center.position = Vector2(-400, -250)
+	center.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_theme_constant_override("separation", 24)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loading_screen.add_child(center)
+	
+	var logo = TextureRect.new()
+	logo.texture = UITheme.tex_logo()
+	logo.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.custom_minimum_size = Vector2(720, 256)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(logo)
+	
+	center.add_child(UITheme.make_separator())
+	
+	loading_title = Label.new()
+	loading_title.text = "Loading environment..."
+	loading_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(loading_title, 28, UITheme.C_GOLD, true)
+	center.add_child(loading_title)
+	
+	var status = Label.new()
+	status.text = "This may take a moment..."
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(status, 16, UITheme.C_WARM_WHITE)
+	center.add_child(status)
+	
+	var tip = Label.new()
+	tip.text = "397 hexagonal tiles  •  7 biomes  •  Procedural elevation"
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(tip, 12, UITheme.C_DIM)
+	center.add_child(tip)
+	
+	loading_screen.modulate.a = 0.0
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(loading_screen, "modulate:a", 1.0, 0.3)
+
+
+func update_loading_stage(stage: int) -> void:
+	if not loading_screen or not loading_title:
+		return
+	
+	match stage:
+		0:
+			loading_title.text = "Loading environment..."
+		1:
+			loading_title.text = "Generating biomes..."
+		2:
+			loading_title.text = "Adding decorations..."
+
+
+func hide_loading_screen() -> void:
+	if not loading_screen:
+		return
+	
+	var screen = loading_screen
+	loading_screen = null
+	loading_title = null
+	
+	var tw = create_tween()
+	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(screen, "modulate:a", 0.0, 0.2)
+	tw.tween_callback(screen.queue_free)
 
 
 # =============================================================================

@@ -816,10 +816,19 @@ func _add_credits_text(parent: VBoxContainer, text: String) -> void:
 # =============================================================================
 
 func _play_transition_to_game() -> void:
+	# Show loading screen immediately (persists through scene transition)
+	if SceneManagerAutoload and SceneManagerAutoload.has_method("show_loading_screen"):
+		SceneManagerAutoload.show_loading_screen()
+	
+	# Fade out menu
 	var tw = create_tween()
 	tw.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(self, "modulate:a", 0.0, 0.5)
-	tw.tween_callback(_switch_to_game)
+	tw.tween_property(self, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(_call_deferred_switch_to_game)
+
+
+func _call_deferred_switch_to_game() -> void:
+	call_deferred("_switch_to_game")
 
 func _switch_to_game() -> void:
 	if SceneManagerAutoload:
