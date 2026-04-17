@@ -597,7 +597,7 @@ func _create_card_button(card_id: String, role_color: Color, slot_index: int) ->
 		stats_vbox.add_child(ability_label)
 	
 	# Style
-	UITheme.apply_hud_button(button, role_color, 14)
+	UITheme.apply_card_button(button, role_color, 14)
 	
 	# Connect signals
 	button.pressed.connect(_on_card_selected.bind(card_id, slot_index))
@@ -946,38 +946,31 @@ func _update_card_highlights() -> void:
 			var slot_locked = _draft_mode and _draft_slot_restriction >= 0 and slot_index != _draft_slot_restriction
 			
 			if card_id == selected_id:
-				# Selected — highlighted border and dark background
-				var style = UITheme.section_panel(role_colors[slot_index])
-				style.border_color = COLOR_SELECTED
-				style.set_border_width_all(3)
-				style.bg_color = role_colors[slot_index].darkened(0.7)
-				button.add_theme_stylebox_override("normal", style)
+				# Selected — bright golden paper texture
+				UITheme.apply_card_button(button, COLOR_SELECTED, 14)
+				var st = button.get_theme_stylebox("normal").duplicate()
+				st.modulate_color = COLOR_SELECTED.lerp(Color.WHITE, 0.3)
+				button.add_theme_stylebox_override("normal", st)
 				button.add_theme_color_override("font_color", COLOR_SELECTED)
 				button.disabled = false
 			elif own_slot_taken:
 				# This player already picked from this category — lock entire column
-				var style = UITheme.section_panel(role_colors[slot_index].darkened(0.55))
-				style.bg_color = role_colors[slot_index].darkened(0.80)
-				button.add_theme_stylebox_override("normal", style)
+				UITheme.apply_card_button(button, role_colors[slot_index].darkened(0.5), 14)
 				button.add_theme_color_override("font_color", Color(0.45, 0.7, 0.45, 0.9))  # greenish "done" tint
 				button.disabled = true
 			elif opp_took:
 				# Opponent already picked this card — grey it out
-				var style = UITheme.section_panel(Color(0.3, 0.3, 0.3))
-				style.bg_color = Color(0.15, 0.15, 0.15, 0.7)
-				button.add_theme_stylebox_override("normal", style)
+				UITheme.apply_card_button(button, Color(0.3, 0.3, 0.3), 14)
 				button.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 				button.disabled = true
 			elif slot_locked:
 				# Slot not available this pick (draft slot restriction) — dim it
-				var style = UITheme.section_panel(role_colors[slot_index].darkened(0.6))
-				style.bg_color = role_colors[slot_index].darkened(0.85)
-				button.add_theme_stylebox_override("normal", style)
+				UITheme.apply_card_button(button, role_colors[slot_index].darkened(0.6), 14)
 				button.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 				button.disabled = true
 			else:
-				# Normal — default hud button style
-				UITheme.apply_hud_button(button, role_colors[slot_index], 14)
+				# Normal — default card button style
+				UITheme.apply_card_button(button, role_colors[slot_index], 14)
 				button.remove_theme_color_override("font_color")
 				button.disabled = false
 

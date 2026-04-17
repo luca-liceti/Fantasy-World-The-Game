@@ -107,7 +107,7 @@ const BIOME_GRASS_CONFIG: Dictionary = {
 	# ---- Swamp: Sparse, murky reed-like tufts in patches -------------------
 	Biomes.Type.SWAMP: {
 		"enabled": true,
-		"base_density": 225,
+		"base_density": 68,
 		"distribution": DistributionMode.PATCHY,
 		"patch_chance": 0.35,
 		"patch_cluster_radius": 0.25,

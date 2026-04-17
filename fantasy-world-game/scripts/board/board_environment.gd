@@ -764,54 +764,42 @@ func _create_solid_hex_mesh(radius: float, bottom_y: float, top_y: float) -> Arr
 
 
 ## Create the stone brick material for the platform/border
-## Uses enhanced normals and AO for visible stone depth
+## Uses full PBR with parallax for true 3D depth effect (Godot 3.x)
 func _create_stone_border_material() -> StandardMaterial3D:
 	var material = StandardMaterial3D.new()
 	
-	# Try to load stone texture
-	var base_path: String = BOARD_TEXTURES_PATH + "board_stone_"
-	var diffuse_tex = _load_texture(base_path + "diffuse.jpg")
-	if not diffuse_tex:
-		diffuse_tex = _load_texture(base_path + "diffuse.png")
-	if not diffuse_tex:
-		base_path = BOARD_TEXTURES_PATH + "frame_stone_"
-		diffuse_tex = _load_texture(base_path + "diffuse.png")
+	# Rock wall textures
+	var textures_dir = BOARD_TEXTURES_PATH + "textures/"
+	var diffuse_path = textures_dir + "rock_wall_04_diff_2k.jpg"
+	var normal_path = textures_dir + "rock_wall_04_nor_gl_2k.jpg"
+	var arm_path = textures_dir + "rock_wall_04_arm_2k.jpg"
+	var disp_path = textures_dir + "rock_wall_04_disp_2k.jpg"
 	
+	var diffuse_tex = _load_texture(diffuse_path)
 	if diffuse_tex:
 		material.albedo_texture = diffuse_tex
-		material.albedo_color = Color(0.85, 0.83, 0.80) # Slight brightness boost
+		material.albedo_color = Color(0.85, 0.83, 0.80)
 		
-		# Normal map with ENHANCED strength for visible stone depth
-		var normal_tex = _load_texture(base_path + "normal.jpg")
-		if not normal_tex:
-			normal_tex = _load_texture(base_path + "normal.png")
+		var normal_tex = _load_texture(normal_path)
 		if normal_tex:
 			material.normal_enabled = true
 			material.normal_texture = normal_tex
-			material.normal_scale = 1.8 # ENHANCED - very strong for visible mortar lines
+			material.normal_scale = 2.0
 		
-		# Roughness map
-		var roughness_tex = _load_texture(base_path + "roughness.jpg")
-		if not roughness_tex:
-			roughness_tex = _load_texture(base_path + "roughness.png")
-		if roughness_tex:
-			material.roughness_texture = roughness_tex
-			material.roughness = 1.0 # Let texture drive roughness
-		else:
-			material.roughness = 0.9
-		
-		# AO map with ENHANCED intensity for deep shadows in mortar
-		var ao_tex = _load_texture(base_path + "ao.jpg")
-		if not ao_tex:
-			ao_tex = _load_texture(base_path + "ao.png")
-		if ao_tex:
+		var arm_tex = _load_texture(arm_path)
+		if arm_tex:
 			material.ao_enabled = true
-			material.ao_texture = ao_tex
-			material.ao_light_affect = 1.0 # ENHANCED - full strength for deep crevice shadows
+			material.ao_texture = arm_tex
+			material.ao_light_affect = 0.8
 		
-		print("[BoardEnvironment] Stone texture loaded with enhanced depth: " + base_path)
+		var disp_tex = _load_texture(disp_path)
+		if disp_tex:
+			material.parallax_enabled = true
+			material.parallax_texture = disp_tex
+			material.depth_scale = 0.5
+		
+		print("[BoardEnvironment] Rock wall 2K PBR with parallax applied to border")
 	else:
-		# Fallback - uniform gray stone color
 		material.albedo_color = Color(0.55, 0.53, 0.50)
 		material.roughness = 0.9
 		print("[BoardEnvironment] Using fallback gray color for border")
@@ -1105,6 +1093,16 @@ func _create_wood_material() -> StandardMaterial3D:
 				material.ao_texture = ao_tex
 				material.ao_light_affect = 0.9 # ENHANCED - strong for deep grain shadows
 			
+			# Displacement map for detailed height
+			var disp_tex = _load_texture(base_path + "displacement.jpg")
+			if not disp_tex:
+				disp_tex = _load_texture(base_path + "displacement.png")
+			if disp_tex:
+				material.heightmap_enabled = true
+				material.heightmap_deep_parallax = true
+				material.heightmap_texture = disp_tex
+				material.heightmap_scale = 0.05
+
 			loaded = true
 			print("[BoardEnvironment] Table using: " + variant)
 			break
@@ -1124,60 +1122,44 @@ func _create_wood_material() -> StandardMaterial3D:
 	return material
 
 
-## Create platform material using old stone wall texture (medieval castle floor)
-## Uses Poly Haven old_stone_wall texture
-## Manor Lords aesthetic: Muted slate/charcoal, weathered stone
+## Create platform material using rock wall texture (medieval castle floor)
+## Uses full PBR with parallax for true 3D depth effect (Godot 3.x)
 func _create_platform_material() -> StandardMaterial3D:
 	var material = StandardMaterial3D.new()
 	
-	# Try new board_stone textures (old_stone_wall from Poly Haven)
-	var base_path: String = BOARD_TEXTURES_PATH + "board_stone_"
+	# Rock wall textures
+	var textures_dir = BOARD_TEXTURES_PATH + "textures/"
+	var diffuse_path = textures_dir + "rock_wall_04_diff_2k.jpg"
+	var normal_path = textures_dir + "rock_wall_04_nor_gl_2k.jpg"
+	var arm_path = textures_dir + "rock_wall_04_arm_2k.jpg"
+	var disp_path = textures_dir + "rock_wall_04_disp_2k.jpg"
 	
-	# Try jpg first (new download), then png, then fall back to frame_stone
-	var diffuse_tex = _load_texture(base_path + "diffuse.jpg")
-	if not diffuse_tex:
-		diffuse_tex = _load_texture(base_path + "diffuse.png")
-	if not diffuse_tex:
-		base_path = BOARD_TEXTURES_PATH + "frame_stone_"
-		diffuse_tex = _load_texture(base_path + "diffuse.png")
-	
+	var diffuse_tex = _load_texture(diffuse_path)
 	if diffuse_tex:
 		material.albedo_texture = diffuse_tex
-		# Manor Lords: Muted, desaturated stone (slate/charcoal palette)
-		material.albedo_color = Color(0.60, 0.58, 0.55) # Slate grey - desaturated
+		material.albedo_color = Color(0.60, 0.58, 0.55)
 		
-		# Normal map - over-driven for stone texture depth
-		var normal_tex = _load_texture(base_path + "normal.jpg")
-		if not normal_tex:
-			normal_tex = _load_texture(base_path + "normal.png")
+		var normal_tex = _load_texture(normal_path)
 		if normal_tex:
 			material.normal_enabled = true
 			material.normal_texture = normal_tex
-			material.normal_scale = 0.75 # ~1.5x for pronounced stone crevices
+			material.normal_scale = 1.5
 		
-		# Roughness - PRIORITY for Manor Lords PBR
-		var roughness_tex = _load_texture(base_path + "roughness.jpg")
-		if not roughness_tex:
-			roughness_tex = _load_texture(base_path + "roughness.png")
-		if roughness_tex:
-			material.roughness_texture = roughness_tex
-			material.roughness = 1.0
-		else:
-			material.roughness = 0.92 # Very rough weathered stone
-		
-		# AO - HIGH PRIORITY for stone crevices
-		var ao_tex = _load_texture(base_path + "ao.jpg")
-		if not ao_tex:
-			ao_tex = _load_texture(base_path + "ao.png")
-		if ao_tex:
+		var arm_tex = _load_texture(arm_path)
+		if arm_tex:
 			material.ao_enabled = true
-			material.ao_texture = ao_tex
-			material.ao_light_affect = 0.6 # Heavy AO for stone crevices
+			material.ao_texture = arm_tex
+			material.ao_light_affect = 0.6
 		
-		print("[BoardEnvironment] Platform using: " + base_path)
+		var disp_tex = _load_texture(disp_path)
+		if disp_tex:
+			material.parallax_enabled = true
+			material.parallax_texture = disp_tex
+			material.depth_scale = 0.5
+	
+		print("[BoardEnvironment] Rock wall 2K PBR with parallax applied to platform")
 	else:
-		# Fallback - aged stone color (Manor Lords charcoal/slate)
-		material.albedo_color = Color(0.16, 0.15, 0.14) # Charcoal stone
+		material.albedo_color = Color(0.16, 0.15, 0.14)
 		material.roughness = 0.95
 	
 	material.metallic = 0.0

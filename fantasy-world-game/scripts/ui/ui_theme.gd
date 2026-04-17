@@ -10,6 +10,7 @@ extends RefCounted
 # =============================================================================
 const PATH_BTN_DEFAULT  = "res://assets/textures/ui/components/default_button.png"
 const PATH_BTN_HOVERED  = "res://assets/textures/ui/components/hovered_button.png"
+const PATH_CARD_BG      = "res://assets/textures/ui/components/background_paper.jpg"
 const PATH_BTN_DROPDOWN = "res://assets/textures/ui/components/button_dropdown.png"
 const PATH_INPUT_BOX    = "res://assets/textures/ui/components/input_box.png"
 const PATH_CONTENT_BOX  = "res://assets/textures/ui/components/menu_panel_border.png"
@@ -116,6 +117,7 @@ static func font_black() -> FontFile:
 # =============================================================================
 static var _tex_btn_def:  Texture2D = null
 static var _tex_btn_hov:  Texture2D = null
+static var _tex_card_bg:  Texture2D = null
 static var _tex_dropdown: Texture2D = null
 static var _tex_input:    Texture2D = null
 static var _tex_content:  Texture2D = null
@@ -139,6 +141,11 @@ static func tex_btn_hovered() -> Texture2D:
 	if _tex_btn_hov == null and ResourceLoader.exists(PATH_BTN_HOVERED):
 		_tex_btn_hov = load(PATH_BTN_HOVERED)
 	return _tex_btn_hov
+
+static func tex_card_bg() -> Texture2D:
+	if _tex_card_bg == null and ResourceLoader.exists(PATH_CARD_BG):
+		_tex_card_bg = load(PATH_CARD_BG)
+	return _tex_card_bg
 
 static func tex_dropdown() -> Texture2D:
 	if _tex_dropdown == null and ResourceLoader.exists(PATH_BTN_DROPDOWN):
@@ -649,6 +656,39 @@ static func apply_hud_button(btn: Button, accent: Color, size: int = 13) -> void
 	style_button_text(btn, size)
 	connect_hover_sound(btn)
 
+## Apply styling for card buttons in the deck selection interface
+static func apply_card_button(btn: Button, accent: Color, size: int = 14) -> void:
+	var normal_s = StyleBoxTexture.new()
+	normal_s.texture = tex_card_bg()
+	# The background_paper.jpg is large, no 9-slice expanding is needed, it will stretch.
+	# We use modulate_color to dim it slightly, matching the dark theme.
+	# Removing accent tint so the paper stays uniform across all troop types.
+	normal_s.modulate_color = Color(0.7, 0.7, 0.7, 1.0)
+	
+	# Keep the border margins so the text doesn't touch the very edges of the paper
+	normal_s.content_margin_left   = 8
+	normal_s.content_margin_right  = 8
+	normal_s.content_margin_top    = 8
+	normal_s.content_margin_bottom = 8
+	
+	var hover_s = normal_s.duplicate()
+	hover_s.modulate_color = Color(0.95, 0.95, 0.95, 1.0)
+	
+	var pressed_s = normal_s.duplicate()
+	pressed_s.modulate_color = Color(0.5, 0.5, 0.5, 1.0)
+	
+	var disabled_s = normal_s.duplicate()
+	disabled_s.modulate_color = Color(0.3, 0.3, 0.3, 1.0)
+	
+	btn.add_theme_stylebox_override("normal", normal_s)
+	btn.add_theme_stylebox_override("hover", hover_s)
+	btn.add_theme_stylebox_override("focus", hover_s)
+	btn.add_theme_stylebox_override("pressed", pressed_s)
+	btn.add_theme_stylebox_override("disabled", disabled_s)
+
+	style_button_text(btn, size)
+	connect_hover_sound(btn)
+
 ## Apply Cinzel font and colour to any Label — convenience for in-game use
 static func style_hud_label(lbl: Label, size: int, col: Color = C_WARM_WHITE) -> void:
 	style_label(lbl, size, col)
@@ -678,4 +718,3 @@ static func _on_button_hover() -> void:
 		var am = root.get_node("AudioManager")
 		if am.has_method("play_ui_hover"):
 			am.play_ui_hover()
-

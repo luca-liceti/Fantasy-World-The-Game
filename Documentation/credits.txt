@@ -1,3 +1,7 @@
 cursor asset: Snabish
 
 board textures and biome decorations: Rico Cilliers, Rob Tuytel
+
+paper background image: darkwood67
+
+door opening and closing sfx: audio library - free sound effects.

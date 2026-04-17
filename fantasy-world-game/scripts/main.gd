@@ -33,12 +33,12 @@ var combat_resolution_ui: Node # Enhanced combat resolution display
 var terrain_loading_screen: CanvasLayer = null # Loading screen during terrain generation
 
 # Dynamic lighting state
-var board_world_env: WorldEnvironment = null  # World environment for board lighting
-var _current_biome_environment: Biomes.Type = Biomes.Type.PLAINS  # Current active biome
-const BIOME_ENVIRONMENT_TRANSITION_SPEED: float = 2.0  # Smooth transition speed
-const BIOME_DETECTION_RADIUS: float = 8.0  # Radius to detect dominant biome
-const BIOME_DETECTION_INTERVAL: float = 0.5  # Detection check interval (seconds)
-var _last_biome_detection_time: float = 0.0  # Last detection time
+var board_world_env: WorldEnvironment = null # World environment for board lighting
+var _current_biome_environment: Biomes.Type = Biomes.Type.PLAINS # Current active biome
+const BIOME_ENVIRONMENT_TRANSITION_SPEED: float = 2.0 # Smooth transition speed
+const BIOME_DETECTION_RADIUS: float = 8.0 # Radius to detect dominant biome
+const BIOME_DETECTION_INTERVAL: float = 0.5 # Detection check interval (seconds)
+var _last_biome_detection_time: float = 0.0 # Last detection time
 
 # Deck selection state
 var is_selecting_decks: bool = false
@@ -153,8 +153,8 @@ const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 # =============================================================================
 # DEBUG FLAGS - Set these to skip game phases during development
 # =============================================================================
-const DEBUG_SKIP_DECK_SELECTION: bool = true
-const DEBUG_SKIP_FIRST_MOVE_DICE: bool = true
+const DEBUG_SKIP_DECK_SELECTION: bool = false
+const DEBUG_SKIP_FIRST_MOVE_DICE: bool = false
 const DEBUG_DEFAULT_DECK: Array[String] = ["medieval_knight", "elven_archer", "celestial_cleric", "frost_valkyrie"] # Default deck when skipping
 
 # =============================================================================
@@ -1368,10 +1368,16 @@ func _select_troop_by_slot(slot: int) -> void:
 			if selected_troop == entity:
 				selected_troop = null
 				print("Deselected Slot %d" % (slot + 1))
+				if hex_board:
+					hex_board.clear_all_highlights()
 			else:
 				selected_troop = entity
 				var display_name = entity.display_name if "display_name" in entity else "Gold Mine"
 				print("Selected %s (Slot %d)" % [display_name, slot + 1])
+				
+				# Ensure the tile under the troop is selected to show the gold pulsing hex
+				if hex_board and "current_hex" in entity and entity.current_hex:
+					hex_board.select_tile(entity.current_hex)
 				
 				# Smart camera focus on troop for tactical view
 				_focus_on_troop_tactical(selected_troop)

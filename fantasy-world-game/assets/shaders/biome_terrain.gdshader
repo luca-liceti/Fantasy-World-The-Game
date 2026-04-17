@@ -21,6 +21,7 @@ uniform sampler2D texture_albedo   : source_color,        filter_linear_mipmap_a
 uniform sampler2D texture_normal   : hint_normal,          filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D texture_roughness: hint_default_white,   filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D texture_ao       : hint_default_white,   filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D texture_displacement : hint_default_black, filter_linear_mipmap_anisotropic, repeat_enable;
 
 // --- World-Space Tiling ---
 // Controls how densely the texture tiles in world space.
@@ -47,6 +48,7 @@ uniform float brightness         : hint_range(0.5, 2.0)  = 1.25;
 uniform vec4  albedo_tint        : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform float specular_override  : hint_range(0.0, 1.0)  = 0.5;
 uniform float metallic_override  : hint_range(0.0, 1.0)  = 0.0;
+uniform float height_scale       : hint_range(-0.5, 0.5) = 0.15;
 
 // =============================================================================
 // HASH / NOISE HELPERS
@@ -314,27 +316,49 @@ void fragment() {
 	// Cell size in UV space (world-units → normalised by texture_scale)
 	float cell_uv = stochastic_cell_size * texture_scale;
 
+	// --- Parallax Mapping (Displacement) ---
+	vec3 view_dir_world = normalize(CAMERA_POSITION_WORLD - v_world_pos);
+	// Sample displacement to find height
+	float h_stoch = triplanar_scalar(texture_displacement, v_world_pos, blend, texture_scale, cell_uv);
+	float h_plain;
+	{
+		float hx = texture(texture_displacement, v_world_pos.zy * texture_scale).r;
+		float hy = texture(texture_displacement, v_world_pos.xz * texture_scale).r;
+		float hz = texture(texture_displacement, v_world_pos.xy * texture_scale).r;
+		h_plain = hx * blend.x + hy * blend.y + hz * blend.z;
+	}
+	float height_val = mix(h_plain, h_stoch, stochastic_strength);
+	
+	// Offset world position based on view direction and height
+	vec3 parallax_pos = v_world_pos;
+	// We offset perpendicular to the normal, scaled by the height map. This creates a basic parallax effect.
+	// Since we use world space coords instead of UVs, we reverse the view direction offset
+	vec3 offset = view_dir_world * (height_val * height_scale);
+	// Project offset onto the surface plane so we don't 'sink' straight down in world space
+	offset -= v_world_normal * dot(offset, v_world_normal);
+	parallax_pos -= offset; // SUBTRACT to simulate depth correctly
+
 	// --- Albedo ---
-	vec4 albedo_stoch = triplanar_albedo(texture_albedo, v_world_pos, blend, texture_scale, cell_uv);
+	vec4 albedo_stoch = triplanar_albedo(texture_albedo, parallax_pos, blend, texture_scale, cell_uv);
 	// Fallback plain triplanar sample (for stochastic_strength < 1)
 	vec4 albedo_plain;
 	{
-		vec4 ax = texture(texture_albedo, v_world_pos.zy * texture_scale);
-		vec4 ay = texture(texture_albedo, v_world_pos.xz * texture_scale);
-		vec4 az = texture(texture_albedo, v_world_pos.xy * texture_scale);
+		vec4 ax = texture(texture_albedo, parallax_pos.zy * texture_scale);
+		vec4 ay = texture(texture_albedo, parallax_pos.xz * texture_scale);
+		vec4 az = texture(texture_albedo, parallax_pos.xy * texture_scale);
 		albedo_plain = ax * blend.x + ay * blend.y + az * blend.z;
 	}
 	vec4 final_albedo = mix(albedo_plain, albedo_stoch, stochastic_strength);
 	ALBEDO = final_albedo.rgb * albedo_tint.rgb * brightness;
 
 	// --- Normal Map ---
-	vec3 norm_stoch = triplanar_normal(texture_normal, v_world_pos, v_world_normal, blend, texture_scale, cell_uv);
+	vec3 norm_stoch = triplanar_normal(texture_normal, parallax_pos, v_world_normal, blend, texture_scale, cell_uv);
 	// Blend toward unperturbed normal at stochastic_strength = 0
 	vec3 norm_plain;
 	{
-		vec4 nx_r = texture(texture_normal, v_world_pos.zy * texture_scale);
-		vec4 ny_r = texture(texture_normal, v_world_pos.xz * texture_scale);
-		vec4 nz_r = texture(texture_normal, v_world_pos.xy * texture_scale);
+		vec4 nx_r = texture(texture_normal, parallax_pos.zy * texture_scale);
+		vec4 ny_r = texture(texture_normal, parallax_pos.xz * texture_scale);
+		vec4 nz_r = texture(texture_normal, parallax_pos.xy * texture_scale);
 		vec3 nx = nx_r.xyz * 2.0 - 1.0; nx = vec3(nx.z, nx.y, nx.x);
 		vec3 ny = ny_r.xyz * 2.0 - 1.0; ny = vec3(ny.x, ny.z, ny.y);
 		vec3 nz = nz_r.xyz * 2.0 - 1.0;
@@ -347,23 +371,23 @@ void fragment() {
 	NORMAL_MAP_DEPTH = 1.0;
 
 	// --- Roughness ---
-	float rough_stoch = triplanar_scalar(texture_roughness, v_world_pos, blend, texture_scale, cell_uv);
+	float rough_stoch = triplanar_scalar(texture_roughness, parallax_pos, blend, texture_scale, cell_uv);
 	float rough_plain;
 	{
-		float rx = texture(texture_roughness, v_world_pos.zy * texture_scale).r;
-		float ry = texture(texture_roughness, v_world_pos.xz * texture_scale).r;
-		float rz = texture(texture_roughness, v_world_pos.xy * texture_scale).r;
+		float rx = texture(texture_roughness, parallax_pos.zy * texture_scale).r;
+		float ry = texture(texture_roughness, parallax_pos.xz * texture_scale).r;
+		float rz = texture(texture_roughness, parallax_pos.xy * texture_scale).r;
 		rough_plain = rx * blend.x + ry * blend.y + rz * blend.z;
 	}
 	ROUGHNESS = mix(rough_plain, rough_stoch, stochastic_strength) * roughness_override;
 
 	// --- Ambient Occlusion ---
-	float ao_stoch = triplanar_scalar(texture_ao, v_world_pos, blend, texture_scale, cell_uv);
+	float ao_stoch = triplanar_scalar(texture_ao, parallax_pos, blend, texture_scale, cell_uv);
 	float ao_plain;
 	{
-		float ax2 = texture(texture_ao, v_world_pos.zy * texture_scale).r;
-		float ay2 = texture(texture_ao, v_world_pos.xz * texture_scale).r;
-		float az2 = texture(texture_ao, v_world_pos.xy * texture_scale).r;
+		float ax2 = texture(texture_ao, parallax_pos.zy * texture_scale).r;
+		float ay2 = texture(texture_ao, parallax_pos.xz * texture_scale).r;
+		float az2 = texture(texture_ao, parallax_pos.xy * texture_scale).r;
 		ao_plain = ax2 * blend.x + ay2 * blend.y + az2 * blend.z;
 	}
 	float ao_val = mix(ao_plain, ao_stoch, stochastic_strength);

@@ -395,6 +395,11 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 	var ao_intensity: float = props.get("ao_intensity", 0.5)
 	mat.set_shader_parameter("ao_intensity", ao_intensity)
 
+	# Displacement
+	var disp_tex: Texture2D = _load_texture_any_ext(base_path, "displacement")
+	if disp_tex:
+		mat.set_shader_parameter("texture_displacement", disp_tex)
+
 	# World-space tiling scale — matches the GDScript TEXTURE_SCALE constant
 	mat.set_shader_parameter("texture_scale", TEXTURE_SCALE)
 

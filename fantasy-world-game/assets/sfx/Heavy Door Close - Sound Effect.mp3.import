@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b6oqt3xlv1sm2"
+path="res://.godot/imported/Heavy Door Close - Sound Effect.mp3-342d3deee4642fda9246c574be47a8d2.mp3str"
+
+[deps]
+
+source_file="res://assets/sfx/Heavy Door Close - Sound Effect.mp3"
+dest_files=["res://.godot/imported/Heavy Door Close - Sound Effect.mp3-342d3deee4642fda9246c574be47a8d2.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
