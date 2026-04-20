@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://dp0smhjagc8lk"
-path="res://.godot/imported/ogre1.wav-52dcab9c28a1caea3728b3a90a454af8.sample"
+path="res://.godot/imported/ogre1.wav-7e477fd464127ad4b340450e21517036.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/NPC/ogre/ogre1.wav"
-dest_files=["res://.godot/imported/ogre1.wav-52dcab9c28a1caea3728b3a90a454af8.sample"]
+source_file="res://assets/sfx/troops/ogre/ogre1.wav"
+dest_files=["res://.godot/imported/ogre1.wav-7e477fd464127ad4b340450e21517036.sample"]
 
 [params]
 

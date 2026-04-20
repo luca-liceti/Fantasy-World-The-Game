@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dvog0wngqebkw"
+path="res://.godot/imported/Lock Unlock.ogg-3f59c7e83ad9e504e17ff19a19d55ebf.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/world/interactables/Doors/Lock Unlock.ogg"
+dest_files=["res://.godot/imported/Lock Unlock.ogg-3f59c7e83ad9e504e17ff19a19d55ebf.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

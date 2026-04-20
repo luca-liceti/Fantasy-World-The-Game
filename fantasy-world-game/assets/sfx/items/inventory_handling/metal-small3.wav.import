@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://cr8tby6quw7ba"
-path="res://.godot/imported/metal-small3.wav-2b8503f1b1d827d52c5388db74ed732e.sample"
+path="res://.godot/imported/metal-small3.wav-d1aca9a08ac79084623dce32b04227b6.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/metal-small3.wav"
-dest_files=["res://.godot/imported/metal-small3.wav-2b8503f1b1d827d52c5388db74ed732e.sample"]
+source_file="res://assets/sfx/items/inventory_handling/metal-small3.wav"
+dest_files=["res://.godot/imported/metal-small3.wav-d1aca9a08ac79084623dce32b04227b6.sample"]
 
 [params]
 

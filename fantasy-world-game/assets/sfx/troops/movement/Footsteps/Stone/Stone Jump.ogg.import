@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bpcjvag2v6hq4"
+path="res://.godot/imported/Stone Jump.ogg-10d819133757f60779689aa3f3243ab3.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/troops/movement/Footsteps/Stone/Stone Jump.ogg"
+dest_files=["res://.godot/imported/Stone Jump.ogg-10d819133757f60779689aa3f3243ab3.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

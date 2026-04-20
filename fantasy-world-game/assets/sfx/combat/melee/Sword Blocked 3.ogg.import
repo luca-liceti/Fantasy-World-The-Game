@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://csf83mfy0s4hi"
+path="res://.godot/imported/Sword Blocked 3.ogg-33c63a34dc0a5e34dc70a714415709cc.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/combat/melee/Sword Blocked 3.ogg"
+dest_files=["res://.godot/imported/Sword Blocked 3.ogg-33c63a34dc0a5e34dc70a714415709cc.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

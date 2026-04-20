@@ -153,8 +153,8 @@ const PLAYER2_COLOR = Color(1.0, 0.3, 0.2) # Red
 # =============================================================================
 # DEBUG FLAGS - Set these to skip game phases during development
 # =============================================================================
-const DEBUG_SKIP_DECK_SELECTION: bool = false
-const DEBUG_SKIP_FIRST_MOVE_DICE: bool = false
+const DEBUG_SKIP_DECK_SELECTION: bool = true
+const DEBUG_SKIP_FIRST_MOVE_DICE: bool = true
 const DEBUG_DEFAULT_DECK: Array[String] = ["medieval_knight", "elven_archer", "celestial_cleric", "frost_valkyrie"] # Default deck when skipping
 
 # =============================================================================

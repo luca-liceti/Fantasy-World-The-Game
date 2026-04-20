@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://ffavnklhc223"
+path="res://.godot/imported/Rock Wall 1.ogg-02ead6f09b6622c241ca798946253b9d.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/combat/spells/Rock Wall 1.ogg"
+dest_files=["res://.godot/imported/Rock Wall 1.ogg-02ead6f09b6622c241ca798946253b9d.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

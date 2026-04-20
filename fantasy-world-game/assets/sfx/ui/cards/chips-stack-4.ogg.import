@@ -3,12 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://dlje2f774h24o"
-path="res://.godot/imported/chips-stack-4.ogg-e4a3bdc21c0dc6ee24a22b839e96058b.oggvorbisstr"
+path="res://.godot/imported/chips-stack-4.ogg-3f8f722a4a668d0ad9cfbc547532e20a.oggvorbisstr"
 
 [deps]
 
-source_file="res://assets/sfx/kenney_casino-audio/Audio/chips-stack-4.ogg"
-dest_files=["res://.godot/imported/chips-stack-4.ogg-e4a3bdc21c0dc6ee24a22b839e96058b.oggvorbisstr"]
+source_file="res://assets/sfx/ui/cards/chips-stack-4.ogg"
+dest_files=["res://.godot/imported/chips-stack-4.ogg-3f8f722a4a668d0ad9cfbc547532e20a.oggvorbisstr"]
 
 [params]
 

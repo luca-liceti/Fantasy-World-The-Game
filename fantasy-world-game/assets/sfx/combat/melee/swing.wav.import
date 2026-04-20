@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://ca17ab04rib5m"
-path="res://.godot/imported/swing.wav-b9beeb5f5eb3eb1b230addca7280a04e.sample"
+path="res://.godot/imported/swing.wav-0eca0fb053c74a8ea58e0937c67541f4.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/battle/swing.wav"
-dest_files=["res://.godot/imported/swing.wav-b9beeb5f5eb3eb1b230addca7280a04e.sample"]
+source_file="res://assets/sfx/combat/melee/swing.wav"
+dest_files=["res://.godot/imported/swing.wav-0eca0fb053c74a8ea58e0937c67541f4.sample"]
 
 [params]
 

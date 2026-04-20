@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dd5x5gyo222d0"
+path="res://.godot/imported/Water Walk 1.ogg-d0186bf0304ae039815a8faa8629b12d.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/troops/movement/Footsteps/Water/Water Walk 1.ogg"
+dest_files=["res://.godot/imported/Water Walk 1.ogg-d0186bf0304ae039815a8faa8629b12d.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

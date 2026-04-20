@@ -1,6 +1,6 @@
 cursor asset: Snabish
 
-board textures and biome decorations: Rico Cilliers, Rob Tuytel
+board textures and biome decorations: polyhaven and ambientcg contributors.
 
 paper background image: darkwood67
 
@@ -8,6 +8,6 @@ door opening and closing sfx: audio library - free sound effects.
 
 vfx: kenney game assets.
 
-sfx: kenny game assets, lokif, artisticdude, little robot sound factory
+sfx: kenny game assets, TomMusic, lokif, artisticdude, little robot sound factory
 
-
+tavern 3d model: Gnossiennes

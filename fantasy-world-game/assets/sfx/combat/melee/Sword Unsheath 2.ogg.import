@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://btw7d0fjx3f1x"
+path="res://.godot/imported/Sword Unsheath 2.ogg-d1bf5182eda1ad80d4f9b3d42037e907.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/combat/melee/Sword Unsheath 2.ogg"
+dest_files=["res://.godot/imported/Sword Unsheath 2.ogg-d1bf5182eda1ad80d4f9b3d42037e907.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

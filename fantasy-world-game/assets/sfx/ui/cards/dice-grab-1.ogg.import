@@ -3,12 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://cd583v7mvt5pk"
-path="res://.godot/imported/dice-grab-1.ogg-7b106ab62959c23a36c9d2d8f720e376.oggvorbisstr"
+path="res://.godot/imported/dice-grab-1.ogg-315e7490eecc97d4c19391bf8389421c.oggvorbisstr"
 
 [deps]
 
-source_file="res://assets/sfx/kenney_casino-audio/Audio/dice-grab-1.ogg"
-dest_files=["res://.godot/imported/dice-grab-1.ogg-7b106ab62959c23a36c9d2d8f720e376.oggvorbisstr"]
+source_file="res://assets/sfx/ui/cards/dice-grab-1.ogg"
+dest_files=["res://.godot/imported/dice-grab-1.ogg-315e7490eecc97d4c19391bf8389421c.oggvorbisstr"]
 
 [params]
 

@@ -3,12 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://c82wfh2yq1vpf"
-path="res://.godot/imported/card-slide-6.ogg-eb71a899abf0517b76fbfb1f899ed4e2.oggvorbisstr"
+path="res://.godot/imported/card-slide-6.ogg-2cdd58bfaf886293d46b79e1c8471331.oggvorbisstr"
 
 [deps]
 
-source_file="res://assets/sfx/kenney_casino-audio/Audio/card-slide-6.ogg"
-dest_files=["res://.godot/imported/card-slide-6.ogg-eb71a899abf0517b76fbfb1f899ed4e2.oggvorbisstr"]
+source_file="res://assets/sfx/ui/cards/card-slide-6.ogg"
+dest_files=["res://.godot/imported/card-slide-6.ogg-2cdd58bfaf886293d46b79e1c8471331.oggvorbisstr"]
 
 [params]
 

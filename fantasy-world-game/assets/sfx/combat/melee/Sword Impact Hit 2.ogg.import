@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cb2s6c35pxlk5"
+path="res://.godot/imported/Sword Impact Hit 2.ogg-c4c54a98a05f73c79a84085f0a2fab4c.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/combat/melee/Sword Impact Hit 2.ogg"
+dest_files=["res://.godot/imported/Sword Impact Hit 2.ogg-c4c54a98a05f73c79a84085f0a2fab4c.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

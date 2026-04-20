@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://dhd78d58q7870"
-path="res://.godot/imported/chainmail2.wav-8fa7c1f04565e7b1e592d5ba779a860b.sample"
+path="res://.godot/imported/chainmail2.wav-3575cb7b7c63ae1f9589d1ac128ed315.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/chainmail2.wav"
-dest_files=["res://.godot/imported/chainmail2.wav-8fa7c1f04565e7b1e592d5ba779a860b.sample"]
+source_file="res://assets/sfx/items/inventory_handling/chainmail2.wav"
+dest_files=["res://.godot/imported/chainmail2.wav-3575cb7b7c63ae1f9589d1ac128ed315.sample"]
 
 [params]
 

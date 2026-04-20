@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://c6t7wefhhurba"
-path="res://.godot/imported/wood-small.wav-4e304375efb7343bd720ddcef5b36a12.sample"
+path="res://.godot/imported/wood-small.wav-0d1ad272449177c03317f10b83a9176e.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/wood-small.wav"
-dest_files=["res://.godot/imported/wood-small.wav-4e304375efb7343bd720ddcef5b36a12.sample"]
+source_file="res://assets/sfx/items/inventory_handling/wood-small.wav"
+dest_files=["res://.godot/imported/wood-small.wav-0d1ad272449177c03317f10b83a9176e.sample"]
 
 [params]
 

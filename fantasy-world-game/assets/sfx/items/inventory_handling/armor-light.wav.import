@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://cwhd1j3sdg2yl"
-path="res://.godot/imported/armor-light.wav-d8b1c514eb62fb4880c5960e02b098c8.sample"
+path="res://.godot/imported/armor-light.wav-04338cf3ffe62cfc4dcb40d39c622077.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/armor-light.wav"
-dest_files=["res://.godot/imported/armor-light.wav-d8b1c514eb62fb4880c5960e02b098c8.sample"]
+source_file="res://assets/sfx/items/inventory_handling/armor-light.wav"
+dest_files=["res://.godot/imported/armor-light.wav-04338cf3ffe62cfc4dcb40d39c622077.sample"]
 
 [params]
 

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://clwax8tl5lcdn"
-path="res://.godot/imported/beads.wav-81bb6b78ce85a27b235c97514b9a122a.sample"
+path="res://.godot/imported/beads.wav-8b1b7ead2581d1c0977b27563040c241.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/beads.wav"
-dest_files=["res://.godot/imported/beads.wav-81bb6b78ce85a27b235c97514b9a122a.sample"]
+source_file="res://assets/sfx/items/inventory_handling/beads.wav"
+dest_files=["res://.godot/imported/beads.wav-8b1b7ead2581d1c0977b27563040c241.sample"]
 
 [params]
 

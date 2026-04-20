@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cq3rces4l7gr0"
+path="res://.godot/imported/Wood Run 4.ogg-9d06a917dc5c1926303e27a04d77c569.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/troops/movement/Footsteps/Wood/Wood Run 4.ogg"
+dest_files=["res://.godot/imported/Wood Run 4.ogg-9d06a917dc5c1926303e27a04d77c569.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

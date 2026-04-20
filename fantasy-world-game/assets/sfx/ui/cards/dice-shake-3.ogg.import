@@ -3,12 +3,12 @@
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
 uid="uid://bs66rmmx0brqa"
-path="res://.godot/imported/dice-shake-3.ogg-a0d64423ce77d3a65db2682276628f49.oggvorbisstr"
+path="res://.godot/imported/dice-shake-3.ogg-8fbe3c825a91b171e9569c340e213c07.oggvorbisstr"
 
 [deps]
 
-source_file="res://assets/sfx/kenney_casino-audio/Audio/dice-shake-3.ogg"
-dest_files=["res://.godot/imported/dice-shake-3.ogg-a0d64423ce77d3a65db2682276628f49.oggvorbisstr"]
+source_file="res://assets/sfx/ui/cards/dice-shake-3.ogg"
+dest_files=["res://.godot/imported/dice-shake-3.ogg-8fbe3c825a91b171e9569c340e213c07.oggvorbisstr"]
 
 [params]
 

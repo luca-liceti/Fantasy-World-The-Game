@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://biyehsnd82u8p"
-path="res://.godot/imported/cloth-heavy.wav-394ff2bf0bb11402b0499e88780d296c.sample"
+path="res://.godot/imported/cloth-heavy.wav-ccb6dabf1fc0ac65ef9f385b3082967f.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav"
-dest_files=["res://.godot/imported/cloth-heavy.wav-394ff2bf0bb11402b0499e88780d296c.sample"]
+source_file="res://assets/sfx/items/inventory_handling/cloth-heavy.wav"
+dest_files=["res://.godot/imported/cloth-heavy.wav-ccb6dabf1fc0ac65ef9f385b3082967f.sample"]
 
 [params]
 

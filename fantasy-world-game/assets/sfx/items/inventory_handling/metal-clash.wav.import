@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://b1pf1bqi0p6yy"
-path="res://.godot/imported/metal-clash.wav-189c298b1ddee9eb6a5bdfa25b581e9f.sample"
+path="res://.godot/imported/metal-clash.wav-977bafc6e90122797559bcb6e1153ff5.sample"
 
 [deps]
 
-source_file="res://assets/sfx/inventory_sound_effects/inventory_sound_effects/metal-clash.wav"
-dest_files=["res://.godot/imported/metal-clash.wav-189c298b1ddee9eb6a5bdfa25b581e9f.sample"]
+source_file="res://assets/sfx/items/inventory_handling/metal-clash.wav"
+dest_files=["res://.godot/imported/metal-clash.wav-977bafc6e90122797559bcb6e1153ff5.sample"]
 
 [params]
 

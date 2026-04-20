@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://rwn3odd2ko71"
+path="res://.godot/imported/Sliding Glass Door Opening - Sound Effect.mp3-c4658ea4ce3a33e5023ab20f8ccedb18.mp3str"
+
+[deps]
+
+source_file="res://assets/sfx/world/interactables/Doors/Sliding Glass Door Opening - Sound Effect.mp3"
+dest_files=["res://.godot/imported/Sliding Glass Door Opening - Sound Effect.mp3-c4658ea4ce3a33e5023ab20f8ccedb18.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dfeo7qq0xj1lo"
+path="res://.godot/imported/Dirt Run 2.ogg-c3f46217c05286f7d1748fadbcc7914a.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/troops/movement/Footsteps/Dirt/Dirt Run 2.ogg"
+dest_files=["res://.godot/imported/Dirt Run 2.ogg-c3f46217c05286f7d1748fadbcc7914a.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://2o4f0088gd5j"
-path="res://.godot/imported/sword-unsheathe3.wav-08dceb25c00ec66e1a68f3a5adee7e50.sample"
+path="res://.godot/imported/sword-unsheathe3.wav-e9b98397a9bb8c602fcc9f0dd250463f.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe3.wav"
-dest_files=["res://.godot/imported/sword-unsheathe3.wav-08dceb25c00ec66e1a68f3a5adee7e50.sample"]
+source_file="res://assets/sfx/combat/melee/sword-unsheathe3.wav"
+dest_files=["res://.godot/imported/sword-unsheathe3.wav-e9b98397a9bb8c602fcc9f0dd250463f.sample"]
 
 [params]
 

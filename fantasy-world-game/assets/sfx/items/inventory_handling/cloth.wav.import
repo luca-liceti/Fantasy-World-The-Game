@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://daigvcctwpt0h"
-path="res://.godot/imported/cloth.wav-5042396c4f5e2282f207ee8d502a1ff6.sample"
+path="res://.godot/imported/cloth.wav-1a28e488ba42e4012926c14ac069d571.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav"
-dest_files=["res://.godot/imported/cloth.wav-5042396c4f5e2282f207ee8d502a1ff6.sample"]
+source_file="res://assets/sfx/items/inventory_handling/cloth.wav"
+dest_files=["res://.godot/imported/cloth.wav-1a28e488ba42e4012926c14ac069d571.sample"]
 
 [params]
 

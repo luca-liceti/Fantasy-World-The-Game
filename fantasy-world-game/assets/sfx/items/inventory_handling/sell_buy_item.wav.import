@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bk70rankcqn06"
-path="res://.godot/imported/sell_buy_item.wav-3ba612b53d6c1942d243cc25b5d245e4.sample"
+path="res://.godot/imported/sell_buy_item.wav-b4d75d4b369ae746a9e4579667d833a5.sample"
 
 [deps]
 
-source_file="res://assets/sfx/inventory_sound_effects/inventory_sound_effects/sell_buy_item.wav"
-dest_files=["res://.godot/imported/sell_buy_item.wav-3ba612b53d6c1942d243cc25b5d245e4.sample"]
+source_file="res://assets/sfx/items/inventory_handling/sell_buy_item.wav"
+dest_files=["res://.godot/imported/sell_buy_item.wav-b4d75d4b369ae746a9e4579667d833a5.sample"]
 
 [params]
 

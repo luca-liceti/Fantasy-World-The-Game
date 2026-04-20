@@ -1,12 +1,25 @@
-- FINISH APPLYING UITHEME TO MAIN GAME UI
-- IMPORT 2K BIOME TEXTURE AND ADD RANDOM SECONDARY NOISE MASK TO SHADERS (OR OTHER TECHNIQUES RESEARCH NEEDED, RESEARCH GAMES LIKE CIVILIZATION AND BALDURS GATE)
-- LOOK INTO BETTER BIOME TEXTURES
-- IMPROVE SHADERS
-- IMPROVE LIGHTING
-- FIX CHARACTER CLOSEUPS
-- ADD TRUE SIGNATURE SPECIALS (CHECK CLAUDE)
-- ADD COMBO ATTACKS (CHECK CLAUDE)
+# 📋 PROJECT TODO: CORE IMPROVEMENTS
 
-- Adjust scaling of enviroment.
+## 🎨 VISUALS & RENDERING
+- [ ] **Tavern Lighting Overhaul**:
+    - Relink all lighting to originate strictly from light sources (candles).
+    - Implement gradual decaying strength for more realism.
+    - Shift to more "organic" light shapes and colors (avoiding perfect circles and uniform colors).
+- [ ] **Full PBR Integration**: Ensure the Game Board and Board Border utilize all corresponding textures (Diffuse, Normal, Roughness, AO) and heightmaps/displacement.
+- [ ] **Shader Polish**: General improvement and optimization of existing shaders.
+- [ ] **Biome Texture Research**: Source and implement better biome textures for higher visual fidelity.
 
-- MAKE BOARD TEXTURE USE HEIGHTMAPS
+## 🌍 ENVIRONMENT & SCALING
+- [ ] **Biome Cleanup**: Remove "Hills" completely from the biome generation system.
+- [ ] **Scale Calibration**: Adjust environment scaling to ensure 1:1 realism between characters and world objects.
+
+## 🖥️ UI & UX
+- [ ] **Visual Layering**:
+    - Troops must be visible **OVER** the selected tile glow.
+    - Tile glow must be visible **OVER** biome decorations (grass, trees, etc.).
+- [ ] **UI Theme Integration**: Finish applying the global `UITHEME` to all elements of the Main Game UI.
+- [ ] **Combat Presentation**: Fix and improve character closeups and the closeup sequence order.
+
+## ⚔️ GAMEPLAY & MECHANICS
+- [ ] **True Signature Specials**: Implement unique special moves (Reference: Claude notes).
+- [ ] **Combo Attacks**: Implement the combo attack system (Reference: Claude notes).

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://mhsk6qkcdv18"
-path="res://.godot/imported/shade14.wav-e11e0d178dc05803dc3b9cd90a7e3991.sample"
+path="res://.godot/imported/shade14.wav-d7ba635ea0816cc84ac1c8a54e6df0ef.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade14.wav"
-dest_files=["res://.godot/imported/shade14.wav-e11e0d178dc05803dc3b9cd90a7e3991.sample"]
+source_file="res://assets/sfx/troops/shade/shade14.wav"
+dest_files=["res://.godot/imported/shade14.wav-d7ba635ea0816cc84ac1c8a54e6df0ef.sample"]
 
 [params]
 

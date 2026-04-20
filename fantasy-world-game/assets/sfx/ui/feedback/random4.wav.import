@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bxm2t12p770bl"
-path="res://.godot/imported/random4.wav-c803eef5beb46fd301d709bb586734ec.sample"
+path="res://.godot/imported/random4.wav-502b793beac47955e9e63585c223b0a9.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/misc/random4.wav"
-dest_files=["res://.godot/imported/random4.wav-c803eef5beb46fd301d709bb586734ec.sample"]
+source_file="res://assets/sfx/ui/feedback/random4.wav"
+dest_files=["res://.godot/imported/random4.wav-502b793beac47955e9e63585c223b0a9.sample"]
 
 [params]
 

@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cragysaws7nww"
+path="res://.godot/imported/Fireball 1.ogg-d6d30c951cb51251a725fb08a20b763e.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sfx/combat/spells/Fireball 1.ogg"
+dest_files=["res://.godot/imported/Fireball 1.ogg-d6d30c951cb51251a725fb08a20b763e.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

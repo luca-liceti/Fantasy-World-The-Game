@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b5fakfwm8ic3n"
+path="res://.godot/imported/Turning Door Knob - Sound Effect.mp3-8c6cef095b2997308b8bab9a4c624c9a.mp3str"
+
+[deps]
+
+source_file="res://assets/sfx/world/interactables/Doors/Turning Door Knob - Sound Effect.mp3"
+dest_files=["res://.godot/imported/Turning Door Knob - Sound Effect.mp3-8c6cef095b2997308b8bab9a4c624c9a.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

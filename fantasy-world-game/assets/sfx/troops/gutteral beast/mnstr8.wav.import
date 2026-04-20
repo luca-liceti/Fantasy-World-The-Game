@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bqe51bur38l4j"
-path="res://.godot/imported/mnstr8.wav-fb020a140d9763152e0fcf6c0f555142.sample"
+path="res://.godot/imported/mnstr8.wav-2eea92f7d2db93466cf7f00fe4dc1756.sample"
 
 [deps]
 
-source_file="res://assets/sfx/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr8.wav"
-dest_files=["res://.godot/imported/mnstr8.wav-fb020a140d9763152e0fcf6c0f555142.sample"]
+source_file="res://assets/sfx/troops/gutteral beast/mnstr8.wav"
+dest_files=["res://.godot/imported/mnstr8.wav-2eea92f7d2db93466cf7f00fe4dc1756.sample"]
 
 [params]
 
