@@ -385,8 +385,9 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 		mat.set_shader_parameter("roughness_override", props.get("roughness", 0.75))
 
 	# Metallic and Specular properties for reflectivity
+	# Specular kept at 0.0 — terrain should be matte/diffuse, not reflective
 	mat.set_shader_parameter("metallic_override", props.get("metallic", 0.0))
-	mat.set_shader_parameter("specular_override", props.get("specular", 0.5))
+	mat.set_shader_parameter("specular_override", 0.0)
 
 	# Ambient occlusion
 	var ao_tex: Texture2D = _load_texture_any_ext(base_path, "ao")

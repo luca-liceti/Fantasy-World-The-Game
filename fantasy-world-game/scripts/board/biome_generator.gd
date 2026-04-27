@@ -98,8 +98,10 @@ var _board_radius: float = 11.0
 ## Generate biomes and heights for all coordinates.
 ## 
 ## @param coordinates: Array of all HexCoordinates on the board
+## @param scene_tree: Optional SceneTree — if provided, generation yields periodically
+##   to prevent main-thread stalls. Pass null for synchronous (non-Node) callers.
 ## @return Dictionary with "biomes" (key -> Type) and "heights" (key -> float)
-func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
+func generate_biomes(coordinates: Array[HexCoordinates], scene_tree: SceneTree = null) -> Dictionary:
 	# Initialize
 	_rng.randomize()
 	_setup_noise()
@@ -181,15 +183,16 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 		combined = _apply_island_falloff(coord, combined)
 		height_map[key] = combined
 	
-	# DEBUG: Print distribution after Voronoi assignment
-	print("Distribution after Voronoi seed assignment:")
-	_print_biome_distribution(biome_map)
+	# C-9: Yield between Voronoi assignment and rebalancing if async
+	if scene_tree:
+		await scene_tree.process_frame
+	
+	if OS.is_debug_build():
+		print("Distribution after Voronoi seed assignment:")
+		_print_biome_distribution(biome_map)
 	
 	# ==========================================================================
 	# STEP 3: REBALANCE DISTRIBUTION
-	# Trim boundary tiles from over-represented biomes and give them to
-	# under-represented neighbors. This keeps shapes organic (only boundary
-	# tiles move) while enforcing roughly equal distribution.
 	# ==========================================================================
 	@warning_ignore("integer_division")
 	var target_per_biome: int = TOTAL_TILES / NUM_BIOMES  # ~56
@@ -197,6 +200,9 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	var max_rebalance_iters: int = 200  # Safety cap
 	
 	for _iter in range(max_rebalance_iters):
+		# C-9: Yield every 20 rebalance iterations to avoid blocking >5ms at a time
+		if scene_tree and _iter % 20 == 0 and _iter > 0:
+			await scene_tree.process_frame
 		var counts = _count_biomes(biome_map)
 		
 		# Find the most over-represented biome
@@ -273,12 +279,16 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 		if not reassigned:
 			break  # No valid reassignment possible
 	
-	print("Distribution after rebalancing:")
-	_print_biome_distribution(biome_map)
+	if OS.is_debug_build():
+		print("Distribution after rebalancing:")
+		_print_biome_distribution(biome_map)
+	
+	# C-9: Yield between rebalance and cleanup
+	if scene_tree:
+		await scene_tree.process_frame
 	
 	# ==========================================================================
-	# STEP 4: Cleanup — remove isolated tiles and fix forbidden adjacencies
-	# An isolated tile has NO same-biome neighbors → reassign to majority neighbor
+	# STEP 4: Cleanup: remove isolated tiles and fix forbidden adjacencies
 	# ==========================================================================
 	for _pass in range(CLEANUP_PASSES):
 		var changed: bool = false
@@ -317,11 +327,15 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	# STEP 5: Fix forbidden adjacency violations
 	# If a tile borders a forbidden neighbor, try to change it to a compatible biome
 	# ==========================================================================
+		# C-9: Yield between cleanup and height adjustment
+	if scene_tree:
+		await scene_tree.process_frame
+	
 	biome_map = _fix_forbidden_adjacencies(coordinates, biome_map)
 	
-	# DEBUG: Final distribution
-	print("Final distribution after cleanup:")
-	_print_biome_distribution(biome_map)
+	if OS.is_debug_build():
+		print("Final distribution after cleanup:")
+		_print_biome_distribution(biome_map)
 	
 	# ==========================================================================
 	# STEP 6: Adjust heights based on final biome assignments
@@ -333,6 +347,10 @@ func generate_biomes(coordinates: Array[HexCoordinates]) -> Dictionary:
 	
 	# STEP 8: Enforce maximum height difference between adjacent tiles
 	height_map = _enforce_max_height_difference(coordinates, height_map)
+	
+	# C-9: Yield before final scaling
+	if scene_tree:
+		await scene_tree.process_frame
 	
 	# STEP 9: Apply final HEIGHT_SCALE
 	for key in height_map:

@@ -50,14 +50,23 @@ extends Node
 ## Candle flame colour — warm gold-amber (toned down from deep orange).
 @export var candle_color: Color = Color(1.0, 0.78, 0.45, 1.0)
 
-## Energy per chandelier light.  Must fill a room at environment_scale=25.
-@export var candle_energy: float = 20.0
+## Energy per chandelier light.  High energy with short range = bright nearby,
+## dark at distance — realistic candlelight that doesn't fill the whole room.
+@export var candle_energy: float = 40.0
 
-## Falloff range in world-space units.  Large enough to reach nearby walls.
-@export var candle_range: float = 40.0
+## Falloff range in world-space units.  Short range forces rapid falloff.
+## At environment_scale=25, this covers ~12m radius (half a room width).
+@export var candle_range: float = 12.0
+
+## Attenuation curve exponent.  Higher = sharper drop-off.
+## 1.0 = physically linear, 2.0 = inverse-square, 2.5 = rapid theatrical falloff.
+@export var candle_attenuation: float = 2.5
 
 ## Indirect energy multiplier for baked GI bounce.
-@export var candle_indirect_energy: float = 1.0
+@export var candle_indirect_energy: float = 0.6
+
+## Specular energy for the candle highlights on surfaces.
+@export var candle_specular: float = 1.0
 
 ## How far above the mesh centre (local units) to place each candle light.
 @export var candle_height_offset: float = 0.05
@@ -65,16 +74,20 @@ extends Node
 ## Enable soft shadows on chandelier lights.
 @export var candle_shadows: bool = true
 
+## Shadow softness (blur radius).
+@export var candle_shadow_blur: float = 1.5
+
 # ── Ambient / fill settings ───────────────────────────────────────────────────
 ## The reference image is well-lit overall — you can see every beam, shelf, and
 ## barrel.  This requires a fairly strong, warm-neutral ambient fill that
 ## simulates the cumulative bounce from fireplace + dozens of candles.
 
 ## Warm-neutral ambient — simulates fireplace and candlelight bounce without being too orange.
-@export var ambient_color: Color = Color(0.88, 0.78, 0.65, 1.0)
+## Kept low so PBR roughness/normals remain visible — actual illumination comes from candle OmniLights.
+@export var ambient_color: Color = Color(0.75, 0.62, 0.48, 1.0)
 
-## Strong enough to light walls and ceiling clearly, with shadows still present.
-@export var ambient_energy: float = 0.55
+## Low enough that shadows and PBR detail are preserved.  Candles do the heavy lifting.
+@export var ambient_energy: float = 0.25
 
 
 
@@ -201,18 +214,19 @@ func _spawn_light_on_mesh(mi: MeshInstance3D) -> void:
 	var light := OmniLight3D.new()
 	light.name = "CandleLight_" + mi.name
 
-	# Colour & energy
+	# Colour & energy — bright but short-ranged for realistic falloff
 	light.light_color = candle_color
 	light.light_energy = candle_energy
 	light.light_indirect_energy = candle_indirect_energy
+	light.light_specular = candle_specular
 
-	# Range / attenuation
+	# Range / attenuation — steep curve = strong nearby, dark at distance
 	light.omni_range = candle_range
-	# Slightly physically-based attenuation; 1.0 = natural inverse-square falloff
-	light.omni_attenuation = 1.0
+	light.omni_attenuation = candle_attenuation
 
-	# Shadows
+	# Shadows — soft and atmospheric
 	light.shadow_enabled = candle_shadows
+	light.shadow_blur = candle_shadow_blur
 
 	# Static bake mode — participates in LightmapGI baking
 	light.light_bake_mode = Light3D.BAKE_STATIC
@@ -226,7 +240,7 @@ func _spawn_light_on_mesh(mi: MeshInstance3D) -> void:
 	light.position = Vector3(0.0, candle_height_offset, 0.0)
 
 	_chandelier_lights.append(light)
-	print("[TavernLighting]   → Candle on '%s' (mat-match)" % mi.name)
+	print("[TavernLighting]   → Candle on '%s' (energy=%.0f range=%.0f atten=%.1f)" % [mi.name, candle_energy, candle_range, candle_attenuation])
 
 
 func _remove_previous_lights() -> void:
@@ -252,76 +266,78 @@ func _apply_world_environment() -> void:
 
 	# ── Background ────────────────────────────────────────────────────────────
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.12, 0.10, 0.08, 1.0)   # dark neutral brown, not reddish
+	env.background_color = Color(0.06, 0.05, 0.04, 1.0)   # very dark — candles are the only light
 
 	# ── Ambient light ────────────────────────────────────────────────────────
+	# Kept low so PBR detail (roughness, normals) is not washed out.
+	# Actual room illumination comes from OmniLight candles with steep falloff.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = ambient_color
 	env.ambient_light_energy = ambient_energy
 
-	# ── Reflected light ───────────────────────────────────────────────────────
-	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	# ── Reflected light — scene-based so surfaces show reflections ───────────
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
 	# ── Tonemapping (warm amber ACES) ─────────────────────────────────────────
 	env.tonemap_mode = tonemap_mode
 	env.tonemap_exposure = tonemap_exposure
 	env.tonemap_white = tonemap_white
 
-	# ── SSAO — subtle contact shadows in corners / under furniture ───────────
-	# Reduced intensity to fix extreme black halos around characters and edges of the screen
+	# ── SSAO — contact shadows in corners, furniture undersides ──────────────
 	env.ssao_enabled = true
-	env.ssao_radius = 0.5          # Reduced radius
-	env.ssao_intensity = 0.5       # Drastically reduced intensity (was 2.5)
-	env.ssao_power = 1.0
+	env.ssao_radius = 0.8
+	env.ssao_intensity = 1.2        # visible but not extreme
+	env.ssao_power = 1.5
 	env.ssao_detail = 0.5
-	env.ssao_horizon = 0.2
+	env.ssao_horizon = 0.12
 	env.ssao_sharpness = 0.98
-	env.ssao_light_affect = 0.5    # Ensure light washes out AO naturally
+	env.ssao_light_affect = 0.6     # light washes out AO naturally near candles
 
-	# ── SSIL — very subtle warm bounce ────────────────────────────────────────
+	# ── SSIL — warm indirect bounce from candlelight ─────────────────────────
 	if RenderingServer.get_rendering_device() != null:
 		env.ssil_enabled = true
-		env.ssil_radius = 3.0
-		env.ssil_intensity = 0.4       # stronger warm bounce for a richer look
-		env.ssil_sharpness = 0.9
+		env.ssil_radius = 4.0
+		env.ssil_intensity = 0.6       # stronger warm bounce — key for realistic indirect
+		env.ssil_sharpness = 0.85
 		env.ssil_normal_rejection = 1.0
 	else:
 		env.ssil_enabled = false
 
-	# ── Glow — soft candle halos, not a bloom explosion ───────────────────────
+	# ── Glow — visible candle halos and warm bloom ───────────────────────────
 	env.glow_enabled = true
 	env.glow_normalized = false
-	env.glow_intensity = 0.35
-	env.glow_strength = 0.7
-	env.glow_bloom = 0.1           # soft halos around the lanterns
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-	env.glow_hdr_threshold = 2.0   # only the brightest spots glow
-	env.glow_hdr_scale = 1.5
+	env.glow_intensity = 0.6        # stronger halos around candles
+	env.glow_strength = 1.0
+	env.glow_bloom = 0.15           # soft warm halos spread
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	env.glow_hdr_threshold = 1.2    # lower threshold = more surfaces glow near candles
+	env.glow_hdr_scale = 2.0
 
-	# ── Fog — OFF: at environment_scale=25, any fog density floods the room red.
-	# Re-enable with density < 0.0001 only after confirming scale.
+	# ── Fog — OFF: at environment_scale=25, any fog density floods the room.
 	env.fog_enabled = false
 
-	# NOTE: Depth of Field is set on Camera3D.attributes, not Environment.
-	# See _apply_dof_to_cameras() called from apply().
-
-	# ── SSR — off (too expensive for candlelight scene, no reflective surfaces) ─
+	# ── SSR — disabled for the board scene.
+	# Terrain tiles (grass, soil, bark) are matte surfaces; SSR was causing
+	# them to look like mirrors. Re-enable only if you add genuinely reflective
+	# surfaces (polished floor, water tiles) that need screen-space reflections.
 	env.ssr_enabled = false
 
 	# ── SDFGI — off (chandelier OmniLights provide GI; SDFGI costs too much) ──
 	env.sdfgi_enabled = false
 
-	# ── Volumetric fog — adds that "hazy tavern" atmosphere ──────────────────
+	# ── Volumetric fog — hazy tavern atmosphere, candlelight scatters ────────
 	if RenderingServer.get_rendering_device() != null:
 		env.volumetric_fog_enabled = true
-		env.volumetric_fog_density = 0.005  # subtle, but visible near lights
-		env.volumetric_fog_albedo = Color(0.18, 0.16, 0.14)  # neutral-warm dust color
-		env.volumetric_fog_emission = Color(0.05, 0.04, 0.02) # slight self-illumination
+		env.volumetric_fog_density = 0.008  # denser — visible light cones near candles
+		env.volumetric_fog_albedo = Color(0.22, 0.18, 0.14)  # warm dust scattering
+		env.volumetric_fog_emission = Color(0.04, 0.03, 0.01)
+		env.volumetric_fog_anisotropy = 0.6  # forward-scatter for visible light shafts
 	else:
 		env.volumetric_fog_enabled = false
 
 	world_environment.environment = env
-	print("[TavernLighting] WorldEnvironment replaced with atmospheric preset.")
+	print("[TavernLighting] WorldEnvironment applied (SSR=%s, SSIL=%s, ambient=%.2f)." % [
+		str(env.ssr_enabled), str(env.ssil_enabled), ambient_energy])
 
 
 func _find_world_environment() -> WorldEnvironment:

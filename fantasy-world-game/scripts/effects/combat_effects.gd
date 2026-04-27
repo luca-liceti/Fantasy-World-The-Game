@@ -22,6 +22,19 @@ var is_combat_zoomed: bool = false
 var highlighted_troops: Array[Node] = []
 var highlight_materials: Dictionary = {}
 
+# C-8: Shake state — consumed each frame by main.gd's camera transform
+## Public; add this to the computed camera eye position each frame.
+var camera_shake_offset: Vector3 = Vector3.ZERO
+var _shake_intensity: float = 0.0  # Current peak intensity
+var _shake_duration: float = 0.0   # Total shake duration
+var _shake_elapsed: float = 0.0    # Time spent shaking
+
+# C-7: Particle pool — pre-created at _ready(); reused per hit
+const PARTICLE_POOL_SIZE: int = 5
+var _particle_pool: Array[GPUParticles3D] = []
+## Shared process materials per damage type (6 types) — created once
+var _particle_materials: Dictionary = {}  # damage_type: String -> ParticleProcessMaterial
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -50,9 +63,83 @@ const DAMAGE_TYPE_COLORS = {
 # =============================================================================
 
 func _ready() -> void:
+	add_to_group("combat_effects")  # Lets main.gd find us via get_first_node_in_group
 	# Find camera in scene
 	await get_tree().process_frame
 	_find_camera()
+	# C-7: Build the particle pool
+	_init_particle_pool()
+
+
+## C-7: Pre-create particle nodes and shared materials so that
+## spawn_damage_particles() never allocates at combat time.
+func _init_particle_pool() -> void:
+	# Shared mesh (all particles use the same tiny sphere)
+	var shared_mesh = SphereMesh.new()
+	shared_mesh.radius = 0.05
+	shared_mesh.height = 0.1
+	
+	# Shared materials per damage type
+	for dmg_type in DAMAGE_TYPE_COLORS:
+		var color: Color = DAMAGE_TYPE_COLORS[dmg_type]
+		var mat = ParticleProcessMaterial.new()
+		mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		mat.emission_sphere_radius = 0.3
+		mat.direction = Vector3(0, 1, 0)
+		mat.spread = 45.0
+		mat.initial_velocity_min = 2.0
+		mat.initial_velocity_max = 4.0
+		mat.gravity = Vector3(0, -5, 0)
+		mat.scale_min = 0.1
+		mat.scale_max = 0.3
+		mat.color = color
+		# Fade-out gradient
+		var grad = Gradient.new()
+		grad.set_color(0, color)
+		grad.set_color(1, Color(color.r, color.g, color.b, 0))
+		var grad_tex = GradientTexture1D.new()
+		grad_tex.gradient = grad
+		mat.color_ramp = grad_tex
+		_particle_materials[dmg_type] = mat
+	
+	# Fallback material for unknown types
+	var fallback = ParticleProcessMaterial.new()
+	fallback.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	fallback.emission_sphere_radius = 0.3
+	fallback.direction = Vector3(0, 1, 0)
+	fallback.spread = 45.0
+	fallback.initial_velocity_min = 2.0
+	fallback.initial_velocity_max = 4.0
+	fallback.gravity = Vector3(0, -5, 0)
+	fallback.scale_min = 0.1
+	fallback.scale_max = 0.3
+	_particle_materials["DEFAULT"] = fallback
+	
+	# Pool nodes
+	for _i in range(PARTICLE_POOL_SIZE):
+		var p = GPUParticles3D.new()
+		p.one_shot = true
+		p.explosiveness = 0.9
+		p.lifetime = 0.8
+		p.draw_pass_1 = shared_mesh
+		p.emitting = false
+		p.visible = false
+		add_child(p)
+		_particle_pool.append(p)
+
+
+## C-8: Advance shake state each frame
+func _process(delta: float) -> void:
+	if _shake_elapsed >= _shake_duration:
+		camera_shake_offset = Vector3.ZERO
+		return
+	_shake_elapsed += delta
+	var falloff: float = 1.0 - (_shake_elapsed / _shake_duration)
+	camera_shake_offset = Vector3(
+		randf_range(-_shake_intensity, _shake_intensity) * falloff,
+		randf_range(-_shake_intensity, _shake_intensity) * falloff,
+		randf_range(-_shake_intensity * 0.5, _shake_intensity * 0.5) * falloff
+	)
 
 
 func _find_camera() -> void:
@@ -254,39 +341,21 @@ func play_selection_to_resolution_transition(callback: Callable = Callable()) ->
 
 
 # =============================================================================
-# 5.1.4 - SCREEN SHAKE
+# 5.1.4 - SCREEN SHAKE (C-8: state-driven, no tween spaghetti)
 # =============================================================================
 
-## Shake the screen for impact
+## Start a screen shake.
+## camera_shake_offset is updated each frame via _process() and should be
+## added to the camera eye position in main.gd's _update_camera_transform().
 func screen_shake(intensity: float = SCREEN_SHAKE_INTENSITY, duration: float = SCREEN_SHAKE_DURATION) -> void:
-	if game_camera == null:
-		_find_camera()
-		if game_camera == null:
-			return
-	
+	# Accumulate shakes: take the stronger intensity, reset timer
+	_shake_intensity = max(_shake_intensity, intensity)
+	_shake_duration  = max(_shake_duration, duration)
+	_shake_elapsed   = 0.0
 	effect_started.emit("screen_shake")
-	
-	var original_pos = game_camera.global_position
-	var elapsed = 0.0
-	var shake_tween = create_tween()
-	
-	# Create shake by rapidly moving camera
-	var shake_steps = int(duration / 0.03)
-	for i in range(shake_steps):
-		var offset = Vector3(
-			randf_range(-intensity, intensity),
-			randf_range(-intensity, intensity),
-			randf_range(-intensity * 0.5, intensity * 0.5)
-		)
-		# Reduce intensity over time
-		var falloff = 1.0 - (float(i) / float(shake_steps))
-		offset *= falloff
-		
-		shake_tween.tween_property(game_camera, "global_position", original_pos + offset, 0.03)
-	
-	# Return to original position
-	shake_tween.tween_property(game_camera, "global_position", original_pos, 0.05)
-	shake_tween.tween_callback(func(): effect_completed.emit("screen_shake"))
+	# Emit completion after the full duration
+	get_tree().create_timer(duration).timeout.connect(
+		func(): effect_completed.emit("screen_shake"), CONNECT_ONE_SHOT)
 
 
 ## Shake screen on critical hit (stronger)
@@ -300,57 +369,38 @@ func hit_shake() -> void:
 
 
 # =============================================================================
-# 5.1.5 - DAMAGE TYPE PARTICLES
+# 5.1.5 - DAMAGE TYPE PARTICLES (C-7: pool-based, zero runtime allocation)
 # =============================================================================
 
-## Spawn damage type particles at position
+## Spawn damage type particles at position using the pre-created pool.
 func spawn_damage_particles(position: Vector3, damage_type: String, is_crit: bool = false) -> void:
-	var color = DAMAGE_TYPE_COLORS.get(damage_type, Color.WHITE)
+	# Find a free (not emitting) particle node from the pool
+	var particles: GPUParticles3D = null
+	for p in _particle_pool:
+		if not p.emitting:
+			particles = p
+			break
 	
-	# Create GPU particles
-	var particles = GPUParticles3D.new()
-	particles.emitting = true
-	particles.one_shot = true
-	particles.explosiveness = 0.9
-	particles.amount = 20 if not is_crit else 40
-	particles.lifetime = 0.8
+	if particles == null:
+		# All pool slots busy — silently skip (combat effects are cosmetic)
+		return
+	
+	# Configure the pooled node for this hit
 	particles.global_position = position + Vector3(0, 0.5, 0)
+	particles.amount = 40 if is_crit else 20
 	
-	# Create process material
-	var material = ParticleProcessMaterial.new()
-	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	material.emission_sphere_radius = 0.3
-	material.direction = Vector3(0, 1, 0)
-	material.spread = 45.0
-	material.initial_velocity_min = 2.0
-	material.initial_velocity_max = 4.0
-	material.gravity = Vector3(0, -5, 0)
-	material.scale_min = 0.1
-	material.scale_max = 0.3 if not is_crit else 0.5
-	material.color = color
+	# Assign the pre-built material for this damage type
+	var mat: ParticleProcessMaterial = _particle_materials.get(damage_type,
+		_particle_materials.get("DEFAULT"))
+	if is_crit:
+		# Temporarily bump scale for crits (no allocation — just tweak the value)
+		mat.scale_max = 0.5
+	else:
+		mat.scale_max = 0.3
+	particles.process_material = mat
 	
-	# Add color fade
-	var gradient = Gradient.new()
-	gradient.set_color(0, color)
-	gradient.set_color(1, Color(color.r, color.g, color.b, 0))
-	var gradient_texture = GradientTexture1D.new()
-	gradient_texture.gradient = gradient
-	material.color_ramp = gradient_texture
-	
-	particles.process_material = material
-	
-	# Add mesh for particles
-	var mesh = SphereMesh.new()
-	mesh.radius = 0.05
-	mesh.height = 0.1
-	particles.draw_pass_1 = mesh
-	
-	add_child(particles)
-	
-	# Auto-cleanup
-	await get_tree().create_timer(2.0).timeout
-	if is_instance_valid(particles):
-		particles.queue_free()
+	particles.visible = true
+	particles.emitting = true
 
 
 ## Spawn status effect particles (for DoT effects)

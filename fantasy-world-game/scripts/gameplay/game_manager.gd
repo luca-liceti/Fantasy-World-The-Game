@@ -221,7 +221,7 @@ func _create_hex_board() -> void:
 		hex_board = HexBoard.new()
 	
 	add_child(hex_board)
-	hex_board.generate_board()
+	await hex_board.generate_board()
 
 
 ## Set player decks (called after deck selection)

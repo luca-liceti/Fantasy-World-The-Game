@@ -145,6 +145,10 @@ const MODEL_ROTATIONS: Dictionary = {
 static var _model_cache: Dictionary = {}
 ## Cache for loaded card art textures
 static var _card_art_cache: Dictionary = {}
+## C-10: Cache for fixed (de-artifacted) materials keyed by
+## "troop_id:node_path:surface_index". Allows all instances of the
+## same troop type to share fixed materials instead of duplicating per-instance.
+static var _fixed_material_cache: Dictionary = {}
 
 
 # =============================================================================
@@ -295,6 +299,25 @@ static func has_card_art(troop_id: String) -> bool:
 static func clear_cache() -> void:
 	_model_cache.clear()
 	_card_art_cache.clear()
+	_fixed_material_cache.clear()  # C-10: also clear fixed material cache
+
+
+# =============================================================================
+# C-10: FIXED MATERIAL CACHE ACCESSORS
+# =============================================================================
+
+## Returns true if a pre-fixed material exists for the given surface cache key.
+static func has_fixed_material(cache_key: String) -> bool:
+	return _fixed_material_cache.has(cache_key)
+
+## Retrieves the pre-fixed material for the given surface cache key.
+static func get_fixed_material(cache_key: String) -> Material:
+	return _fixed_material_cache.get(cache_key, null)
+
+## Stores a fixed material in the cache for reuse by subsequent troop instances.
+static func store_fixed_material(cache_key: String, mat: Material) -> void:
+	_fixed_material_cache[cache_key] = mat
+
 
 
 ## Get the model path for a troop ID (for debugging/logging)

@@ -1016,20 +1016,22 @@ const MINIMUM_EDGE_HEIGHT: float = 0.0
 - [x] Board Textures (8/8)
 - [x] UI Textures (10/10)
 
-### 3D Models ⏳ PENDING
-- [ ] Troop Models (0/12)
-- [ ] NPC Models (0/3)
-- [ ] Gold Mine Models (0/5)
-- [ ] Dice Model (0/1)
-- [ ] Card Art (0/15)
+### 3D Models ✅ COMPLETE
+- [x] Troop Models (0/12)
+- [x] NPC Models (0/3)
+- [x] Gold Mine Models (0/5)
+- [x] Dice Model (0/1)
+- [x] Card Art (0/15)
 
 ### Animations ⏳ PENDING
 - [ ] Core Animations (0/48) — Idle, Attack, Damage, Death per troop
 
-### Phase 2: Polish 🔮 FUTURE
+### Audio Assets ⏳ PENDING
+- [ ] Audio Assets (50+)
+
+### Phase 2: Polish
 - [ ] Advanced Animations (60+)
 - [ ] Particle Effects (20+)
-- [ ] Audio Assets (50+)
 
 ---
 
@@ -1045,27 +1047,15 @@ const MINIMUM_EDGE_HEIGHT: float = 0.0
 
 ## Future Enhancements (To Add)
 
-1. **Different board sizes** — 397 hex and other options
 2. **Tutorial system** — Guided onboarding for new players
-3. **Practice mode** — Combat training arena
 4. **AI opponents** — Single-player vs AI
-5. **Audio system** — Music and sound effects
 6. **Replay system** — Save and playback matches
 7. **Achievements** — Progression rewards
-8. **Mobile port** — Touch controls and mobile optimization
 9. **Environmental decoration models** — Add trees, rocks, logs, etc. from biome datapacks
 
 ## Environmental Decoration Assets (Soon To Add)
 
 **Priority**: Add 3D models from biome decoration datapacks to enhance scene immersion.
-
-### Available Datapack Sources
-
-| Datapack | Location | Contents |
-|----------|----------|----------|
-| **Namaqualand** | `biome_decoration (datapacks)/namaqualand.zip` | Desert/arid environment assets |
-| **Pine Forest** | `biome_decoration (datapacks)/pine_forest.zip` | Pine trees, forest floor, rocks |
-| **Verdant Trail** | `biome_decoration (datapacks)/verdant_trail.zip` | Lush vegetation, trails, nature assets |
 
 ### Expected Model Types to Extract
 

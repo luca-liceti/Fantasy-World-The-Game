@@ -14,74 +14,76 @@ extends RefCounted
 ## Color Temp: Warm (3500K-4000K) for golden hour
 const GOLDEN_HOUR_PROFILE: Dictionary = {
 	# Sky colors - warm evening sky
-	"sky_top_color": Color(0.15, 0.25, 0.45, 1.0),       # Deep blue-violet sky
-	"sky_horizon_color": Color(0.85, 0.55, 0.30, 1.0),     # Warm orange horizon
+	"sky_top_color": Color(0.12, 0.22, 0.42, 1.0),       # Deep blue-violet sky
+	"sky_horizon_color": Color(0.90, 0.58, 0.32, 1.0),     # Rich warm orange horizon
 	"ground_bottom_color": Color(0.08, 0.06, 0.05, 1.0), # Dark ground
-	"ground_horizon_color": Color(0.20, 0.15, 0.10, 1.0),  # Warm brown ground
+	"ground_horizon_color": Color(0.22, 0.16, 0.10, 1.0),  # Warm brown ground
 	
 	# Sun settings - low evening angle
 	"sun_angle_max": 4.0,    # Larger sun disk at low angle
 	
-	# Directional Light - Warm golden hour sunlight
-	"light_color": Color(1.0, 0.85, 0.60, 1.0),    # Brighter warm golden
-	"light_energy": 1.6,     # Much brighter for visibility
-	"light_indirect_energy": 0.8,  # More bounce - lifted shadows
+	# Directional Light - Vibrant golden hour sunlight
+	"light_color": Color(1.0, 0.88, 0.62, 1.0),    # Rich warm golden
+	"light_energy": 2.0,     # Strong for vibrant terrain illumination
+	"light_indirect_energy": 1.0,  # Strong bounce — fills shadow areas with warm light
+	"light_specular": 1.0,  # Full specular for surface highlights
 	"shadow_bias": 0.03,
 	"shadow_normal_bias": 1.0,
 	"shadow_blur": 0.6,   # Soft but defined shadows
 	
-	# Ambient Light - Bright for visibility
-	"ambient_color": Color(0.70, 0.60, 0.50, 1.0),  # Warm ambient
-	"ambient_energy": 1.0,   # Full brightness - vegetation visible
+	# Ambient Light - Warm but not washed out
+	"ambient_color": Color(0.60, 0.48, 0.35, 1.0),  # Warm amber ambient
+	"ambient_energy": 0.6,   # Moderate — let directional light do the heavy lifting
 	
 	# Fog - Warm evening haze
 	"fog_enabled": true,
-	"fog_light_color": Color(0.80, 0.60, 0.40, 1.0),   # Warm amber fog
-	"fog_light_energy": 0.4,
-	"fog_density": 0.0012,   # Slightly denser for atmosphere
-	"fog_aerial_perspective": 0.5,
+	"fog_light_color": Color(0.85, 0.62, 0.42, 1.0),   # Rich amber fog
+	"fog_light_energy": 0.5,
+	"fog_density": 0.0015,   # Slightly denser for atmosphere
+	"fog_aerial_perspective": 0.6,
 	"fog_sky_affect": 0.7,
 	
 	# Tonemap - ACES Filmic
 	"tonemap_mode": Environment.TONE_MAPPER_ACES,  # ACES Filmic
-	"tonemap_exposure": 1.0,
-	"tonemap_white": 0.85,
+	"tonemap_exposure": 1.05,
+	"tonemap_white": 0.9,
 	
-	# Post-processing - warm, slightly saturated
-	"adjustment_brightness": 1.05,
-	"adjustment_contrast": 1.1,     # More contrast for drama
-	"adjustment_saturation": 1.15,   # Warm colors pop
+	# Post-processing - vibrant, warm
+	"adjustment_brightness": 1.08,
+	"adjustment_contrast": 1.15,     # More dramatic contrast
+	"adjustment_saturation": 1.2,    # Colors pop vibrantly
 	
-	# SSAO - Standard
+	# SSAO - Contact shadows for terrain depth
 	"ssao_enabled": true,
-	"ssao_radius": 1.2,
-	"ssao_intensity": 1.6,
-	"ssao_power": 1.4,
+	"ssao_radius": 1.5,
+	"ssao_intensity": 2.0,
+	"ssao_power": 1.5,
 	"ssao_detail": 0.5,
 	"ssao_horizon": 0.06,
 	"ssao_sharpness": 0.98,
-	"ssao_light_affect": 0.75,
+	"ssao_light_affect": 0.7,
 	
 	# Volumetric fog - evening haze
 	"volumetric_fog_enabled": true,
-	"volumetric_fog_density": 0.006,
-	"volumetric_fog_albedo": Color(0.85, 0.70, 0.50, 1.0),  # Warm fog
+	"volumetric_fog_density": 0.008,
+	"volumetric_fog_albedo": Color(0.90, 0.72, 0.50, 1.0),  # Warm golden fog
 	"volumetric_fog_emission": Color(0.0, 0.0, 0.0, 1.0),
 	"volumetric_fog_emission_energy": 0.0,
-	"volumetric_fog_anisotropy": 0.5,
+	"volumetric_fog_anisotropy": 0.6,
 	"volumetric_fog_length": 48.0,
 	"volumetric_fog_detail_spread": 2.0,
 	
-	# Glow - warm bloom
+	# Glow - vibrant warm bloom
 	"glow_enabled": true,
-	"glow_intensity": 0.7,
-	"glow_strength": 0.85,
-	"glow_bloom": 0.08,
+	"glow_intensity": 0.9,
+	"glow_strength": 1.0,
+	"glow_bloom": 0.12,
 	"glow_blend_mode": Environment.GLOW_BLEND_MODE_ADDITIVE,  # Additive
 	
-	# SSR - wet surface reflections
-	"ssr_enabled": true,
-	"ssr_max_steps": 64,
+	# SSR - disabled: terrain surfaces are matte and should not reflect
+	# (enabling SSR causes plastic-like reflections on grass/soil/bark)
+	"ssr_enabled": false,
+	"ssr_max_steps": 80,
 	"ssr_fade_in": 0.15,
 	"ssr_fade_out": 2.0,
 	"ssr_depth_tolerance": 0.2
@@ -92,101 +94,101 @@ const GOLDEN_HOUR_PROFILE: Dictionary = {
 # =============================================================================
 
 const BIOME_PROFILES: Dictionary = {
-	# PLAINS - Golden hour standard
+	# PLAINS - Golden hour standard — vibrant warm meadows
 	Biomes.Type.PLAINS: {
 		"profile_name": "GOLDEN_HOUR",
-		"ambient_energy_mult": 1.0,
+		"ambient_energy_mult": 0.9,
 		"fog_density_mult": 1.0,
-		"fog_light_color": Color(0.80, 0.60, 0.40, 1.0),
-		"ambient_color": Color(0.55, 0.45, 0.35, 1.0),
+		"fog_light_color": Color(0.85, 0.65, 0.42, 1.0),
+		"ambient_color": Color(0.55, 0.45, 0.32, 1.0),
 		"light_energy_mult": 1.0,
-		"saturation_mult": 1.0,
+		"saturation_mult": 1.1,
 		"ssao_intensity_add": 0.0,
-		"glow_intensity_mult": 1.0,
+		"glow_intensity_mult": 1.1,
 	},
 	
-	# FOREST - Golden hour filtered through canopy (warmer, dimmer)
+	# FOREST - Dappled gold through canopy — warm, rich, slightly dim
 	Biomes.Type.FOREST: {
 		"profile_name": "GOLDEN_HOUR_FILTERED",
-		"ambient_energy_mult": 1.4,  # Much brighter for trees
-		"fog_density_mult": 1.1,      # Lighter forest mist
-		"fog_light_color": Color(0.80, 0.65, 0.50, 1.0),  # Brighter, filtered
-		"ambient_color": Color(0.70, 0.60, 0.50, 1.0),  # Much brighter ambient
-		"light_energy_mult": 1.5,    # Much brighter direct light
-		"saturation_mult": 0.95,      # Less saturated
-		"ssao_intensity_add": -0.2,   # Less SSAO for visibility
-		"glow_intensity_mult": 1.3,   # Bright glow
+		"ambient_energy_mult": 1.2,    # Bright enough to see trees
+		"fog_density_mult": 1.3,        # Misty forest atmosphere
+		"fog_light_color": Color(0.70, 0.60, 0.40, 1.0),  # Warm filtered
+		"ambient_color": Color(0.55, 0.50, 0.35, 1.0),
+		"light_energy_mult": 1.3,      # Sun breaking through canopy
+		"saturation_mult": 1.05,        # Rich greens
+		"ssao_intensity_add": 0.3,      # Strong AO for tree roots/debris
+		"glow_intensity_mult": 1.4,     # God rays through trees
 	},
 	
-	# HILLS - Golden hour, slightly brighter
+	# HILLS - Open sky, clear, slightly elevated brightness
 	Biomes.Type.HILLS: {
 		"profile_name": "GOLDEN_HOUR",
-		"ambient_energy_mult": 1.05,
-		"fog_density_mult": 0.9,
-		"fog_light_color": Color(0.82, 0.62, 0.42, 1.0),
-		"ambient_color": Color(0.55, 0.45, 0.35, 1.0),
-		"light_energy_mult": 1.1,
-		"saturation_mult": 1.0,
-		"ssao_intensity_add": 0.0,
-		"glow_intensity_mult": 1.05,
+		"ambient_energy_mult": 0.95,
+		"fog_density_mult": 0.7,         # Clearer air on hilltops
+		"fog_light_color": Color(0.88, 0.65, 0.45, 1.0),
+		"ambient_color": Color(0.55, 0.48, 0.35, 1.0),
+		"light_energy_mult": 1.15,
+		"saturation_mult": 1.1,
+		"ssao_intensity_add": 0.1,
+		"glow_intensity_mult": 1.15,
 	},
 	
-	# PEAKS - Blue hour (cool, bright from snow)
+	# PEAKS - Alpine blue hour — crisp, bright snow reflections
 	Biomes.Type.PEAKS: {
 		"profile_name": "BLUE_HOUR",
-		"ambient_energy_mult": 1.2,   # Bright from snow
-		"fog_density_mult": 0.7,   # Clearer air
-		"fog_light_color": Color(0.60, 0.70, 0.85, 1.0),  # Cool blue fog
-		"ambient_color": Color(0.45, 0.50, 0.60, 1.0),  # Cool ambient
-		"light_energy_mult": 1.15,  # Snow reflection
-		"saturation_mult": 0.9,
-		"ssao_intensity_add": -0.2,  # Less AO - snow flattens
-		"glow_intensity_mult": 1.2,  # Bright snow
-		"sky_top_color": Color(0.10, 0.20, 0.40, 1.0),
-		"sky_horizon_color": Color(0.50, 0.55, 0.70, 1.0),
-		"light_color": Color(0.7, 0.8, 1.0, 1.0),  # Cool light
+		"ambient_energy_mult": 1.1,     # Snow reflects a lot
+		"fog_density_mult": 0.5,         # Crystal clear mountain air
+		"fog_light_color": Color(0.55, 0.65, 0.85, 1.0),  # Cool blue mist
+		"ambient_color": Color(0.45, 0.52, 0.65, 1.0),    # Cool ambient
+		"light_energy_mult": 1.2,       # Snow bounce
+		"saturation_mult": 0.95,
+		"ssao_intensity_add": -0.3,      # Snow flattens AO
+		"glow_intensity_mult": 1.3,      # Bright snow sparkle
+		"sky_top_color": Color(0.08, 0.18, 0.38, 1.0),
+		"sky_horizon_color": Color(0.50, 0.55, 0.72, 1.0),
+		"light_color": Color(0.75, 0.85, 1.0, 1.0),  # Cool crisp light
 	},
 	
-	# SWAMP - Overcast, muted, green-grey
+	# SWAMP - Heavy overcast, murky green-grey, oppressive
 	Biomes.Type.SWAMP: {
 		"profile_name": "OVERCAST_MUTED",
-		"ambient_energy_mult": 0.85,
-		"fog_density_mult": 1.8,      # Heavy swamp fog
-		"fog_light_color": Color(0.45, 0.50, 0.45, 1.0),  # Green-grey fog
-		"ambient_color": Color(0.40, 0.42, 0.38, 1.0),  # Muted green ambient
-		"light_energy_mult": 0.8,
-		"saturation_mult": 0.75,   # Desaturated
-		"ssao_intensity_add": 0.0,
-		"glow_intensity_mult": 0.5,   # Dull, no glow
-		"light_color": Color(0.75, 0.70, 0.60, 1.0),  # Muted warm
+		"ambient_energy_mult": 0.75,
+		"fog_density_mult": 2.0,         # Thick swamp fog
+		"fog_light_color": Color(0.40, 0.48, 0.38, 1.0),  # Green-grey miasma
+		"ambient_color": Color(0.35, 0.38, 0.30, 1.0),
+		"light_energy_mult": 0.7,
+		"saturation_mult": 0.7,         # Desaturated, sickly
+		"ssao_intensity_add": 0.2,
+		"glow_intensity_mult": 0.4,     # Muted — no bright glow
+		"light_color": Color(0.70, 0.68, 0.55, 1.0),  # Sickly warm
 	},
 	
-	# ASHLANDS - Grey-brown, heavy, oppressive
+	# ASHLANDS - Scorched, heavy, ember-lit darkness
 	Biomes.Type.ASHLANDS: {
 		"profile_name": "OVERCAST_HEAVY",
-		"ambient_energy_mult": 0.7,
-		"fog_density_mult": 1.6,      # Ash haze
-		"fog_light_color": Color(0.40, 0.38, 0.35, 1.0),  # Soot-colored fog
-		"ambient_color": Color(0.35, 0.32, 0.30, 1.0),  # Grey ambient
-		"light_energy_mult": 0.75,
-		"saturation_mult": 0.65,   # Very desaturated
-		"ssao_intensity_add": -0.3,  # Flat look
-		"glow_intensity_mult": 0.3,  # No glow - dead
-		"light_color": Color(0.8, 0.7, 0.6, 1.0),  # Muted warm
+		"ambient_energy_mult": 0.6,
+		"fog_density_mult": 1.8,         # Ash and soot haze
+		"fog_light_color": Color(0.35, 0.30, 0.25, 1.0),  # Dark soot fog
+		"ambient_color": Color(0.30, 0.25, 0.22, 1.0),
+		"light_energy_mult": 0.65,
+		"saturation_mult": 0.55,        # Very desaturated — ash covers everything
+		"ssao_intensity_add": -0.4,      # Flat, heavy
+		"glow_intensity_mult": 0.5,      # Ember glow only
+		"light_color": Color(0.75, 0.60, 0.45, 1.0),  # Smoggy warm
 	},
 	
-	# WASTES - Dusty, tan, overcast
+	# WASTES - Harsh desert sun, dusty glare
 	Biomes.Type.WASTES: {
 		"profile_name": "OVERCAST_DUSTY",
-		"ambient_energy_mult": 0.9,
-		"fog_density_mult": 1.4,      # Dusty haze
-		"fog_light_color": Color(0.60, 0.52, 0.42, 1.0),  # Dusty tan fog
-		"ambient_color": Color(0.45, 0.40, 0.35, 1.0),  # Tan ambient
-		"light_energy_mult": 0.9,
-		"saturation_mult": 0.85,
-		"ssao_intensity_add": 0.0,
-		"glow_intensity_mult": 0.7,
-		"light_color": Color(0.85, 0.75, 0.55, 1.0),  # Dusty warm
+		"ambient_energy_mult": 0.85,
+		"fog_density_mult": 1.5,         # Dust storms on the horizon
+		"fog_light_color": Color(0.65, 0.55, 0.40, 1.0),  # Sandy dust
+		"ambient_color": Color(0.50, 0.42, 0.32, 1.0),
+		"light_energy_mult": 0.85,
+		"saturation_mult": 0.80,
+		"ssao_intensity_add": -0.1,
+		"glow_intensity_mult": 0.8,
+		"light_color": Color(0.90, 0.78, 0.55, 1.0),  # Hot dusty sun
 	},
 }
 
@@ -291,6 +293,7 @@ static func create_directional_light() -> DirectionalLight3D:
 	light.light_color = GOLDEN_HOUR_PROFILE.light_color
 	light.light_energy = GOLDEN_HOUR_PROFILE.light_energy
 	light.light_indirect_energy = GOLDEN_HOUR_PROFILE.light_indirect_energy
+	light.light_specular = GOLDEN_HOUR_PROFILE.get("light_specular", 1.0)
 	
 	light.shadow_enabled = true
 	light.shadow_bias = GOLDEN_HOUR_PROFILE.shadow_bias
@@ -304,8 +307,8 @@ static func create_directional_light() -> DirectionalLight3D:
 	light.directional_shadow_split_3 = 0.5
 	light.directional_shadow_fade_start = 0.9
 	
-	# Low evening angle (~30 degrees from horizon)
-	light.rotation_degrees = Vector3(-30, -35, 0)
+	# Low evening angle (~25 degrees from horizon) for dramatic long shadows
+	light.rotation_degrees = Vector3(-25, -35, 0)
 	
 	return light
 
@@ -314,15 +317,15 @@ static func create_fill_light() -> DirectionalLight3D:
 	var light := DirectionalLight3D.new()
 	light.name = "FillLight"
 	
-	# Cool blue fill from opposite direction (shadows)
-	light.light_color = Color(0.55, 0.60, 0.75, 1.0)
-	light.light_energy = 0.25
-	light.light_indirect_energy = 0.15
+	# Cool blue fill from opposite direction (sky bounce)
+	light.light_color = Color(0.50, 0.58, 0.75, 1.0)
+	light.light_energy = 0.35
+	light.light_indirect_energy = 0.2
 	
 	light.shadow_enabled = false
 	
 	# Opposite to main light
-	light.rotation_degrees = Vector3(-25, 145, 0)
+	light.rotation_degrees = Vector3(-20, 145, 0)
 	
 	return light
 

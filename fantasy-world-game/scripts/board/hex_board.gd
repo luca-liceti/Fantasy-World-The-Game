@@ -67,7 +67,7 @@ func generate_board() -> void:
 	
 	# Generate biomes and heights for the board
 	var biome_generator = BiomeGenerator.new()
-	var generation_data = biome_generator.generate_biomes(all_coordinates)
+	var generation_data = await biome_generator.generate_biomes(all_coordinates)
 	
 	# Extract biome and height maps (store biome_map as instance variable)
 	biome_map = generation_data.get("biomes", {})
@@ -124,7 +124,8 @@ func generate_board_async() -> void:
 	
 	# Generate biomes and heights for the board
 	var biome_generator = BiomeGenerator.new()
-	var generation_data = biome_generator.generate_biomes(all_coordinates)
+	# C-9: Pass get_tree() so BiomeGenerator can yield between heavy steps
+	var generation_data = await biome_generator.generate_biomes(all_coordinates, get_tree())
 	
 	# Extract biome and height maps (store biome_map as instance variable)
 	biome_map = generation_data.get("biomes", {})

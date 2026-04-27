@@ -757,16 +757,27 @@ func _load_character_model() -> void:
 
 ## Fix common GLB material artifacts: removes unintended transparency, shimmer,
 ## and ghosting caused by AI-generated models baking incorrect PBR values.
-## Common issues:
-##   - TRANSPARENCY_ALPHA on wing membranes → ghost/see-through look
-##   - High metallic (0.8-1.0) on organic surfaces → unnatural shimmer
-##   - High specular on broad surfaces → bright reflective sheen
-func _fix_model_materials(node: Node) -> void:
+##
+## C-10 OPTIMISATION: Fixed materials are cached in CharacterModelLoader by
+## (troop_id, node_path, surface_index). Only the FIRST troop of each type
+## pays the duplication cost; all subsequent instances reuse cached materials.
+## This makes same-type troop surfaces share materials → GPU batching enabled.
+func _fix_model_materials(node: Node, base_path: String = "") -> void:
 	if node is MeshInstance3D:
 		var mesh_inst := node as MeshInstance3D
 		if mesh_inst.mesh:
 			var surface_count = mesh_inst.mesh.get_surface_count()
 			for i in range(surface_count):
+				# Build a stable cache key for this surface
+				var node_path_key: String = base_path + "/" + mesh_inst.name
+				var cache_key: String = troop_id + ":" + node_path_key + ":" + str(i)
+				
+				# C-10: Check the static cache first
+				if CharacterModelLoader.has_fixed_material(cache_key):
+					mesh_inst.set_surface_override_material(i,
+						CharacterModelLoader.get_fixed_material(cache_key))
+					continue
+				
 				# Prefer override material, fall back to mesh-embedded material
 				var mat: Material = mesh_inst.get_surface_override_material(i)
 				if mat == null:
@@ -776,31 +787,29 @@ func _fix_model_materials(node: Node) -> void:
 				
 				# BaseMaterial3D covers StandardMaterial3D & ORM_Material3D
 				if mat is BaseMaterial3D:
-					# Always duplicate before mutating (never modify cached resources)
+					# Duplicate once per troop type per surface (cached after this)
 					var fixed: BaseMaterial3D = mat.duplicate() as BaseMaterial3D
 					
 					# Force all transparency modes to disabled (removes ghosting)
 					fixed.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-					
-					# Force cull mode to standard backface culling (fixes inside-out hollow rendering)
+					# Force cull mode to standard backface culling
 					fixed.cull_mode = BaseMaterial3D.CULL_BACK
-					
-					# AI models often bake extreme metallic or specular values.
-					# Force to completely matte to fix the shiny/white glowing effects.
+					# Force matte to fix shiny/white glowing effects from AI baking
 					fixed.metallic = 0.0
 					fixed.metallic_specular = 0.0
-					
-					# Disable emission which causes bright glowing artifacts
+					# Disable emission (bright glowing artifacts)
 					fixed.emission_enabled = false
-					
-					# Ensure roughness is maximized for a matte, non-reflective finish
+					# Maximise roughness for a matte, non-reflective finish
 					fixed.roughness = 1.0
 					
+					# Store in static cache so the next troop of this type skips duplication
+					CharacterModelLoader.store_fixed_material(cache_key, fixed)
 					mesh_inst.set_surface_override_material(i, fixed)
 	
 	# Recurse into all children
+	var my_path: String = base_path + "/" + node.name
 	for child in node.get_children():
-		_fix_model_materials(child)
+		_fix_model_materials(child, my_path)
 
 
 ## Create placeholder visual (used as fallback if real model isn't available)
