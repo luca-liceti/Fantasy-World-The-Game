@@ -52,10 +52,10 @@ static func check_advantage_sources(attacker: Node, defender: Node, hex_board: N
 					sources.append("Flanking")
 					break
 	
-	# 4.3.2 High Ground: Attacker on Hills/Peaks biome
+	# 4.3.2 High Ground: Attacker on Peaks biome
 	if attacker.current_hex and "biome_type" in attacker.current_hex:
 		var biome = attacker.current_hex.biome_type
-		if biome == Biomes.Type.HILLS or biome == Biomes.Type.PEAKS:
+		if biome == Biomes.Type.PEAKS:
 			sources.append("High Ground")
 	
 	# 4.3.3 Stealth: Attacker is invisible/hidden

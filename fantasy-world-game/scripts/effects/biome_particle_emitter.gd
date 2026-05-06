@@ -156,17 +156,7 @@ func _configure_particle_type(mat: ParticleProcessMaterial, ptype: String, confi
 			mat.scale_max = 0.3
 			mat.color = config.get("color", Color(0.4, 0.5, 0.3, 0.5))
 			mat.emission_box_extents = Vector3(0.5, 0.05, 0.5)  # Ground level
-			
-		"grass":
-			# Grass blades blowing (Hills)
-			mat.direction = Vector3(1, 0.3, 0)
-			mat.spread = 30.0
-			mat.initial_velocity_min = 0.3
-			mat.initial_velocity_max = 0.6
-			mat.gravity = Vector3(0, -0.1, 0)
-			mat.scale_min = 0.02
-			mat.scale_max = 0.05
-			mat.color = config.get("color", Color(0.6, 0.7, 0.5, 0.3))
+
 
 
 ## Enable particles (call when hex is near camera or always visible)

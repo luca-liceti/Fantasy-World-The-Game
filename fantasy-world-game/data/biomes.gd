@@ -12,7 +12,6 @@ enum Type {
 	WASTES,      # Desolate Wastes
 	PLAINS,      # Golden Plains
 	ASHLANDS,    # Ashlands (volcanic)
-	HILLS,       # Highlands/Rolling Hills
 	SWAMP        # Swamplands
 }
 
@@ -26,7 +25,7 @@ const DATA: Dictionary = {
 		"color": Color(0.2, 0.6, 0.3),  # Forest green
 		"distribution_weight": 0.15,    # 15% of board
 		"can_place_mine": true,
-		"clustering_preference": ["HILLS", "SWAMP"]  # Tends to appear near these
+		"clustering_preference": ["SWAMP"]  # Tends to appear near these
 	},
 	Type.PEAKS: {
 		"name": "Frozen Peaks",
@@ -34,7 +33,7 @@ const DATA: Dictionary = {
 		"color": Color(0.85, 0.9, 0.95),  # Icy white-blue
 		"distribution_weight": 0.10,      # 10% of board
 		"can_place_mine": false,          # Cannot place mines on Peaks
-		"clustering_preference": ["HILLS", "WASTES"]
+		"clustering_preference": ["WASTES"]
 	},
 	Type.WASTES: {
 		"name": "Desolate Wastes",
@@ -50,7 +49,7 @@ const DATA: Dictionary = {
 		"color": Color(0.9, 0.8, 0.4),  # Golden yellow
 		"distribution_weight": 0.20,    # 20% of board
 		"can_place_mine": true,
-		"clustering_preference": ["HILLS", "FOREST"]
+		"clustering_preference": ["FOREST"]
 	},
 	Type.ASHLANDS: {
 		"name": "Ashlands",
@@ -59,14 +58,6 @@ const DATA: Dictionary = {
 		"distribution_weight": 0.12,     # 12% of board
 		"can_place_mine": true,
 		"clustering_preference": ["WASTES", "PEAKS"]
-	},
-	Type.HILLS: {
-		"name": "Highlands",
-		"description": "Rolling green hills and rocky outcrops.",
-		"color": Color(0.5, 0.7, 0.4),  # Hill green
-		"distribution_weight": 0.15,    # 15% of board
-		"can_place_mine": true,
-		"clustering_preference": ["PLAINS", "FOREST", "PEAKS"]
 	},
 	Type.SWAMP: {
 		"name": "Swamplands",
@@ -91,7 +82,6 @@ const BASE_HEIGHTS: Dictionary = {
 	Type.PLAINS: 0.3,     # Low flatlands
 	Type.FOREST: 0.5,     # Mid-elevation forests
 	Type.WASTES: 0.6,     # Desert plateaus
-	Type.HILLS: 0.8,      # Rolling highlands
 	Type.ASHLANDS: 1.0,   # Volcanic high ground
 	Type.PEAKS: 1.5       # Highest - mountain peaks
 }
@@ -106,51 +96,51 @@ const BASE_HEIGHTS: Dictionary = {
 const TROOP_MODIFIERS: Dictionary = {
 	"medieval_knight": {
 		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: "W",
-		Type.PLAINS: "S", Type.ASHLANDS: null, Type.HILLS: "D", Type.SWAMP: null
+		Type.PLAINS: "S", Type.ASHLANDS: null, Type.SWAMP: null
 	},
 	"stone_giant": {
 		Type.FOREST: null, Type.PEAKS: "A", Type.WASTES: null,
-		Type.PLAINS: null, Type.ASHLANDS: "S", Type.HILLS: "D", Type.SWAMP: "W"
+		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: "W"
 	},
 	"four_headed_hydra": {
 		Type.FOREST: null, Type.PEAKS: "W", Type.WASTES: "S",
-		Type.PLAINS: null, Type.ASHLANDS: "A", Type.HILLS: null, Type.SWAMP: "S"
+		Type.PLAINS: null, Type.ASHLANDS: "A", Type.SWAMP: "S"
 	},
 	"dark_blood_dragon": {
 		Type.FOREST: "W", Type.PEAKS: null, Type.WASTES: "A",
-		Type.PLAINS: null, Type.ASHLANDS: "S", Type.HILLS: null, Type.SWAMP: null
+		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: null
 	},
 	"sky_serpent": {
 		Type.FOREST: "S", Type.PEAKS: "A", Type.WASTES: null,
-		Type.PLAINS: "S", Type.ASHLANDS: "W", Type.HILLS: null, Type.SWAMP: null
+		Type.PLAINS: "S", Type.ASHLANDS: "W", Type.SWAMP: null
 	},
 	"frost_valkyrie": {
 		Type.FOREST: null, Type.PEAKS: "A", Type.WASTES: "W",
-		Type.PLAINS: null, Type.ASHLANDS: "W", Type.HILLS: "S", Type.SWAMP: null
+		Type.PLAINS: null, Type.ASHLANDS: "W", Type.SWAMP: null
 	},
 	"dark_magic_wizard": {
 		Type.FOREST: "A", Type.PEAKS: null, Type.WASTES: "S",
-		Type.PLAINS: null, Type.ASHLANDS: null, Type.HILLS: null, Type.SWAMP: "S"
+		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: "S"
 	},
 	"demon_of_darkness": {
 		Type.FOREST: "W", Type.PEAKS: null, Type.WASTES: "S",
-		Type.PLAINS: "W", Type.ASHLANDS: "A", Type.HILLS: null, Type.SWAMP: null
+		Type.PLAINS: "W", Type.ASHLANDS: "A", Type.SWAMP: null
 	},
 	"elven_archer": {
 		Type.FOREST: "A", Type.PEAKS: null, Type.WASTES: "W",
-		Type.PLAINS: "S", Type.ASHLANDS: null, Type.HILLS: "S", Type.SWAMP: "W"
+		Type.PLAINS: "S", Type.ASHLANDS: null, Type.SWAMP: "W"
 	},
 	"celestial_cleric": {
 		Type.FOREST: "S", Type.PEAKS: "S", Type.WASTES: "W",
-		Type.PLAINS: "D", Type.ASHLANDS: "W", Type.HILLS: null, Type.SWAMP: null
+		Type.PLAINS: "D", Type.ASHLANDS: "W", Type.SWAMP: null
 	},
 	"shadow_assassin": {
 		Type.FOREST: "A", Type.PEAKS: "W", Type.WASTES: null,
-		Type.PLAINS: null, Type.ASHLANDS: "S", Type.HILLS: null, Type.SWAMP: "S"
+		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: "S"
 	},
 	"infernal_soul": {
 		Type.FOREST: "W", Type.PEAKS: "W", Type.WASTES: null,
-		Type.PLAINS: null, Type.ASHLANDS: "A", Type.HILLS: null, Type.SWAMP: "S"
+		Type.PLAINS: null, Type.ASHLANDS: "A", Type.SWAMP: "S"
 	}
 }
 

@@ -256,12 +256,6 @@ const BIOME_CONFIG: Dictionary = {
 		"large_pool": [], "large_max": 0, "large_attempt_chance": 0.0,
 		"large_chance": 0.0, "large_min_radius": 0.60,
 	},
-	Biomes.Type.HILLS: {
-		"center_pool": [], "center_weights": [], "center_chance": 0.0,
-		"small_pool": [], "small_attempts": 0, "small_chance": 0.0,
-		"large_pool": [], "large_max": 0, "large_attempt_chance": 0.0,
-		"large_chance": 0.0, "large_min_radius": 0.60,
-	},
 	Biomes.Type.SWAMP: {
 		"center_pool": [], "center_weights": [], "center_chance": 0.0,
 		"small_pool": [], "small_attempts": 0, "small_chance": 0.0,

@@ -76,19 +76,6 @@ const BIOME_GRASS_CONFIG: Dictionary = {
 		"brightness": 1.3,
 	},
 
-	# ---- Hills: Windswept highland grass -----------------------------------
-	Biomes.Type.HILLS: {
-		"enabled": true,
-		"base_density": 420,
-		"distribution": DistributionMode.UNIFORM,
-		"base_color": Color(0.15, 0.30, 0.08),   # Cool green
-		"tip_color": Color(0.55, 0.65, 0.30),     # Yellow-green
-		"sss_color": Color(0.6, 0.8, 0.3),
-		"wind_speed": 1.35,
-		"clumping_factor": 0.4,
-		"brightness": 1.2,
-	},
-
 	# ---- Forest: Sparse undergrowth, patchy gaps under tree canopy ---------
 	Biomes.Type.FOREST: {
 		"enabled": true,
@@ -312,7 +299,7 @@ static func _get_or_create_noise(noise_type: String) -> NoiseTexture2D:
 # =============================================================================
 
 ## Uniform distribution — jittered grid filling the hex.
-## Used for Plains and Hills where grass covers the whole tile evenly.
+## Used for Plains where grass covers the whole tile evenly.
 static func _populate_uniform(
 		multi_mesh: MultiMesh,
 		count: int,

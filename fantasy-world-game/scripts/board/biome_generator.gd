@@ -24,7 +24,7 @@ extends RefCounted
 # =============================================================================
 
 ## Total number of biome types (matches Biomes.Type enum count)
-const NUM_BIOMES: int = 7
+const NUM_BIOMES: int = 6
 
 ## Total tiles on the board (hexagonal board with radius 11 = 397 tiles)
 const TOTAL_TILES: int = 397
@@ -466,10 +466,8 @@ func _master_value_to_biome(master_val: float, thresholds: Array[float]) -> Biom
 	elif master_val < thresholds[2]:
 		return Biomes.Type.FOREST
 	elif master_val < thresholds[3]:
-		return Biomes.Type.HILLS
-	elif master_val < thresholds[4]:
 		return Biomes.Type.WASTES
-	elif master_val < thresholds[5]:
+	elif master_val < thresholds[4]:
 		return Biomes.Type.ASHLANDS
 	else:
 		return Biomes.Type.PEAKS
@@ -538,7 +536,6 @@ func _adjust_heights_for_biomes(coordinates: Array[HexCoordinates], biome_map: D
 		Biomes.Type.FOREST: [0.2, 0.45],
 		Biomes.Type.WASTES: [0.15, 0.4],
 		Biomes.Type.ASHLANDS: [0.3, 0.65],
-		Biomes.Type.HILLS: [0.4, 0.75],
 		Biomes.Type.PEAKS: [0.6, 0.9],
 	}
 	
@@ -686,8 +683,6 @@ func _build_adjacency_matrix() -> void:
 
 func _can_be_adjacent(biome_a: Biomes.Type, biome_b: Biomes.Type) -> bool:
 	if biome_a == biome_b:
-		return true
-	if biome_a == Biomes.Type.HILLS or biome_b == Biomes.Type.HILLS:
 		return true
 	return biome_b in _valid_adjacencies.get(biome_a, [])
 

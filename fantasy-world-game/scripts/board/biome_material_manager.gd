@@ -73,8 +73,6 @@ const BIOME_TEXTURE_MAP: Dictionary = {
 	Biomes.Type.PLAINS: "golden_plains",
 	# Ashlands: Use new burned_ground_01 from PolyHaven
 	Biomes.Type.ASHLANDS: "ashlands_new",  # Priority: PolyHaven burned_ground_01
-	# Hills: Reuse golden plains for grassy look
-	Biomes.Type.HILLS: "golden_plains",
 	# Swamp: Use new Ground025 from AmbientCG (muddy/wet ground)
 	Biomes.Type.SWAMP: "swamplands_new"  # Priority: AmbientCG Ground025
 }
@@ -138,16 +136,6 @@ const BIOME_MATERIAL_PROPERTIES: Dictionary = {
 		"emission_energy": 0.12,  # Reduced from previous
 		"normal_scale": 1.1,  # Less normal detail - flat look
 		"ao_intensity": 0.25  # Reduced AO - flat, heavy feel
-	},
-	Biomes.Type.HILLS: {
-		# Sage green - earth tone
-		"color": Color(0.42, 0.48, 0.38),  # Sage from palette
-		"roughness": 0.80,
-		"metallic": 0.0,
-		"emission": Color(0.0, 0.0, 0.0),
-		"emission_energy": 0.0,
-		"normal_scale": 1.3,
-		"ao_intensity": 0.45
 	},
 	Biomes.Type.SWAMP: {
 		# Reflective wet patches vs high-roughness mud
@@ -435,8 +423,6 @@ static func _get_biome_tint(biome_type: Biomes.Type) -> Color:
 			return Color(1.00, 1.00, 0.90)   # Bright golden sunlight
 		Biomes.Type.ASHLANDS:
 			return Color(0.90, 0.85, 0.85)   # Slightly warmer, less dead
-		Biomes.Type.HILLS:
-			return Color(1.00, 0.98, 0.92)   # Vibrant daylight
 		Biomes.Type.SWAMP:
 			return Color(0.95, 0.98, 0.90)   # Humid bright daylight
 		_:
@@ -512,11 +498,6 @@ static func _apply_biome_adjustments(material: StandardMaterial3D, biome_type: B
 			material.roughness = props.get("roughness", 0.92)
 			material.metallic = 0.0
 		
-		Biomes.Type.HILLS:
-			# Sage green hills - standard earth tone
-			material.roughness = props.get("roughness", 0.80)
-			material.metallic = 0.0
-		
 		Biomes.Type.PLAINS:
 			# Golden-sage plains - standard
 			material.roughness = props.get("roughness", 0.78)
@@ -564,13 +545,6 @@ const BIOME_PARTICLES: Dictionary = {
 		"color": Color(1.0, 0.4, 0.1, 0.9),  # Orange embers
 		"amount": 6,
 		"emission_rate": 1.2
-	},
-	Biomes.Type.HILLS: {
-		"enabled": true,
-		"type": "grass",
-		"color": Color(0.6, 0.7, 0.5, 0.3),  # Green grass
-		"amount": 2,
-		"emission_rate": 0.4
 	},
 	Biomes.Type.SWAMP: {
 		"enabled": true,

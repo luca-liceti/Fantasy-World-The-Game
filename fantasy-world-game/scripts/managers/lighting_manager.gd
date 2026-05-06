@@ -120,19 +120,6 @@ const BIOME_PROFILES: Dictionary = {
 		"glow_intensity_mult": 1.4,     # God rays through trees
 	},
 	
-	# HILLS - Open sky, clear, slightly elevated brightness
-	Biomes.Type.HILLS: {
-		"profile_name": "GOLDEN_HOUR",
-		"ambient_energy_mult": 0.95,
-		"fog_density_mult": 0.7,         # Clearer air on hilltops
-		"fog_light_color": Color(0.88, 0.65, 0.45, 1.0),
-		"ambient_color": Color(0.55, 0.48, 0.35, 1.0),
-		"light_energy_mult": 1.15,
-		"saturation_mult": 1.1,
-		"ssao_intensity_add": 0.1,
-		"glow_intensity_mult": 1.15,
-	},
-	
 	# PEAKS - Alpine blue hour — crisp, bright snow reflections
 	Biomes.Type.PEAKS: {
 		"profile_name": "BLUE_HOUR",

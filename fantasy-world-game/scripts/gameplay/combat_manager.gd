@@ -534,9 +534,9 @@ func calculate_positioning_bonus(attacker: Node, defender: Node) -> Dictionary:
 				bonus["hit_bonus"] += 3
 				break
 	
-	# Check high ground (Hills/Peaks biome)
+	# Check high ground (Peaks biome)
 	var attacker_biome = _get_unit_biome(attacker)
-	if attacker_biome in [Biomes.Type.HILLS, Biomes.Type.PEAKS]:
+	if attacker_biome in [Biomes.Type.PEAKS]:
 		bonus["high_ground"] = true
 		bonus["hit_bonus"] += 2
 		bonus["damage_bonus"] += 0.1

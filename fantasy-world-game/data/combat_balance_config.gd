@@ -128,7 +128,7 @@ const ENDURE_USES_PER_COMBAT: int = 1
 const FLANKING_HIT_BONUS: int = 3
 const FLANKING_DAMAGE_BONUS: float = 0.0  # No damage bonus, just accuracy
 
-## High Ground: Attacker on Hills/Peaks
+## High Ground: Attacker on Peaks
 const HIGH_GROUND_HIT_BONUS: int = 2
 const HIGH_GROUND_DAMAGE_BONUS: float = 0.1  # +10% damage
 
