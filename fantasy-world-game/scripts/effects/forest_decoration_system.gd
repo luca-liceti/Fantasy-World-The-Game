@@ -96,10 +96,16 @@ const PATH_STUMP_01 := BASE_PATH + "tree_stump_01_2k_opt.glb"
 const PATH_STUMP_02 := BASE_PATH + "tree_stump_02_2k_opt.glb"
 const PATH_PINE_ROOTS := BASE_PATH + "pine_roots_2k_opt.glb"
 const PATH_DRY_BRANCHES := BASE_PATH + "dry_branches_medium_01_2k_opt.glb"
-const PATH_FIR_SAPLING := BASE_PATH + "fir_sapling_2k_opt.glb"
-const PATH_FIR_SAPLING_MED := BASE_PATH + "fir_sapling_medium_2k_opt.glb"
-const PATH_PINE_SAPLING_SML := BASE_PATH + "pine_sapling_small_2k_opt.glb"
-const PATH_PINE_SAPLING_MED := BASE_PATH + "pine_sapling_medium_2k_opt.glb"
+const PINE_GLB := "res://assets/models/enviroment/forest/pine_trees_pack_lowpoly_game_ready_lods.glb"
+
+const PATH_PINE_BIG_1 := PINE_GLB + "|Pine_big_1_LOD0"
+const PATH_PINE_BIG_2 := PINE_GLB + "|Pine_big_2_LOD0"
+const PATH_PINE_BIG_3 := PINE_GLB + "|Pine_big_3_LOD0"
+const PATH_PINE_MED_1 := PINE_GLB + "|Pine_medium_1_LOD0"
+const PATH_PINE_MED_2 := PINE_GLB + "|Pine_medium_2_LOD0"
+const PATH_PINE_MED_3 := PINE_GLB + "|Pine_medium_3_LOD0"
+const PATH_PINE_SML_1 := PINE_GLB + "|Pine_sapling_1_LOD0"
+const PATH_PINE_SML_2 := PINE_GLB + "|Pine_sapling_2_LOD0"
 
 
 # =============================================================================
@@ -147,10 +153,16 @@ const DECO_SCALE: Dictionary = {
 	"pine_roots_2k_opt.glb": {"base": 0.175},
 	"dry_branches_medium_01_2k_opt.glb": {"base": 0.225},
 	# Saplings (Scaled up for taller forests)
-	"fir_sapling_2k_opt.glb": {"base": 0.180},
-	"fir_sapling_medium_2k_opt.glb": {"base": 0.225},
-	"pine_sapling_small_2k_opt.glb": {"base": 0.237},
-	"pine_sapling_medium_2k_opt.glb": {"base": 0.277},
+	# New Pine Trees (LOD-enabled)
+	"pine_trees_pack_lowpoly_game_ready_lods.glb": {"base": 0.350}, # Base scale for big trees
+	"Pine_big_1_LOD0": {"base": 0.380},
+	"Pine_big_2_LOD0": {"base": 0.380},
+	"Pine_big_3_LOD0": {"base": 0.380},
+	"Pine_medium_1_LOD0": {"base": 0.280},
+	"Pine_medium_2_LOD0": {"base": 0.280},
+	"Pine_medium_3_LOD0": {"base": 0.280},
+	"Pine_sapling_1_LOD0": {"base": 0.220},
+	"Pine_sapling_2_LOD0": {"base": 0.220},
 }
 
 ## ±15 % scale jitter so no two instances look identical.
@@ -221,9 +233,10 @@ const BIOME_CONFIG: Dictionary = {
 
 		# Large (saplings) in far-outer / corner zone
 		"large_pool": [
-			PATH_FIR_SAPLING, PATH_PINE_SAPLING_SML, PATH_FIR_SAPLING,
-			PATH_FIR_SAPLING_MED, PATH_PINE_SAPLING_MED, PATH_FIR_SAPLING_MED,
-			PATH_FIR_SAPLING, PATH_FIR_SAPLING_MED,
+			PATH_PINE_BIG_1, PATH_PINE_BIG_2, PATH_PINE_BIG_3,
+			PATH_PINE_MED_1, PATH_PINE_MED_2, PATH_PINE_MED_3,
+			PATH_PINE_SML_1, PATH_PINE_SML_2,
+			PATH_PINE_MED_1, PATH_PINE_MED_2, # Weighted towards medium
 		],
 		"large_max": 4, # Dense clusters
 		"large_attempt_chance": 0.98, # Almost always place
