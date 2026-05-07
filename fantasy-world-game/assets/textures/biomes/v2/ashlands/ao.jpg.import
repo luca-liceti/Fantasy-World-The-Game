@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dehkjaji6p3gn"
-path="res://.godot/imported/displacement.jpg-3a7652a9678abc23c5c83cda19a4bed1.ctex"
+uid="uid://uxo2l5qh08i2"
+path="res://.godot/imported/ao.jpg-ba1cb21571a7624f45a5b005864fb322.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/biomes/v2/frozen_peaks/displacement.jpg"
-dest_files=["res://.godot/imported/displacement.jpg-3a7652a9678abc23c5c83cda19a4bed1.ctex"]
+source_file="res://assets/textures/biomes/v2/ashlands/ao.jpg"
+dest_files=["res://.godot/imported/ao.jpg-ba1cb21571a7624f45a5b005864fb322.ctex"]
 
 [params]
 

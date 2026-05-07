@@ -20,7 +20,7 @@ extends RefCounted
 # =============================================================================
 
 ## Path to biome textures
-const TEXTURES_PATH := "res://assets/textures/biomes/"
+const TEXTURES_PATH := "res://assets/textures/biomes/v2/"
 
 ## Path to the stochastic terrain shader
 const TERRAIN_SHADER_PATH := "res://assets/shaders/biome_terrain.gdshader"
@@ -59,30 +59,18 @@ const EARTH_TONE_PALETTE: Dictionary = {
 }
 
 ## Biome to texture name mapping
-## Maps each biome type to its texture prefix (with fallback options)
-## Format: Primary texture, then fallbacks
-## New textures from AmbientCG/PolyHaven use "_new" suffix
+## Maps each biome type to its folder in the v2 textures directory
 const BIOME_TEXTURE_MAP: Dictionary = {
-	# Forest: Use new Ground037 from AmbientCG (forest floor with leaves)
-	Biomes.Type.FOREST: "enchanted_forest_new",  # Priority: AmbientCG Ground037
-	# Peaks: Use existing frozen peaks (ice/snow)
+	Biomes.Type.FOREST: "enchanted_forest",
 	Biomes.Type.PEAKS: "frozen_peaks",
-	# Wastes: Use existing desolate wastes (rocky barren)
 	Biomes.Type.WASTES: "desolate_wastes",
-	# Plains: Use existing golden plains (grassy fields)
 	Biomes.Type.PLAINS: "golden_plains",
-	# Ashlands: Use new burned_ground_01 from PolyHaven
-	Biomes.Type.ASHLANDS: "ashlands_new",  # Priority: PolyHaven burned_ground_01
-	# Swamp: Use new Ground025 from AmbientCG (muddy/wet ground)
-	Biomes.Type.SWAMP: "swamplands_new"  # Priority: AmbientCG Ground025
+	Biomes.Type.ASHLANDS: "ashlands",
+	Biomes.Type.SWAMP: "swamplands"
 }
 
-## Fallback texture map if primary texture not found
-const BIOME_TEXTURE_FALLBACKS: Dictionary = {
-	"enchanted_forest_new": "enchanted_forest",
-	"ashlands_new": "ashlands",
-	"swamplands_new": "swamplands"
-}
+## Fallback texture map (Not needed for v2, kept for safety)
+const BIOME_TEXTURE_FALLBACKS: Dictionary = {}
 
 ## Enhanced biome material properties for when textures aren't available
 ## Format: {color, roughness, metallic, emission_color, emission_energy}
@@ -249,21 +237,35 @@ static func _create_material(biome_type: Biomes.Type) -> Material:
 static func _check_textures_available() -> void:
 	_texture_check_done = true
 	
-	# Check if the biomes texture folder has any content
+	# Check if the v2 folder exists and contains any biome subdirectories
 	var dir := DirAccess.open(TEXTURES_PATH)
 	if dir:
 		dir.list_dir_begin()
 		var file_name := dir.get_next()
 		while file_name != "":
-			if file_name.ends_with(".png") or file_name.ends_with(".jpg"):
+			if dir.current_is_dir() and not file_name.begins_with("."):
+				# Found a subdirectory, assume textures are available
+				# (Each biome subdirectory should contain its PBR maps)
 				_textures_available = true
-				print("[BiomeMaterialManager] Textures found at: %s" % TEXTURES_PATH)
+				print("[BiomeMaterialManager] Biome texture folders found at: %s" % TEXTURES_PATH)
 				break
 			file_name = dir.get_next()
 		dir.list_dir_end()
 	
 	if not _textures_available:
-		print("[BiomeMaterialManager] No textures found, using procedural materials")
+		# Fallback check for root folder (in case of flat structure)
+		if dir:
+			dir.list_dir_begin()
+			var file_name := dir.get_next()
+			while file_name != "":
+				if file_name.ends_with(".png") or file_name.ends_with(".jpg"):
+					_textures_available = true
+					break
+				file_name = dir.get_next()
+			dir.list_dir_end()
+	
+	if not _textures_available:
+		print("[BiomeMaterialManager] No textures found at %s, using procedural materials" % TEXTURES_PATH)
 
 
 ## Load a texture with caching
@@ -314,28 +316,13 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 	# -----------------------------------------------------------------------
 	var diffuse_tex: Texture2D = null
 	var base_path: String      = ""
-	var variant_tried: String  = ""
 
-	base_path   = TEXTURES_PATH + texture_prefix + "_"
+	# New V2 structure: textures/biomes/v2/<biome_name>/diffuse.jpg
+	base_path   = TEXTURES_PATH + texture_prefix + "/"
 	diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
-	if diffuse_tex:
-		variant_tried = "direct"
 
 	if not diffuse_tex:
-		base_path   = TEXTURES_PATH + texture_prefix + "_primary_"
-		diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
-		if diffuse_tex:
-			variant_tried = "primary"
-
-	if not diffuse_tex and BIOME_TEXTURE_FALLBACKS.has(texture_prefix):
-		var fallback: String = BIOME_TEXTURE_FALLBACKS[texture_prefix]
-		base_path   = TEXTURES_PATH + fallback + "_primary_"
-		diffuse_tex = _load_texture_any_ext(base_path, "diffuse")
-		if diffuse_tex:
-			variant_tried = "fallback: " + fallback
-
-	if not diffuse_tex:
-		print("[BiomeMaterialManager] No diffuse texture for: %s" % texture_prefix)
+		print("[BiomeMaterialManager] No diffuse texture for: %s in %s" % [texture_prefix, base_path])
 		return null
 
 	# -----------------------------------------------------------------------
@@ -384,10 +371,17 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 	var ao_intensity: float = props.get("ao_intensity", 0.5)
 	mat.set_shader_parameter("ao_intensity", ao_intensity)
 
-	# Displacement
+	# Displacement / Parallax
 	var disp_tex: Texture2D = _load_texture_any_ext(base_path, "displacement")
 	if disp_tex:
 		mat.set_shader_parameter("texture_displacement", disp_tex)
+		# Higher strength for biomes with more rocky/uneven terrain
+		var disp_strength = 0.04
+		if biome_type == Biomes.Type.WASTES or biome_type == Biomes.Type.ASHLANDS:
+			disp_strength = 0.06
+		mat.set_shader_parameter("displacement_strength", disp_strength)
+	else:
+		mat.set_shader_parameter("displacement_strength", 0.0)
 
 	# World-space tiling scale — matches the GDScript TEXTURE_SCALE constant
 	mat.set_shader_parameter("texture_scale", TEXTURE_SCALE)
@@ -398,14 +392,11 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 	# Triplanar sharpness
 	mat.set_shader_parameter("triplanar_sharpness", 4.0)
 
-	# Full stochastic sampling enabled by default
-	mat.set_shader_parameter("stochastic_strength", 1.0)
-
 	# Biome-specific albedo tint (muted earth tones per Manor Lords spec)
 	var tint: Color = _get_biome_tint(biome_type)
 	mat.set_shader_parameter("albedo_tint", tint)
 
-	print("[BiomeMaterialManager] Stochastic shader material built for: %s (%s)" % [texture_prefix, variant_tried])
+	print("[BiomeMaterialManager] Stochastic shader material built for v2: %s" % texture_prefix)
 	return mat
 
 

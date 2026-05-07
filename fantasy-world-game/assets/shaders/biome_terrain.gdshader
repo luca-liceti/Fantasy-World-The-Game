@@ -22,6 +22,8 @@ uniform sampler2D texture_normal   : hint_normal,          filter_linear_mipmap_
 uniform sampler2D texture_roughness: hint_default_white,   filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D texture_ao       : hint_default_white,   filter_linear_mipmap_anisotropic, repeat_enable;
 
+uniform sampler2D texture_displacement: hint_default_black, filter_linear_mipmap_anisotropic, repeat_enable;
+
 // --- World-Space Tiling ---
 // Controls how densely the texture tiles in world space.
 // Lower = larger texel footprint. Matches TEXTURE_SCALE in GDScript.
@@ -30,6 +32,11 @@ uniform float texture_scale : hint_range(0.05, 2.0) = 0.3;
 // --- Triplanar blending sharpness (higher = sharper XYZ seams) ---
 // Used only for steep surfaces. Flat tiles use Y-only.
 uniform float triplanar_sharpness : hint_range(1.0, 16.0) = 8.0;
+
+// --- Displacement / Parallax mapping ---
+// Controls the depth of the displacement effect. 
+// Higher = more depth, but may cause artifacts at steep angles.
+uniform float displacement_strength : hint_range(0.0, 0.2) = 0.05;
 
 // --- Stochastic cell size (world units) ---
 // Controls how large each randomly-oriented patch is.
@@ -252,6 +259,9 @@ vec3 triplanar_normal_opt(sampler2D tex, vec3 world_pos, vec3 world_normal, vec3
 // =============================================================================
 varying vec3 v_world_pos;
 varying vec3 v_world_normal;
+varying vec3 v_view_dir;
+varying vec3 v_tangent;
+varying vec3 v_binormal;
 
 // =============================================================================
 // VERTEX SHADER
@@ -259,6 +269,11 @@ varying vec3 v_world_normal;
 void vertex() {
 	v_world_pos    = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	v_view_dir     = normalize(v_world_pos - CAMERA_POSITION_WORLD);
+	
+	// Simplified tangent/binormal for triplanar parallax (Y-plane focus)
+	v_tangent  = vec3(1.0, 0.0, 0.0);
+	v_binormal = vec3(0.0, 0.0, 1.0);
 }
 
 // =============================================================================
@@ -271,21 +286,31 @@ void fragment() {
 	// Cell size in UV space (world-units → normalised by texture_scale)
 	float cell_uv = stochastic_cell_size * texture_scale;
 
+	// --- Displacement / Parallax Mapping (Simplified Y-plane only for performance) ---
+	vec3 final_world_pos = v_world_pos;
+	if (displacement_strength > 0.0) {
+		// Calculate parallax offset based on view direction and height map
+		// This is a single-step parallax for performance, effective for terrain
+		float height = triplanar_scalar_opt(texture_displacement, v_world_pos, blend, texture_scale, cell_uv);
+		vec2 p_offset = v_view_dir.xz * (height * displacement_strength);
+		final_world_pos.xz -= p_offset;
+	}
+
 	// --- Albedo (3-9 reads depending on surface slope) ---
-	vec4 final_albedo = triplanar_albedo_opt(texture_albedo, v_world_pos, blend, texture_scale, cell_uv);
+	vec4 final_albedo = triplanar_albedo_opt(texture_albedo, final_world_pos, blend, texture_scale, cell_uv);
 	ALBEDO = final_albedo.rgb * albedo_tint.rgb * brightness;
 
 	// --- Normal Map (3-9 reads) ---
-	vec3 final_normal = triplanar_normal_opt(texture_normal, v_world_pos, v_world_normal, blend, texture_scale, cell_uv);
+	vec3 final_normal = triplanar_normal_opt(texture_normal, final_world_pos, v_world_normal, blend, texture_scale, cell_uv);
 	final_normal.xy *= normal_scale;
 	NORMAL_MAP       = final_normal * 0.5 + 0.5;
 	NORMAL_MAP_DEPTH = 1.0;
 
 	// --- Roughness (3-9 reads) ---
-	ROUGHNESS = triplanar_scalar_opt(texture_roughness, v_world_pos, blend, texture_scale, cell_uv) * roughness_override;
+	ROUGHNESS = triplanar_scalar_opt(texture_roughness, final_world_pos, blend, texture_scale, cell_uv) * roughness_override;
 
 	// --- Ambient Occlusion (3-9 reads) ---
-	float ao_val     = triplanar_scalar_opt(texture_ao, v_world_pos, blend, texture_scale, cell_uv);
+	float ao_val     = triplanar_scalar_opt(texture_ao, final_world_pos, blend, texture_scale, cell_uv);
 	AO               = ao_val;
 	AO_LIGHT_AFFECT  = ao_intensity;
 
