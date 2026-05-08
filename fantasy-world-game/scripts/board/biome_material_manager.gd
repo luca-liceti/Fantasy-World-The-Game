@@ -87,13 +87,13 @@ const BIOME_MATERIAL_PROPERTIES: Dictionary = {
 		"ao_intensity": 0.7   # Heavy AO for crevices
 	},
 	Biomes.Type.PEAKS: {
-		"color": Color(0.75, 0.80, 0.88),  # Muted blue-white (less saturated)
-		"roughness": 0.45,  # Icy but not mirror-smooth
-		"metallic": 0.08,
+		"color": Color(0.95, 0.95, 0.98),  # Bright white snow (not dark blue)
+		"roughness": 0.85,  # Snow is highly diffuse and rough
+		"metallic": 0.0,    # Snow is non-metallic (dielectric)
 		"emission": Color(0.85, 0.90, 0.95),
-		"emission_energy": 0.03,  # Very subtle ice glow
-		"normal_scale": 1.2,
-		"ao_intensity": 0.4
+		"emission_energy": 0.02,  # Very subtle bounce
+		"normal_scale": 0.8, # Reduced normal map to prevent harsh micro-shadows
+		"ao_intensity": 0.15 # Reduced AO so snow doesn't look dirty
 	},
 	Biomes.Type.WASTES: {
 		# Dry, dusty - muted ochre/tan
@@ -411,7 +411,7 @@ static func _get_biome_tint(biome_type: Biomes.Type) -> Color:
 		Biomes.Type.FOREST:
 			return Color(1.00, 0.98, 0.90)   # Warm sunlight
 		Biomes.Type.PEAKS:
-			return Color(0.95, 0.98, 1.00)   # Crisp daylight
+			return Color(1.00, 1.00, 1.00)   # Pure white for snow
 		Biomes.Type.WASTES:
 			return Color(1.00, 0.95, 0.85)   # Hot sun
 		Biomes.Type.PLAINS:
@@ -458,10 +458,10 @@ static func _apply_biome_adjustments(material: StandardMaterial3D, biome_type: B
 			material.albedo_color = material.albedo_color * 0.88
 		
 		Biomes.Type.PEAKS:
-			# Icy peaks - subtle shimmer, not mirror-like
-			material.metallic = props.get("metallic", 0.08)
-			material.roughness = props.get("roughness", 0.45)
-			# Subtle rim lighting for ice crystalline effect
+			# Snow/Ice - highly diffuse with subtle shimmer
+			material.metallic = props.get("metallic", 0.0)
+			material.roughness = props.get("roughness", 0.85)
+			# Subtle rim lighting for crystalline snow effect
 			material.rim_enabled = true
 			material.rim = 0.2
 			material.rim_tint = 0.15

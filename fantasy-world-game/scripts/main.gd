@@ -34,20 +34,6 @@ var terrain_loading_screen: CanvasLayer = null # Loading screen during terrain g
 
 # Dynamic lighting state
 var board_world_env: WorldEnvironment = null # World environment for board lighting
-var _current_biome_environment: Biomes.Type = Biomes.Type.PLAINS # Current active biome
-const BIOME_ENVIRONMENT_TRANSITION_SPEED: float = 2.0 # Smooth transition speed
-const BIOME_DETECTION_RADIUS: float = 8.0 # Radius to detect dominant biome
-const BIOME_DETECTION_INTERVAL: float = 0.5 # Detection check interval (seconds)
-var _last_biome_detection_time: float = 0.0 # Last detection time
-# C-2: Lightweight biome position cache (built once after board generation)
-# Each entry is [squared_distance_threshold: float, biome: Biomes.Type, pos_x: float, pos_z: float]
-# Avoids iterating HexTile nodes at runtime.
-var _biome_tile_cache: Array = [] # Array of [x, z, biome] Arrays (pre-built)
-var _biome_cache_radius_sq: float = 0.0 # BIOME_DETECTION_RADIUS squared
-var _last_biome_check_pos: Vector3 = Vector3(INF, INF, INF) # Skip check if camera hasn't moved
-const BIOME_CAMERA_MOVE_THRESHOLD_SQ: float = 1.0 # Skip if camera moved < 1 unit (squared)
-# C-3: Pre-cached Environment objects, one per biome type (never re-allocated)
-var _biome_env_cache: Dictionary = {} # Biomes.Type -> Environment
 
 # Deck selection state
 var is_selecting_decks: bool = false
@@ -208,8 +194,9 @@ func _print_controls() -> void:
 	print("=== CONTROLS ===")
 	print("Right-Click + Drag: Rotate camera")
 	print("Middle-Click + Drag: Pan camera")
-	print("WASD: Move camera (relative to view)")
-	print("Q/E: Move camera up/down")
+	if DEBUG_ENABLED:
+		print("WASD: Move camera (relative to view)")
+		print("Q/E: Move camera up/down")
 	print("Scroll: Zoom in/out")
 	print("Shift: Move faster")
 	print("V: Cycle camera views")
@@ -320,37 +307,8 @@ func _generate_board_concurrently() -> void:
 	print("Board generated successfully!")
 	board_generation_complete = true
 	
-	# C-2: Build lightweight tile position cache (replaces O(n) per-frame scan)
-	_build_biome_tile_cache()
-	# C-3: Pre-create one Environment per biome — never allocate at runtime
-	_build_biome_env_cache()
-	
+
 	_on_environment_ready()
-
-
-## C-2: Build a compact position+biome table from the board tiles.
-## Called once after board generation; entries are plain Arrays for minimal overhead.
-func _build_biome_tile_cache() -> void:
-	_biome_tile_cache.clear()
-	_biome_cache_radius_sq = BIOME_DETECTION_RADIUS * BIOME_DETECTION_RADIUS
-	if not hex_board:
-		return
-	for tile in hex_board.get_all_tiles():
-		var p = tile.global_position
-		_biome_tile_cache.append([p.x, p.z, tile.biome_type])
-	if OS.is_debug_build():
-		print("Biome tile cache built: %d entries" % _biome_tile_cache.size())
-
-
-## C-3: Pre-create one Environment per biome type so we never allocate at runtime.
-func _build_biome_env_cache() -> void:
-	_biome_env_cache.clear()
-	for biome in Biomes.Type.values():
-		var env = LightingManager.create_environment_for_biome(biome)
-		if env:
-			_biome_env_cache[biome] = env
-	if OS.is_debug_build():
-		print("Biome environment cache built: %d entries" % _biome_env_cache.size())
 
 
 func _setup_board_lighting() -> void:
@@ -386,47 +344,33 @@ func _setup_board_lighting() -> void:
 ## Specular is 0.0 on all board lights (matte terrain, no reflections).
 func _setup_board_miniature_lighting() -> void:
 	# ─── Key Light: Golden hour sun ────────────────────────────────────────────
-	# Low evening angle (~30° from horizon) for warm golden shadows across terrain.
+	# Low evening angle (~15° from horizon) for warm, cinematic, dramatic shadows across terrain.
 	# Moderate energy — with specular at 0 and shader brightness at 1.0 there's
 	# no risk of the blown-out hotspots that appeared in the earlier attempt.
-	var sun := DirectionalLight3D.new()
+	var sun := LightingManager.create_directional_light()
 	sun.name = "BoardSun"
-	sun.light_color = Color(1.0, 0.88, 0.60, 1.0)       # Warm golden hour
-	sun.light_energy = 1.8                                 # Even, moderate brightness
-	sun.light_indirect_energy = 0.6                        # Warm GI bounce
-	sun.light_specular = 0.0                               # Matte — no reflections
-
-	sun.shadow_enabled = true
-	sun.shadow_bias = 0.03
-	sun.shadow_normal_bias = 1.0
-	sun.shadow_blur = 1.0
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 150.0
-	sun.directional_shadow_fade_start = 0.95
-
-	# Low angle from the side — golden hour sun direction
-	sun.rotation_degrees = Vector3(-30, -40, 0)
-
-	# ONLY illuminate board geometry (Layer 1).
-	# Tavern model is on Layer 2 (set by TavernLighting._apply_layer_separation).
+	sun.light_specular = 0.0 # Matte — no reflections
 	sun.light_cull_mask = 1
 	add_child(sun)
 
 	# ─── Fill Light: Cool sky bounce from opposite side ────────────────────────
 	# Lifts shadow areas with a cool blue so no part of the board is pitch black.
-	var fill := DirectionalLight3D.new()
+	var fill := LightingManager.create_fill_light()
 	fill.name = "BoardFill"
-	fill.light_color = Color(0.55, 0.65, 0.85, 1.0)     # Cool sky blue
-	fill.light_energy = 0.5                                # Subtle — just lifts shadows
-	fill.light_indirect_energy = 0.2
 	fill.light_specular = 0.0
-	fill.shadow_enabled = false
-	fill.rotation_degrees = Vector3(-25, 140, 0)           # Opposite to sun
-	fill.light_cull_mask = 1                                # Board only
+	fill.light_cull_mask = 1 # Board only
 	add_child(fill)
 
-	print("Board directional lighting: key=%.1f fill=%.1f (Layer 1 only, specular=0)" % [
-		sun.light_energy, fill.light_energy])
+	# ─── Rim Light: Edge highlight from behind ─────────────────────────────────
+	# Separates trees and troops from the dark background.
+	var rim := LightingManager.create_rim_light()
+	rim.name = "BoardRim"
+	rim.light_specular = 0.5 # Allow some specular for rim highlights
+	rim.light_cull_mask = 1 # Board only
+	add_child(rim)
+
+	print("Board directional lighting: key=%.1f fill=%.1f rim=%.1f (Layer 1 only)" % [
+		sun.light_energy, fill.light_energy, rim.light_energy])
 
 
 func _setup_game_ui() -> void:
@@ -1235,91 +1179,6 @@ func _process(delta: float) -> void:
 		_last_timer_update = 0.0
 		if game_ui and game_manager and game_manager.turn_manager:
 			game_ui.update_timer(game_manager.turn_manager.turn_timer_remaining)
-	
-	# Update dynamic biome lighting
-	_update_biome_lighting(delta)
-
-
-func _update_biome_lighting(delta: float) -> void:
-	if not board_world_env or not board_generation_complete:
-		return
-	if not camera:
-		camera = get_viewport().get_camera_3d()
-	if not camera:
-		return
-	
-	_last_biome_detection_time += delta
-	if _last_biome_detection_time < BIOME_DETECTION_INTERVAL:
-		return
-	_last_biome_detection_time = 0.0
-	
-	var camera_pos = camera.global_position
-	
-	# C-2: Skip expensive scan if camera hasn't moved meaningfully.
-	var moved_sq = camera_pos.distance_squared_to(_last_biome_check_pos)
-	if moved_sq < BIOME_CAMERA_MOVE_THRESHOLD_SQ and _current_biome_environment != Biomes.Type.PLAINS:
-		return
-	_last_biome_check_pos = camera_pos
-	
-	var dominant_biome = _get_dominant_biome_near_position_fast(camera_pos)
-	
-	if dominant_biome != _current_biome_environment:
-		_current_biome_environment = dominant_biome
-		_apply_biome_environment(dominant_biome, delta)
-
-
-## C-2: Fast O(n) biome scan using the pre-built cache.
-## Uses squared distance to avoid 397 sqrt calls every 0.5 s.
-func _get_dominant_biome_near_position_fast(world_pos: Vector3) -> Biomes.Type:
-	if _biome_tile_cache.is_empty():
-		return Biomes.Type.PLAINS
-	
-	var biome_counts: Dictionary = {}
-	var cx: float = world_pos.x
-	var cz: float = world_pos.z
-	var r_sq: float = _biome_cache_radius_sq
-	
-	for entry in _biome_tile_cache:
-		var dx: float = cx - entry[0]
-		var dz: float = cz - entry[1] # index 1 = Z position
-		if dx * dx + dz * dz <= r_sq:
-			var b = entry[2] # index 2 = biome type
-			biome_counts[b] = biome_counts.get(b, 0) + 1
-	
-	if biome_counts.is_empty():
-		return Biomes.Type.PLAINS
-	
-	var max_count: int = 0
-	var dominant: Biomes.Type = Biomes.Type.PLAINS
-	for b in biome_counts:
-		var c: int = biome_counts[b]
-		if c > max_count:
-			max_count = c
-			dominant = b
-	return dominant
-
-
-## C-3: Apply biome environment by reading from pre-cached Environment objects.
-## No allocations. Lerps individual properties for smooth transitions.
-func _apply_biome_environment(biome: Biomes.Type, delta: float) -> void:
-	if not board_world_env:
-		return
-	var current_env = board_world_env.environment
-	if not current_env:
-		return
-	# Read from the pre-cached target — never allocate a new Environment
-	var target_env: Environment = _biome_env_cache.get(biome, null)
-	if not target_env:
-		return
-	
-	var t: float = delta * BIOME_ENVIRONMENT_TRANSITION_SPEED
-	current_env.ambient_light_energy = lerp(current_env.ambient_light_energy, target_env.ambient_light_energy, t)
-	current_env.ambient_light_color = current_env.ambient_light_color.lerp(target_env.ambient_light_color, t)
-	current_env.fog_density = lerp(current_env.fog_density, target_env.fog_density, t)
-	current_env.fog_light_color = current_env.fog_light_color.lerp(target_env.fog_light_color, t)
-	current_env.adjustment_saturation = lerp(current_env.adjustment_saturation, target_env.adjustment_saturation, t)
-	current_env.ssao_intensity = lerp(current_env.ssao_intensity, target_env.ssao_intensity, t)
-	current_env.glow_intensity = lerp(current_env.glow_intensity, target_env.glow_intensity, t)
 
 
 func _handle_keyboard_movement(delta: float) -> void:
@@ -1328,21 +1187,22 @@ func _handle_keyboard_movement(delta: float) -> void:
 
 	var direction = Vector3.ZERO
 	
-	# WASD for panning (relative to camera facing)
-	if Input.is_key_pressed(KEY_W):
-		direction.z += 1
-	if Input.is_key_pressed(KEY_S):
-		direction.z -= 1
-	if Input.is_key_pressed(KEY_A):
-		direction.x -= 1
-	if Input.is_key_pressed(KEY_D):
-		direction.x += 1
-	
-	# Q/E for up/down
-	if Input.is_key_pressed(KEY_Q):
-		direction.y -= 1
-	if Input.is_key_pressed(KEY_E):
-		direction.y += 1
+	if DEBUG_ENABLED:
+		# WASD for panning (relative to camera facing)
+		if Input.is_key_pressed(KEY_W):
+			direction.z += 1
+		if Input.is_key_pressed(KEY_S):
+			direction.z -= 1
+		if Input.is_key_pressed(KEY_A):
+			direction.x -= 1
+		if Input.is_key_pressed(KEY_D):
+			direction.x += 1
+		
+		# Q/E for up/down
+		if Input.is_key_pressed(KEY_Q):
+			direction.y -= 1
+		if Input.is_key_pressed(KEY_E):
+			direction.y += 1
 	
 	if direction != Vector3.ZERO:
 		_pan_camera(direction.normalized(), delta)

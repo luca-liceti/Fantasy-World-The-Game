@@ -163,6 +163,11 @@ func _apply_layer_separation() -> void:
 func _recursively_set_layer(node: Node, target_layer: int) -> void:
 	if node is VisualInstance3D:
 		node.layers = target_layer
+		# MUST disable shadow casting on tavern geometry. Godot 4 DirectionalLight3D
+		# ignores light_cull_mask for shadow casters, meaning the tavern roof will
+		# cast a shadow over the entire board if we don't disable it here.
+		if node is GeometryInstance3D:
+			node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for child in node.get_children():
 		_recursively_set_layer(child, target_layer)
 

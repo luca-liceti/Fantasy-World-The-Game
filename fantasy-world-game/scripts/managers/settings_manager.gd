@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS: Dictionary = {
 	"controls": {
 		"camera_sensitivity": 50,
 		"invert_camera_y": false,
-		"edge_pan_enabled": true,
+		"edge_pan_enabled": false,
 		"edge_pan_speed": 50,
 		"show_tile_coordinates": false,
 		"confirm_end_turn": true
