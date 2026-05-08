@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cq1uu7jm26b8h"
+path="res://.godot/imported/Sword Attack 3.ogg-21352679fe8ffafef210604eea67bb5e.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/combat/melee/Sword Attack 3.ogg"
+dest_files=["res://.godot/imported/Sword Attack 3.ogg-21352679fe8ffafef210604eea67bb5e.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

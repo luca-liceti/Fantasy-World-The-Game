@@ -30,9 +30,9 @@ static var grass_quality: int = 2  # 0=Off, 1=Low, 2=Medium, 3=High
 # ASSET PATHS
 # =============================================================================
 
-const GRASS_SHADER_PATH := "res://assets/shaders/grass_shader.gdshader"
-const GRASS_MESH_HIGH := "res://assets/grass/grass_high.obj"
-const GRASS_MESH_LOW := "res://assets/grass/grass_low.obj"
+const GRASS_SHADER_PATH := "res://assets/vfx/shaders/grass_shader.gdshader"
+const GRASS_MESH_HIGH := "res://assets/environment/grass/grass_high.obj"
+const GRASS_MESH_LOW := "res://assets/environment/grass/grass_low.obj"
 
 # =============================================================================
 # QUALITY → DENSITY MULTIPLIER

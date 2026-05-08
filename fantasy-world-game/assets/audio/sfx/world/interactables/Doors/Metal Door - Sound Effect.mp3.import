@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://byglla0co00h"
+path="res://.godot/imported/Metal Door - Sound Effect.mp3-3374c92a0abe03386016a20f5b460d60.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/sfx/world/interactables/Doors/Metal Door - Sound Effect.mp3"
+dest_files=["res://.godot/imported/Metal Door - Sound Effect.mp3-3374c92a0abe03386016a20f5b460d60.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

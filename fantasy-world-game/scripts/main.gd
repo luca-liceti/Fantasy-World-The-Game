@@ -400,12 +400,9 @@ func _setup_board_miniature_lighting() -> void:
 	sun.shadow_bias = 0.03
 	sun.shadow_normal_bias = 1.0
 	sun.shadow_blur = 1.0
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	sun.directional_shadow_max_distance = 40.0
-	sun.directional_shadow_split_1 = 0.1
-	sun.directional_shadow_split_2 = 0.25
-	sun.directional_shadow_split_3 = 0.5
-	sun.directional_shadow_fade_start = 0.9
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.directional_shadow_max_distance = 150.0
+	sun.directional_shadow_fade_start = 0.95
 
 	# Low angle from the side — golden hour sun direction
 	sun.rotation_degrees = Vector3(-30, -40, 0)

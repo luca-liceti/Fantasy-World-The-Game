@@ -5,9 +5,9 @@ extends Node
 # =============================================================================
 # CONSTANTS
 # =============================================================================
-const BGM_PATH = "res://assets/music/tavern_background_music_with_ambience.mp3"
-const SFX_HOVER = "res://assets/sfx/ui/buttons/button_hover.mp3"
-const SFX_CARD_PICK = "res://assets/sfx/ui/cards/card_pick.mp3"
+const BGM_PATH = "res://assets/audio/music/tavern_background_music_with_ambience.mp3"
+const SFX_HOVER = "res://assets/audio/sfx/ui/buttons/button_hover.mp3"
+const SFX_CARD_PICK = "res://assets/audio/sfx/ui/cards/card_pick.mp3"
 const FADE_IN_DURATION = 1 # Fades in music over 1.5 seconds
 const AUDIO_BUS_MUSIC = "Music"
 const AUDIO_BUS_SFX = "SFX"

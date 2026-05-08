@@ -20,10 +20,10 @@ extends RefCounted
 # =============================================================================
 
 ## Path to biome textures
-const TEXTURES_PATH := "res://assets/textures/biomes/v2/"
+const TEXTURES_PATH := "res://assets/environment/biomes/"
 
 ## Path to the stochastic terrain shader
-const TERRAIN_SHADER_PATH := "res://assets/shaders/biome_terrain.gdshader"
+const TERRAIN_SHADER_PATH := "res://assets/vfx/shaders/biome_terrain.gdshader"
 
 # =============================================================================
 # WORLD SCALE REFERENCE
@@ -61,12 +61,12 @@ const EARTH_TONE_PALETTE: Dictionary = {
 ## Biome to texture name mapping
 ## Maps each biome type to its folder in the v2 textures directory
 const BIOME_TEXTURE_MAP: Dictionary = {
-	Biomes.Type.FOREST: "enchanted_forest",
-	Biomes.Type.PEAKS: "frozen_peaks",
-	Biomes.Type.WASTES: "desolate_wastes",
-	Biomes.Type.PLAINS: "golden_plains",
+	Biomes.Type.FOREST: "forest",
+	Biomes.Type.PEAKS: "peaks",
+	Biomes.Type.WASTES: "desert",
+	Biomes.Type.PLAINS: "plains",
 	Biomes.Type.ASHLANDS: "ashlands",
-	Biomes.Type.SWAMP: "swamplands"
+	Biomes.Type.SWAMP: "swamp"
 }
 
 ## Fallback texture map (Not needed for v2, kept for safety)
@@ -373,7 +373,11 @@ static func _try_build_shader_material(texture_prefix: String, biome_type: Biome
 
 	# Displacement / Parallax
 	var disp_tex: Texture2D = _load_texture_any_ext(base_path, "displacement")
-	if disp_tex:
+	var displacement_enabled: bool = true
+	if Engine.has_singleton("SettingsManager"):
+		displacement_enabled = SettingsManager.get_setting("graphics/displacement_enabled")
+
+	if disp_tex and displacement_enabled:
 		mat.set_shader_parameter("texture_displacement", disp_tex)
 		# Higher strength for biomes with more rocky/uneven terrain
 		var disp_strength = 0.04

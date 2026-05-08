@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cklrxt2ktf0kb"
+path="res://.godot/imported/Sword Sheath 2.ogg-4cf26dabd32777211d4740beca8b6357.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/combat/melee/Sword Sheath 2.ogg"
+dest_files=["res://.godot/imported/Sword Sheath 2.ogg-4cf26dabd32777211d4740beca8b6357.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

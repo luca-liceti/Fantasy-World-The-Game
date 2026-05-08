@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS: Dictionary = {
 		"model_quality": 2, # 0=Low (LOD2), 1=Medium (LOD1), 2=High (LOD0), 3=Ultra (LOD0+)
 		"particle_quality": 2, # 0=Low (25%), 1=Medium (50%), 2=High (100%), 3=Ultra (100%+extras)
 		"terrain_height_variation": true, # Toggle hex height variation
+		"displacement_enabled": true, # Toggle parallax occlusion mapping for textures
 		"spell_effect_intensity": 1.0, # 0.0 - 1.0
 		"antialiasing_mode": 2, # 0=Off, 1=FXAA, 2=TAA, 3=MSAA 2x, 4=MSAA 4x, 5=MSAA 8x
 	},
@@ -125,6 +126,7 @@ const QUALITY_PRESETS: Dictionary = {
 		"grass_quality": 0,        # Off (performance)
 		"groove_textures": false,  # Off (performance)
 		"terrain_height_variation": false,
+		"displacement_enabled": false,
 		"spell_effect_intensity": 0.5,
 		"antialiasing_mode": 0,    # Off
 		"ambient_occlusion": false,
@@ -142,6 +144,7 @@ const QUALITY_PRESETS: Dictionary = {
 		"grass_quality": 1,        # Low density
 		"groove_textures": true,   # Enabled (minimal performance cost)
 		"terrain_height_variation": false,
+		"displacement_enabled": false,
 		"spell_effect_intensity": 0.75,
 		"antialiasing_mode": 1,    # FXAA
 		"ambient_occlusion": false,
@@ -159,6 +162,7 @@ const QUALITY_PRESETS: Dictionary = {
 		"grass_quality": 2,        # Medium density
 		"groove_textures": true,   # Enabled
 		"terrain_height_variation": true,
+		"displacement_enabled": true,
 		"spell_effect_intensity": 1.0,
 		"antialiasing_mode": 2,    # TAA
 		"ambient_occlusion": true,
@@ -176,6 +180,7 @@ const QUALITY_PRESETS: Dictionary = {
 		"grass_quality": 3,        # High density (Witcher 3 style)
 		"groove_textures": true,   # Enabled
 		"terrain_height_variation": true,
+		"displacement_enabled": true,
 		"spell_effect_intensity": 1.0,
 		"antialiasing_mode": 4,    # MSAA 4x
 		"ambient_occlusion": true,

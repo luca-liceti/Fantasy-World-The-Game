@@ -327,7 +327,7 @@ func _fly_camera(target: Dictionary, duration: float, on_done: Callable) -> void
 # 3-D DIE HELPERS
 # =============================================================================
 
-const D20_PATH := "res://assets/models/d20-gold.glb"
+const D20_PATH := "res://assets/props/dice/d20_gold/d20_gold.glb"
 
 
 func _spawn_dice() -> void:

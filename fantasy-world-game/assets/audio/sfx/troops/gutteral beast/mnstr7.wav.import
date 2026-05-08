@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://db8fvglbumhyh"
+path="res://.godot/imported/mnstr7.wav-cb9411bed989e41a17f79ea4ba88dc3d.sample"
+
+[deps]
+
+source_file="res://assets/audio/sfx/troops/gutteral beast/mnstr7.wav"
+dest_files=["res://.godot/imported/mnstr7.wav-cb9411bed989e41a17f79ea4ba88dc3d.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

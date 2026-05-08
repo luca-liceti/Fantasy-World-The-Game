@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://beqqc3264ldfb"
+path="res://.godot/imported/Gate Open.ogg-19393f47c951041c990cc1058fc2b29e.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/world/interactables/Doors/Gate Open.ogg"
+dest_files=["res://.godot/imported/Gate Open.ogg-19393f47c951041c990cc1058fc2b29e.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

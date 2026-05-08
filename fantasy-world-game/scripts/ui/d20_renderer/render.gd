@@ -25,7 +25,7 @@ func _run():
     
     var gltf = GLTFDocument.new()
     var state = GLTFState.new()
-    gltf.append_from_file("res://assets/models/d20-gold.glb", state)
+    gltf.append_from_file("res://assets/props/dice/d20_gold/d20_gold.glb", state)
     var die = gltf.generate_scene(state)
     viewport.add_child(die)
     

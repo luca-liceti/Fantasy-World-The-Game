@@ -9,18 +9,18 @@ extends RefCounted
 # =============================================================================
 ## Maps troop_id -> GLB model file path
 const MODEL_PATHS: Dictionary = {
-	"medieval_knight": "res://assets/models/characters/medieval_knight_3d_model_still.glb",
-	"stone_giant": "res://assets/models/characters/stone_giant_3d_model_still.glb",
-	"four_headed_hydra": "res://assets/models/characters/four_headed_hydra_3d_model_still.glb",
-	"dark_blood_dragon": "res://assets/models/characters/dark_dragon_3d_model_still.glb",
-	"sky_serpent": "res://assets/models/characters/sky_serpent_3d_model_still.glb",
-	"frost_valkyrie": "res://assets/models/characters/frost_valkery_3d_model_still.glb",
-	"dark_magic_wizard": "res://assets/models/characters/dark_magic_wizard_3d_model_still.glb",
-	"demon_of_darkness": "res://assets/models/characters/demon_of_darkness_3d_model_still.glb",
-	"elven_archer": "res://assets/models/characters/elven_archer_3d_model_still.glb",
-	"celestial_cleric": "res://assets/models/characters/celestial_cleric_3d_model_still.glb",
-	"shadow_assassin": "res://assets/models/characters/shadow_assassin_3d_model_still.glb",
-	"infernal_soul": "res://assets/models/characters/infernal_soul_3d_model_still.glb",
+	"medieval_knight": "res://assets/entities/characters/medieval_knight_3d_model_still.glb",
+	"stone_giant": "res://assets/entities/characters/stone_giant_3d_model_still.glb",
+	"four_headed_hydra": "res://assets/entities/characters/four_headed_hydra_3d_model_still.glb",
+	"dark_blood_dragon": "res://assets/entities/characters/dark_dragon_3d_model_still.glb",
+	"sky_serpent": "res://assets/entities/characters/sky_serpent_3d_model_still.glb",
+	"frost_valkyrie": "res://assets/entities/characters/frost_valkery_3d_model_still.glb",
+	"dark_magic_wizard": "res://assets/entities/characters/dark_magic_wizard_3d_model_still.glb",
+	"demon_of_darkness": "res://assets/entities/characters/demon_of_darkness_3d_model_still.glb",
+	"elven_archer": "res://assets/entities/characters/elven_archer_3d_model_still.glb",
+	"celestial_cleric": "res://assets/entities/characters/celestial_cleric_3d_model_still.glb",
+	"shadow_assassin": "res://assets/entities/characters/shadow_assassin_3d_model_still.glb",
+	"infernal_soul": "res://assets/entities/characters/infernal_soul_3d_model_still.glb",
 }
 
 # =============================================================================
@@ -28,22 +28,22 @@ const MODEL_PATHS: Dictionary = {
 # =============================================================================
 ## Maps troop_id -> card art texture file path
 const CARD_ART_PATHS: Dictionary = {
-	"medieval_knight": "res://assets/textures/cards/medieval_knight.png",
-	"stone_giant": "res://assets/textures/cards/stone_giant.PNG",
-	"four_headed_hydra": "res://assets/textures/cards/four_headed_hydra.png",
-	"dark_blood_dragon": "res://assets/textures/cards/dark_dragon.PNG",
-	"sky_serpent": "res://assets/textures/cards/sky_serpent.png",
-	"frost_valkyrie": "res://assets/textures/cards/frost_valkery.png",
-	"dark_magic_wizard": "res://assets/textures/cards/dark_magic_wizard.png",
-	"demon_of_darkness": "res://assets/textures/cards/demon_of_darkness.png",
-	"elven_archer": "res://assets/textures/cards/elven_archer.png",
-	"celestial_cleric": "res://assets/textures/cards/celestial_cleric.png",
-	"shadow_assassin": "res://assets/textures/cards/shadow_assassin.png",
-	"infernal_soul": "res://assets/textures/cards/infernal_soul.png",
+	"medieval_knight": "res://assets/ui/cards/medieval_knight.png",
+	"stone_giant": "res://assets/ui/cards/stone_giant.PNG",
+	"four_headed_hydra": "res://assets/ui/cards/four_headed_hydra.png",
+	"dark_blood_dragon": "res://assets/ui/cards/dark_dragon.PNG",
+	"sky_serpent": "res://assets/ui/cards/sky_serpent.png",
+	"frost_valkyrie": "res://assets/ui/cards/frost_valkery.png",
+	"dark_magic_wizard": "res://assets/ui/cards/dark_magic_wizard.png",
+	"demon_of_darkness": "res://assets/ui/cards/demon_of_darkness.png",
+	"elven_archer": "res://assets/ui/cards/elven_archer.png",
+	"celestial_cleric": "res://assets/ui/cards/celestial_cleric.png",
+	"shadow_assassin": "res://assets/ui/cards/shadow_assassin.png",
+	"infernal_soul": "res://assets/ui/cards/infernal_soul.png",
 	# NPC cards
-	"goblin": "res://assets/textures/cards/goblin.png",
-	"orc": "res://assets/textures/cards/orc.png",
-	"troll": "res://assets/textures/cards/troll.png",
+	"goblin": "res://assets/ui/cards/goblin.png",
+	"orc": "res://assets/ui/cards/orc.png",
+	"troll": "res://assets/ui/cards/troll.png",
 }
 
 # =============================================================================

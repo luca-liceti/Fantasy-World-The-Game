@@ -27,10 +27,10 @@ signal quit_pressed
 # BACKGROUND CYCLING
 # =============================================================================
 const BG_PATHS: Array[String] = [
-	"res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png",
-	"res://assets/textures/ui/main_menu_backgrounds/battlefield_tent_background.png",
-	"res://assets/textures/ui/main_menu_backgrounds/grand_dinning_hall_background.png",
-	"res://assets/textures/ui/main_menu_backgrounds/deforested_woods_background.png",
+	"res://assets/ui/textures/main_menu_backgrounds/cozy_tavern_background.png",
+	"res://assets/ui/textures/main_menu_backgrounds/battlefield_tent_background.png",
+	"res://assets/ui/textures/main_menu_backgrounds/grand_dinning_hall_background.png",
+	"res://assets/ui/textures/main_menu_backgrounds/deforested_woods_background.png",
 ]
 const BG_HOLD:  float = 15.0   # seconds per background
 const BG_FADE:  float = 2.0    # cross-fade duration

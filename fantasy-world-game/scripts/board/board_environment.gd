@@ -17,7 +17,7 @@ extends Node3D
 # =============================================================================
 
 ## Path to board textures (table, frame, edges)
-const BOARD_TEXTURES_PATH := "res://assets/textures/board/"
+const BOARD_TEXTURES_PATH := "res://assets/environment/board/"
 
 ## Board parameters
 const TABLE_PADDING := 8.0 # Extra space around the board for table
@@ -769,11 +769,11 @@ func _create_stone_border_material() -> StandardMaterial3D:
 	var material = StandardMaterial3D.new()
 	
 	# Rock wall textures
-	var textures_dir = BOARD_TEXTURES_PATH + "textures/"
-	var diffuse_path = textures_dir + "rock_wall_04_diff_2k.jpg"
-	var normal_path = textures_dir + "rock_wall_04_nor_gl_2k.jpg"
-	var arm_path = textures_dir + "rock_wall_04_arm_2k.jpg"
-	var disp_path = textures_dir + "rock_wall_04_disp_2k.jpg"
+	var diffuse_path = BOARD_TEXTURES_PATH + "diffuse.jpg"
+	var normal_path = BOARD_TEXTURES_PATH + "normal.jpg"
+	var rough_path = BOARD_TEXTURES_PATH + "rough.jpg"
+	var ao_path = BOARD_TEXTURES_PATH + "ao.jpg"
+	var disp_path = BOARD_TEXTURES_PATH + "displacement.jpg"
 	
 	var diffuse_tex = _load_texture(diffuse_path)
 	if diffuse_tex:
@@ -786,11 +786,16 @@ func _create_stone_border_material() -> StandardMaterial3D:
 			material.normal_texture = normal_tex
 			material.normal_scale = 2.0
 		
-		var arm_tex = _load_texture(arm_path)
-		if arm_tex:
+		var ao_tex = _load_texture(ao_path)
+		if ao_tex:
 			material.ao_enabled = true
-			material.ao_texture = arm_tex
+			material.ao_texture = ao_tex
 			material.ao_light_affect = 0.8
+			
+		var rough_tex = _load_texture(rough_path)
+		if rough_tex:
+			material.roughness_texture = rough_tex
+			material.roughness = 1.0
 		
 		var disp_tex = _load_texture(disp_path)
 		if disp_tex:
@@ -1128,11 +1133,11 @@ func _create_platform_material() -> StandardMaterial3D:
 	var material = StandardMaterial3D.new()
 	
 	# Rock wall textures
-	var textures_dir = BOARD_TEXTURES_PATH + "textures/"
-	var diffuse_path = textures_dir + "rock_wall_04_diff_2k.jpg"
-	var normal_path = textures_dir + "rock_wall_04_nor_gl_2k.jpg"
-	var arm_path = textures_dir + "rock_wall_04_arm_2k.jpg"
-	var disp_path = textures_dir + "rock_wall_04_disp_2k.jpg"
+	var diffuse_path = BOARD_TEXTURES_PATH + "diffuse.jpg"
+	var normal_path = BOARD_TEXTURES_PATH + "normal.jpg"
+	var rough_path = BOARD_TEXTURES_PATH + "rough.jpg"
+	var ao_path = BOARD_TEXTURES_PATH + "ao.jpg"
+	var disp_path = BOARD_TEXTURES_PATH + "displacement.jpg"
 	
 	var diffuse_tex = _load_texture(diffuse_path)
 	if diffuse_tex:
@@ -1145,11 +1150,16 @@ func _create_platform_material() -> StandardMaterial3D:
 			material.normal_texture = normal_tex
 			material.normal_scale = 1.5
 		
-		var arm_tex = _load_texture(arm_path)
-		if arm_tex:
+		var ao_tex = _load_texture(ao_path)
+		if ao_tex:
 			material.ao_enabled = true
-			material.ao_texture = arm_tex
+			material.ao_texture = ao_tex
 			material.ao_light_affect = 0.6
+			
+		var rough_tex = _load_texture(rough_path)
+		if rough_tex:
+			material.roughness_texture = rough_tex
+			material.roughness = 1.0
 		
 		var disp_tex = _load_texture(disp_path)
 		if disp_tex:

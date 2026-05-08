@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://b4e0vqa1conxb"
+path="res://.godot/imported/Bow Impact Hit 3.ogg-c5860db004972c4ab16558911ce19093.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/combat/bow/Bow Impact Hit 3.ogg"
+dest_files=["res://.godot/imported/Bow Impact Hit 3.ogg-c5860db004972c4ab16558911ce19093.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

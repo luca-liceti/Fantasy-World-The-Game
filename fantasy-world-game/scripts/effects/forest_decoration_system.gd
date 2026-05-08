@@ -42,11 +42,11 @@ extends RefCounted
 # ASSET PATHS  (Forest only — other biomes can add their own paths later)
 # =============================================================================
 
-const BASE_PATH := "res://assets/models/enviroment/forest/optimized_assets/"
+const BASE_PATH := "res://assets/environment/decorations/forest/"
 
 # ----- GRASS LOD VARIANTS -----
 # Pipe syntax: "path|MeshNodeName" targets a specific sub-mesh inside the GLB.
-const GRASS_GLB := BASE_PATH + "grass_medium_01_2k_opt.glb"
+const GRASS_GLB := BASE_PATH + "grass_medium_01/grass_medium_01.glb"
 
 # Large grass (a-c): Tall, dense grass clumps for close-up
 const GRASS_LARGE := [
@@ -86,17 +86,17 @@ const GRASS_TINY := [
 ]
 
 # ----- ground cover (low poly, center-safe) ----------------------------------
-const PATH_FERN := BASE_PATH + "fern_02_2k_opt.glb"
-const PATH_MOSS := BASE_PATH + "moss_01_2k_opt.glb"
+const PATH_FERN := BASE_PATH + "fern_02/fern_02.glb"
+const PATH_MOSS := BASE_PATH + "moss_01/moss_01.glb"
 
 # ----- medium debris (outer zone) --------------------------------------------
-const PATH_ROCK_SET_01 := BASE_PATH + "rock_moss_set_01_2k_opt.glb"
-const PATH_ROCK_SET_02 := BASE_PATH + "rock_moss_set_02_2k_opt.glb"
-const PATH_STUMP_01 := BASE_PATH + "tree_stump_01_2k_opt.glb"
-const PATH_STUMP_02 := BASE_PATH + "tree_stump_02_2k_opt.glb"
-const PATH_PINE_ROOTS := BASE_PATH + "pine_roots_2k_opt.glb"
-const PATH_DRY_BRANCHES := BASE_PATH + "dry_branches_medium_01_2k_opt.glb"
-const PINE_GLB := "res://assets/models/enviroment/forest/pine_trees_pack_lowpoly_game_ready_lods.glb"
+const PATH_ROCK_SET_01 := BASE_PATH + "rock_moss_set_01/rock_moss_set_01.glb"
+const PATH_ROCK_SET_02 := BASE_PATH + "rock_moss_set_02/rock_moss_set_02.glb"
+const PATH_STUMP_01 := BASE_PATH + "tree_stump_01/tree_stump_01.glb"
+const PATH_STUMP_02 := BASE_PATH + "tree_stump_02/tree_stump_02.glb"
+const PATH_PINE_ROOTS := BASE_PATH + "pine_roots/pine_roots.glb"
+const PATH_DRY_BRANCHES := BASE_PATH + "dry_branches_medium_01/dry_branches_medium_01.glb"
+const PINE_GLB := BASE_PATH + "pine_trees/pine_trees.glb"
 
 const PATH_PINE_BIG_1 := PINE_GLB + "|Pine_big_1_LOD0"
 const PATH_PINE_BIG_2 := PINE_GLB + "|Pine_big_2_LOD0"
@@ -143,18 +143,18 @@ const GRASS_LOD_POOLS: Dictionary = {
 # =============================================================================
 
 const DECO_SCALE: Dictionary = {
-	"grass_medium_01_2k_opt.glb": {"base": 0.80},  # Properly sized floor clump (~80cm spread)
-	"fern_02_2k_opt.glb": {"base": 0.350},  # Increased for visibility
-	"moss_01_2k_opt.glb": {"base": 0.400},  # Increased for visibility
-	"rock_moss_set_01_2k_opt.glb": {"base": 0.240},
-	"rock_moss_set_02_2k_opt.glb": {"base": 0.280},
-	"tree_stump_01_2k_opt.glb": {"base": 0.300},
-	"tree_stump_02_2k_opt.glb": {"base": 0.300},
-	"pine_roots_2k_opt.glb": {"base": 0.175},
-	"dry_branches_medium_01_2k_opt.glb": {"base": 0.225},
+	"grass_medium_01.glb": {"base": 0.80},  # Properly sized floor clump (~80cm spread)
+	"fern_02.glb": {"base": 0.350},  # Increased for visibility
+	"moss_01.glb": {"base": 0.400},  # Increased for visibility
+	"rock_moss_set_01.glb": {"base": 0.240},
+	"rock_moss_set_02.glb": {"base": 0.280},
+	"tree_stump_01.glb": {"base": 0.300},
+	"tree_stump_02.glb": {"base": 0.300},
+	"pine_roots.glb": {"base": 0.175},
+	"dry_branches_medium_01.glb": {"base": 0.225},
 	# Saplings (Scaled up for taller forests)
 	# New Pine Trees (LOD-enabled)
-	"pine_trees_pack_lowpoly_game_ready_lods.glb": {"base": 0.350}, # Base scale for big trees
+	"pine_trees.glb": {"base": 0.350}, # Base scale for big trees
 	"Pine_big_1_LOD0": {"base": 0.380},
 	"Pine_big_2_LOD0": {"base": 0.380},
 	"Pine_big_3_LOD0": {"base": 0.380},

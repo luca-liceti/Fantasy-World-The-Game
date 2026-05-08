@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cyfpl6y80xqc8"
+path="res://.godot/imported/Water Jump.ogg-d3141ebcd14a7d9e261f5749bd42029d.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/troops/movement/Footsteps/Water/Water Jump.ogg"
+dest_files=["res://.godot/imported/Water Jump.ogg-d3141ebcd14a7d9e261f5749bd42029d.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

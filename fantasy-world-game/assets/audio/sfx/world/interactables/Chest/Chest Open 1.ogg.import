@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://70ua0iqm5d37"
+path="res://.godot/imported/Chest Open 1.ogg-bdd998dee5e2427f04e019902f317cac.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/world/interactables/Chest/Chest Open 1.ogg"
+dest_files=["res://.godot/imported/Chest Open 1.ogg-bdd998dee5e2427f04e019902f317cac.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

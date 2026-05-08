@@ -1,8 +1,8 @@
 extends SceneTree
 
 func _init() -> void:
-	var h_img = Image.load_from_file("res://assets/textures/ui/components/horizontal_bar.png")
-	var v_img = Image.load_from_file("res://assets/textures/ui/components/verticle_bar.png")
+	var h_img = Image.load_from_file("res://assets/ui/textures/components/horizontal_bar.png")
+	var v_img = Image.load_from_file("res://assets/ui/textures/components/verticle_bar.png")
 	
 	if h_img == null or v_img == null:
 		print("Failed to load source images.")
@@ -51,7 +51,7 @@ func _init() -> void:
 	img.blit_rect_blend(h_img, Rect2i(h_w - thick, 0, thick, h_h), Vector2i(256 - thick, 0)) # TR
 	img.blit_rect_blend(h_img, Rect2i(h_w - thick, 0, thick, h_h), Vector2i(256 - thick, 256 - h_h)) # BR
 
-	var save_path = "res://assets/textures/ui/components/menu_panel_border.png"
+	var save_path = "res://assets/ui/textures/components/menu_panel_border.png"
 	img.save_png(save_path)
 	print("Successfully spliced horizontally and vertically to build custom panel: ", save_path)
 	

@@ -8,27 +8,27 @@ extends RefCounted
 # =============================================================================
 # ASSET PATHS
 # =============================================================================
-const PATH_BTN_DEFAULT  = "res://assets/textures/ui/components/default_button.png"
-const PATH_BTN_HOVERED  = "res://assets/textures/ui/components/hovered_button.png"
-const PATH_CARD_BG      = "res://assets/textures/ui/components/background_paper.jpg"
-const PATH_BTN_DROPDOWN = "res://assets/textures/ui/components/button_dropdown.png"
-const PATH_INPUT_BOX    = "res://assets/textures/ui/components/input_box.png"
-const PATH_CONTENT_BOX  = "res://assets/textures/ui/components/menu_panel_border.png"
-const PATH_RANDOMIZE    = "res://assets/textures/ui/components/randomize_button.png"
-const PATH_SLIDER_H     = "res://assets/textures/ui/components/horizontal_bar.png"
-const PATH_SLIDER_V     = "res://assets/textures/ui/components/verticle_bar.png"
-const PATH_SLIDER_COMPS = "res://assets/textures/ui/components/slider_components.png"
-const PATH_SLIDER_FILLED = "res://assets/textures/ui/components/slider_component_filled.png"
-const PATH_SLIDER_HANDLE = "res://assets/textures/ui/components/slider_component_handle.png"
-const PATH_SLIDER_EMPTY  = "res://assets/textures/ui/components/slider_component_empty.png"
-const PATH_TOGGLE_ON      = "res://assets/textures/ui/components/toggle_button_on.png"
-const PATH_TOGGLE_OFF     = "res://assets/textures/ui/components/toggle_button_off.png"
+const PATH_BTN_DEFAULT  = "res://assets/ui/textures/components/default_button.png"
+const PATH_BTN_HOVERED  = "res://assets/ui/textures/components/hovered_button.png"
+const PATH_CARD_BG      = "res://assets/ui/textures/components/background_paper.jpg"
+const PATH_BTN_DROPDOWN = "res://assets/ui/textures/components/button_dropdown.png"
+const PATH_INPUT_BOX    = "res://assets/ui/textures/components/input_box.png"
+const PATH_CONTENT_BOX  = "res://assets/ui/textures/components/menu_panel_border.png"
+const PATH_RANDOMIZE    = "res://assets/ui/textures/components/randomize_button.png"
+const PATH_SLIDER_H     = "res://assets/ui/textures/components/horizontal_bar.png"
+const PATH_SLIDER_V     = "res://assets/ui/textures/components/verticle_bar.png"
+const PATH_SLIDER_COMPS = "res://assets/ui/textures/components/slider_components.png"
+const PATH_SLIDER_FILLED = "res://assets/ui/textures/components/slider_component_filled.png"
+const PATH_SLIDER_HANDLE = "res://assets/ui/textures/components/slider_component_handle.png"
+const PATH_SLIDER_EMPTY  = "res://assets/ui/textures/components/slider_component_empty.png"
+const PATH_TOGGLE_ON      = "res://assets/ui/textures/components/toggle_button_on.png"
+const PATH_TOGGLE_OFF     = "res://assets/ui/textures/components/toggle_button_off.png"
 
-const PATH_LOGO         = "res://assets/textures/logo/fantasy-world-main-screen-logo.png"
+const PATH_LOGO         = "res://assets/ui/logos/fantasy-world-main-screen-logo.png"
 
-const PATH_FONT_REGULAR = "res://assets/fonts/Cinzel-Regular.ttf"
-const PATH_FONT_BOLD    = "res://assets/fonts/Cinzel-Bold.ttf"
-const PATH_FONT_BLACK   = "res://assets/fonts/Cinzel-Black.ttf"
+const PATH_FONT_REGULAR = "res://assets/ui/fonts/Cinzel-Regular.ttf"
+const PATH_FONT_BOLD    = "res://assets/ui/fonts/Cinzel-Bold.ttf"
+const PATH_FONT_BLACK   = "res://assets/ui/fonts/Cinzel-Black.ttf"
 
 # =============================================================================
 # COLOUR PALETTE  (warm medieval gold / iron)

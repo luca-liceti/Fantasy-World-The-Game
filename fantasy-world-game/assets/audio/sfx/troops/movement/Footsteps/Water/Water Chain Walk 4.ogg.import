@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cfpka34y26xsx"
+path="res://.godot/imported/Water Chain Walk 4.ogg-b39a10bc6a5d6f9e9c40a57c3ad08ebf.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/troops/movement/Footsteps/Water/Water Chain Walk 4.ogg"
+dest_files=["res://.godot/imported/Water Chain Walk 4.ogg-b39a10bc6a5d6f9e9c40a57c3ad08ebf.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

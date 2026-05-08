@@ -405,7 +405,7 @@ func display_combat_sequence(attacker_name: String, defender_name: String,
 # 3-D DIE — COMBAT
 # =============================================================================
 
-const D20_PATH := "res://assets/models/d20-gold.glb"
+const D20_PATH := "res://assets/props/dice/d20_gold/d20_gold.glb"
 
 
 func _spawn_combat_die() -> void:

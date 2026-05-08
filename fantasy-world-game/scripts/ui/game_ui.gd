@@ -711,7 +711,7 @@ func update_troop_cards(player: Player, selected_troop: Node = null) -> void:
 				var level = 1
 				if entity:
 					level = entity.level
-				var mine_art_path = "res://assets/textures/cards/mine_pics/gold_mine_lvl_%d.png" % clamp(level, 1, 5)
+				var mine_art_path = "res://assets/ui/cards/mine_pics/gold_mine_lvl_%d.png" % clamp(level, 1, 5)
 				art_rect.texture = load(mine_art_path) as Texture2D
 				art_rect.visible = true
 				

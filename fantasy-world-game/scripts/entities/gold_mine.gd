@@ -35,11 +35,11 @@ var team_color: Color = Color.WHITE
 var click_area: Area3D # Input detection for clicking the mine directly
 
 const MINE_MODELS = [
-	preload("res://assets/models/mines/gold_mine_lvl_1_still.glb"),
-	preload("res://assets/models/mines/gold_mine_lvl_2_still.glb"),
-	preload("res://assets/models/mines/gold_mine_lvl_3_still.glb"),
-	preload("res://assets/models/mines/gold_mine_lvl_4_still.glb"),
-	preload("res://assets/models/mines/gold_mine_lvl_5_still.glb")
+	preload("res://assets/props/mines/gold_mine_lvl_1_still.glb"),
+	preload("res://assets/props/mines/gold_mine_lvl_2_still.glb"),
+	preload("res://assets/props/mines/gold_mine_lvl_3_still.glb"),
+	preload("res://assets/props/mines/gold_mine_lvl_4_still.glb"),
+	preload("res://assets/props/mines/gold_mine_lvl_5_still.glb")
 ]
 
 

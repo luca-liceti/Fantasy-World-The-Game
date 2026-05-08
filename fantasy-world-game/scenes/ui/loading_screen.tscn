@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bx8hklmq7255y"]
 
 [ext_resource type="Script" path="res://scripts/ui/loading_screen.gd" id="1_j3f9r"]
-[ext_resource type="Texture2D" uid="uid://bcd2vu250gu72" path="res://assets/textures/ui/main_menu_backgrounds/cozy_tavern_background.png" id="2_asd12"]
+[ext_resource type="Texture2D" uid="uid://bcd2vu250gu72" path="res://assets/ui/textures/main_menu_backgrounds/cozy_tavern_background.png" id="2_asd12"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.1, 0.1, 0.15, 0.8)

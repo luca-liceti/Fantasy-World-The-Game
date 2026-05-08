@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://i2ro83gui652"
+path="res://.godot/imported/Sword Parry 2.ogg-e579626f186ae3a349be7b7ac3443cfd.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/audio/sfx/combat/melee/Sword Parry 2.ogg"
+dest_files=["res://.godot/imported/Sword Parry 2.ogg-e579626f186ae3a349be7b7ac3443cfd.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

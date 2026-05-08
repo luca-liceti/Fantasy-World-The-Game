@@ -287,12 +287,9 @@ static func create_directional_light() -> DirectionalLight3D:
 	light.shadow_normal_bias = GOLDEN_HOUR_PROFILE.shadow_normal_bias
 	light.shadow_blur = GOLDEN_HOUR_PROFILE.shadow_blur
 	
-	light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	light.directional_shadow_max_distance = 80.0
-	light.directional_shadow_split_1 = 0.1
-	light.directional_shadow_split_2 = 0.25
-	light.directional_shadow_split_3 = 0.5
-	light.directional_shadow_fade_start = 0.9
+	light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	light.directional_shadow_max_distance = 150.0
+	light.directional_shadow_fade_start = 0.95
 	
 	# Low evening angle (~25 degrees from horizon) for dramatic long shadows
 	light.rotation_degrees = Vector3(-25, -35, 0)

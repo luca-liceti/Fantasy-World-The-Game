@@ -9,7 +9,7 @@
 ## can be used for manual fine-tuning on top of the auto-alignment.
 ##
 ## To add a new environment:
-##   1. Drop the .glb file into res://assets/models/rooms/
+##   1. Drop the .glb file into res://assets/rooms/
 ##   2. Ensure the table mesh is named "Main_Table" with its origin at center
 ##   3. Add an entry to EnvironmentType, ENVIRONMENT_PATHS, and ENVIRONMENT_NAMES
 class_name EnvironmentBuilder
@@ -32,13 +32,13 @@ enum EnvironmentType {
 
 ## .glb file path for each environment
 const ENVIRONMENT_PATHS: Dictionary = {
-	EnvironmentType.TAVERN: "res://assets/models/rooms/grand_tavern.glb",
-	EnvironmentType.CASTLE_DINING_HALL: "res://assets/models/rooms/castle_dining_hall.glb",
-	EnvironmentType.FOREST_CLEARING: "res://assets/models/rooms/forest_clearing.glb",
-	EnvironmentType.MOUNTAIN: "res://assets/models/rooms/mountain.glb",
-	EnvironmentType.FORTRESS: "res://assets/models/rooms/fortress.glb",
-	EnvironmentType.UNDERGROUND_CAVE: "res://assets/models/rooms/underground_cave.glb",
-	EnvironmentType.FIELD_TENT: "res://assets/models/rooms/field_tent.glb",
+	EnvironmentType.TAVERN: "res://assets/rooms/grand_tavern.glb",
+	EnvironmentType.CASTLE_DINING_HALL: "res://assets/rooms/castle_dining_hall.glb",
+	EnvironmentType.FOREST_CLEARING: "res://assets/rooms/forest_clearing.glb",
+	EnvironmentType.MOUNTAIN: "res://assets/rooms/mountain.glb",
+	EnvironmentType.FORTRESS: "res://assets/rooms/fortress.glb",
+	EnvironmentType.UNDERGROUND_CAVE: "res://assets/rooms/underground_cave.glb",
+	EnvironmentType.FIELD_TENT: "res://assets/rooms/field_tent.glb",
 }
 
 ## Human-readable names (used in UI / logs)
