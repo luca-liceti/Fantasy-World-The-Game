@@ -123,6 +123,7 @@ void fragment() {
 
 	ROUGHNESS = mix(1.0, 0.4, ease_out_quartic(height_factor));
 	ANISOTROPY = 0.85;
+	SPECULAR = 0.0; // Disables specular highlights to fix distant white dot artifacts (fireflies)
 }
 
 void light() {
