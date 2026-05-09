@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ce1nykmgrdksb"
+uid="uid://csg7hyaoej2ih"
 path="res://.godot/imported/flame_06_rotated_black_bg.png-e8b523e06ae5284d9a41df8a18e5b3b0.ctex"
 metadata={
 "vram_texture": false
@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/flame_06_rotated_black_bg.png-e8b523e06ae5284
 
 [params]
 
-compress/mode=3
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

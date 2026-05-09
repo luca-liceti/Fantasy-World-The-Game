@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dxt52wv85eyqi"
+uid="uid://b53pyhmc3adoy"
 path="res://.godot/imported/muzzle_03_rotated_black_bg.png-a6c1b3f55ea8990d51076cb65e38a27f.ctex"
 metadata={
 "vram_texture": false
@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/muzzle_03_rotated_black_bg.png-a6c1b3f55ea899
 
 [params]
 
-compress/mode=3
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

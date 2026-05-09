@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cedfgj5ugjkx4"
+uid="uid://bpff2hc5steuq"
 path="res://.godot/imported/spark_06_black_bg.png-56437f0553eeef70a7f0c22a9591bf6e.ctex"
 metadata={
 "vram_texture": false
@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/spark_06_black_bg.png-56437f0553eeef70a7f0c22
 
 [params]
 
-compress/mode=3
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

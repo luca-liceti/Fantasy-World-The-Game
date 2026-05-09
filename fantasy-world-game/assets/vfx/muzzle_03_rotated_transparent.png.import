@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c2qqxbpkspo2s"
+uid="uid://b1itdacb3mxuw"
 path="res://.godot/imported/muzzle_03_rotated_transparent.png-60199c4ed27cec7915cd8bcaac230d8d.ctex"
 metadata={
 "vram_texture": false
@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/muzzle_03_rotated_transparent.png-60199c4ed27
 
 [params]
 
-compress/mode=3
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cso334icuxyf4"
+uid="uid://dgvcly11tn146"
 path="res://.godot/imported/smoke_07_black_bg.png-5c5dc21d2da259eebecf95a6cb73e91b.ctex"
 metadata={
 "vram_texture": false
@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/smoke_07_black_bg.png-5c5dc21d2da259eebecf95a
 
 [params]
 
-compress/mode=3
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

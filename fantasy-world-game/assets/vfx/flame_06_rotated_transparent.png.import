@@ -2,7 +2,7 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bbvyrait6n5ba"
+uid="uid://co28u4bht4rc8"
 path="res://.godot/imported/flame_06_rotated_transparent.png-f911c86f46844b1f2d7e9987233eeea3.ctex"
 metadata={
 "vram_texture": false
@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/flame_06_rotated_transparent.png-f911c86f4684
 
 [params]
 
-compress/mode=3
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
