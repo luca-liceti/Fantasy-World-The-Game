@@ -157,7 +157,7 @@ static func _calculate_heal_amount(caster: Node, move: MoveData.Move) -> int:
 # =============================================================================
 
 ## Get all valid targets for an AoE move
-static func get_aoe_targets(center_hex: Node, aoe_pattern: String, hex_board: Node, exclude_allies: bool = true, caster_player_id: int = -1) -> Array[Node]:
+static func get_aoe_targets(center_hex: Node, aoe_pattern: Variant, hex_board: Node, exclude_allies: bool = true, caster_player_id: int = -1) -> Array[Node]:
 	var targets: Array[Node] = []
 	
 	if center_hex == null or hex_board == null:
@@ -180,16 +180,55 @@ static func get_aoe_targets(center_hex: Node, aoe_pattern: String, hex_board: No
 
 
 ## Get hex coordinates affected by an AoE pattern
-static func _get_hexes_in_pattern(center_hex: Node, pattern: String, hex_board: Node) -> Array[Node]:
+static func _get_hexes_in_pattern(center_hex: Node, pattern: Variant, hex_board: Node) -> Array[Node]:
 	var hexes: Array[Node] = []
 	
+	if center_hex == null or hex_board == null:
+		return hexes
+	
 	var center_coord = center_hex.coordinates
+	
+	# Handle manual offset array: [[q, r], [q, r], ...]
+	if pattern is Array:
+		for offset in pattern:
+			if offset is Array and offset.size() >= 2:
+				var target_coord = HexCoordinates.new(center_coord.q + offset[0], center_coord.r + offset[1])
+				var tile = hex_board.get_tile_at(target_coord)
+				if tile:
+					hexes.append(tile)
+			elif offset is Vector2i:
+				var target_coord = HexCoordinates.new(center_coord.q + offset.x, center_coord.r + offset.y)
+				var tile = hex_board.get_tile_at(target_coord)
+				if tile:
+					hexes.append(tile)
+		return hexes
+	
+	# Handle named patterns
+	if not pattern is String:
+		return hexes
 	
 	match pattern:
 		"adjacent":
 			# All 6 adjacent hexes
 			for neighbor_coord in center_coord.get_all_neighbors():
 				var tile = hex_board.get_tile_at(neighbor_coord)
+				if tile:
+					hexes.append(tile)
+		
+		"center_and_adjacent":
+			# The center hex itself plus all 6 adjacent hexes (used by Inferno)
+			var center_tile = hex_board.get_tile_at(center_coord)
+			if center_tile:
+				hexes.append(center_tile)
+			for neighbor_coord in center_coord.get_all_neighbors():
+				var tile = hex_board.get_tile_at(neighbor_coord)
+				if tile:
+					hexes.append(tile)
+		
+		"range_2":
+			# All hexes within 2 steps (used by Divine Surge)
+			for coord in center_coord.get_hexes_in_range(2):
+				var tile = hex_board.get_tile_at(coord)
 				if tile:
 					hexes.append(tile)
 		
@@ -227,7 +266,7 @@ static func _get_hexes_in_pattern(center_hex: Node, pattern: String, hex_board: 
 
 
 ## Check if AoE would hit any allies (for warning)
-static func would_aoe_hit_allies(center_hex: Node, aoe_pattern: String, hex_board: Node, caster_player_id: int) -> bool:
+static func would_aoe_hit_allies(center_hex: Node, aoe_pattern: Variant, hex_board: Node, caster_player_id: int) -> bool:
 	var all_targets = get_aoe_targets(center_hex, aoe_pattern, hex_board, false, -1)
 	
 	for target in all_targets:

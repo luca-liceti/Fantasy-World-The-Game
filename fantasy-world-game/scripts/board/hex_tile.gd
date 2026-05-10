@@ -697,15 +697,18 @@ func _setup_materials() -> void:
 	selection_material.albedo_color = sel_col
 	selection_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	selection_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	# CRITICAL: Depth test must be ON so entities on top (troops) aren't obscured
-	selection_material.no_depth_test = false
-	selection_material.render_priority = 10 # Draw over terrain but respects entities
+	# VISIBILITY: no_depth_test=true ensures it draws over tall grass/trees.
+	# render_priority=10 allows entities (priority 20) to draw over IT.
+	selection_material.no_depth_test = true
+	selection_material.render_priority = 10
 	
 	# Hover material (subtle white glow)
 	hover_material = StandardMaterial3D.new()
 	hover_material.albedo_color = Color(1.0, 1.0, 1.0, 0.25)
 	hover_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	hover_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	hover_material.no_depth_test = true
+	hover_material.render_priority = 10
 	
 	# Movement material (blue)
 	movement_material = StandardMaterial3D.new()
@@ -714,6 +717,7 @@ func _setup_materials() -> void:
 	movement_material.emission_enabled = true
 	movement_material.emission = Color(0.2, 0.4, 0.8)
 	movement_material.emission_energy_multiplier = 1.0
+	movement_material.no_depth_test = true
 	movement_material.render_priority = 10
 	
 	# Attack material (red)
@@ -723,6 +727,7 @@ func _setup_materials() -> void:
 	attack_material.emission_enabled = true
 	attack_material.emission = Color(0.8, 0.2, 0.2)
 	attack_material.emission_energy_multiplier = 1.0
+	attack_material.no_depth_test = true
 	attack_material.render_priority = 10
 
 

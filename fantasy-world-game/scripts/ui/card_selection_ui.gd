@@ -106,6 +106,7 @@ const FLEX_CARDS = ["celestial_cleric", "shadow_assassin", "infernal_soul"]
 
 func _ready() -> void:
 	layer = 100
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_create_ui()
 	# Hide initially - directly set visibility without tween
 	if root_control:

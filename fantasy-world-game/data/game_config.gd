@@ -85,7 +85,7 @@ static func set_grass_quality_level(quality: int) -> void:
 # PLAYER CONFIGURATION
 # =============================================================================
 const NUM_PLAYERS: int = 2 # 1v1 game
-const STARTING_GOLD: int = 150
+const STARTING_GOLD: int = 200
 const STARTING_XP: int = 0
 const CARDS_PER_PLAYER: int = 4
 const SPAWN_HEXES_PER_PLAYER: int = 4
@@ -153,7 +153,7 @@ static func get_combat_mode_config(mode: int) -> Dictionary:
 # GOLD MINE CONFIGURATION
 # =============================================================================
 const MAX_MINES_PER_PLAYER: int = 5
-const MINE_PLACEMENT_COST: int = 100
+const MINE_PLACEMENT_COST: int = 75
 const MIN_DISTANCE_BETWEEN_MINES: int = 3 # Minimum hexes between mines
 
 # Gold mine upgrade costs
@@ -167,12 +167,14 @@ const MINE_UPGRADE_COSTS: Dictionary = {
 
 # Gold generation per turn by level
 const MINE_GENERATION_RATES: Dictionary = {
-	1: 10,
-	2: 25,
+	1: 15,
+	2: 30,
 	3: 50,
 	4: 100,
 	5: 200
 }
+
+const MAX_MINE_LEVEL: int = 5  # Highest mine upgrade level (separate from MAX_TROOP_LEVEL)
 
 # =============================================================================
 # TROOP UPGRADE CONFIGURATION
@@ -198,10 +200,8 @@ const NPC_SPAWN_CHANCE: float = 0.10 # 10% chance when troop moves
 # =============================================================================
 # BIOME MODIFIERS
 # =============================================================================
-const ADVANTAGE_MODIFIER: float = 0.25 # +A: +25% damage dealt
-const STRENGTH_MODIFIER: float = 0.15 # +S: +15% damage dealt
-const DEFENSE_MODIFIER: float = 0.15 # +D: -15% incoming damage
-const WEAKNESS_MODIFIER: float = -0.25 # -S: -25% damage dealt
+const STRENGTH_MODIFIER: float = 0.15   # +S: +15% damage dealt
+const WEAKNESS_MODIFIER: float = -0.25  # -S: -25% damage dealt
 
 # =============================================================================
 # PLAYER INVENTORY

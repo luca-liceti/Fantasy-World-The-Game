@@ -144,140 +144,32 @@ Each troop has **4 unique moves** defined in `move_data.gd`:
 - **Precision**: 80% power, +5 accuracy, 2-turn cooldown
 - **Special**: 120% power, status effect chance, 4-turn cooldown
 
-**Total Moves in Game**: 48 (4 moves × 12 troops)
+**Total moves in game: 48 (4 moves × 12 troops)**
 
 ---
 
 # Combat System
 
-## Enhanced Combat System (D&D × Pokémon Hybrid)
-
-The combat system combines simultaneous move/stance selection, type effectiveness, and status effects.
-
-### Combat Flow
-
-1. **Attacker** initiates combat by selecting a target
-2. **Simultaneous Selection Phase** (30 seconds):
-   - Attacker chooses a **Move** (4 unique moves per troop)
-   - Defender chooses a **Defensive Stance** (Brace, Dodge, Counter, Endure)
-3. Selections revealed simultaneously
-4. Dice rolled, modifiers applied, damage calculated
-
-### Dice System
-
-- **Dice Type**: d20 (1-20 range)
-- **Attack Roll** = d20 + ATK stat + Move Accuracy + Position Bonuses
-- **Defense DC** = 10 + DEF stat + Stance Bonus + Position Bonuses
-- **Attack Succeeds** if: Attack Roll > Defense DC
-
-### Critical Hits/Misses
-
-- **Natural 18-20**: Critical Hit! **Double damage!**
-- **Natural 1**: Critical Miss! **Automatic miss!**
-
-### Damage Formula
-
-```
-If attack succeeds:
-  Damage = (ATK × Power% × Type Effectiveness) - DEF/2
-  Damage is always at least 1
-  Critical hits deal 2× damage
-```
-
-### Move Types
-
-| Type | Power | Accuracy | Cooldown | Best For |
-|------|-------|----------|----------|----------|
-| **Standard** | 100% | +0 | None | Reliable damage every turn |
-| **Power** | 150% | -3 | 3 turns | Big damage, risky accuracy |
-| **Precision** | 80% | +5 | 2 turns | Guaranteed hits on tough targets |
-| **Special** | 120% | +0 | 4 turns | Effects + good damage |
-
-### Defensive Stances
-
-| Stance | Effect | Best For |
-|--------|--------|----------|
-| **Brace** 🛡️ | +3 DEF, take 20% less damage | Tanking expected hits |
-| **Dodge** ⚡ | +5 Evasion to DC | Against low-accuracy Power moves |
-| **Counter** ↩️ | If missed, deal 50% ATK back | Punishing risky attacks |
-| **Endure** 💪 | Survive at 1 HP (once per combat) | Clutch survival |
-
-### Damage Types (6 Types)
-
-| Type | Icon | Strong Against | Weak Against |
-|------|------|----------------|--------------|
-| **Physical** | ⚔️ | Varies | CONSTRUCT |
-| **Fire** | 🔥 | UNDEAD, NATURE | ELEMENTAL |
-| **Ice** | ❄️ | BEAST, NATURE | ELEMENTAL |
-| **Dark** | 🌑 | SPIRIT | HOLY |
-| **Holy** | ✨ | UNDEAD, DARK | None |
-| **Nature** | 🌿 | BEAST | UNDEAD |
-
-### Type Effectiveness Multipliers
-
-- **Super Effective**: 1.5× damage
-- **Not Very Effective**: 0.5× damage
-- **Immune**: 0× damage
-
-### Status Effects (8 Types)
-
-| Effect | Duration | Effect |
-|--------|----------|--------|
-| **Stunned** ⚡ | 1 turn | Can't act! Auto-Brace if attacked |
-| **Burned** 🔥 | 3 turns | Take 10 damage per turn |
-| **Poisoned** ☠️ | 4 turns | Take 8 damage per turn |
-| **Slowed** 🐢 | 2 turns | -2 Speed |
-| **Cursed** 💀 | 3 turns | -25% ATK |
-| **Terrified** 😱 | 2 turns | -25% DEF |
-| **Rooted** 🌿 | 2 turns | Can't move |
-| **Stealth** 👻 | 3 turns | Next attack is guaranteed crit! |
-
-### Status Immunities
-
-- **Infernal Soul**: Immune to Burned
-- **Frost Revenant**: Immune to Slowed
-- **Celestial Cleric**: Immune to Cursed
-- **Shadow Assassin**: Starts with Stealth
-
-### Positioning Bonuses
-
-| Bonus | Effect | Condition |
-|-------|--------|-----------|
-| **Flanking** | +3 hit | Ally adjacent to defender |
-| **High Ground** | +2 hit, +10% damage | Attack from Hills/Peaks |
-| **Cover** | +3 DEF | Defender on Forest/Ruins |
-| **Surrounded** | -2 DEF | 3+ enemies adjacent to defender |
-
-### Combat Rules Summary
-
-- Each troop can perform **ONE action per turn** (Move OR Attack, not both)
-- Attack requires target to be in range
-- Line of sight required for ranged/magic attacks (no biome blocking)
-- Air units can attack all ground units
-- Only Ranged and Magic ground units can attack air units
-
-### Range & Line of Sight
-
-**Range Calculation:**
-- Range counts hex distance (hexagonal distance algorithm)
-- Range 1 = adjacent hex only
-- Range 2 = up to 2 hexes away
-- Range 3 = up to 3 hexes away
-- Count from the troop's hex, not adjacent
-
-**Line of Sight:**
-- Algorithm: Bresenham line from attacker to target
-- **No biome LOS blocking** — all terrain is transparent
-- Units do NOT block line of sight
-- *Rationale*: Simplified rules, focus on positioning
-
-### Draw vs Tie Rules
-
-- **Draw**: Equal dice rolls → re-roll (max 3×), then defender wins
-- **Tie**: Both players eliminated simultaneously = game ends with no winner
-- Option to rematch after tie
+> ⚔️ **All combat rules are defined in [`combat_reference.md`](./combat_reference.md).**
+>
+> That document is the **single source of truth** for:
+> - Draft & deck rules
+> - Combat flow, move selection, and the Reaction Window
+> - All 4 move types (Standard / Power / Precision / Special)
+> - All 4 defensive stances (Brace, Dodge, Counter, Endure)
+> - Dice system (d20, ATK÷10, DEF÷10, crit 18–20)
+> - Damage formula and magic DEF reduction
+> - All 6 damage types and type effectiveness chart
+> - Status effects (8 effects, immunities, and DoT rules)
+> - Biome modifiers (S/W table for all 12 troops)
+> - Positioning bonuses (Flanking, Cover, Surrounded)
+> - Signature Specials for all 12 troops
+> - Simplified combat mode settings
+>
+> Do not duplicate combat rules in this document.
 
 ---
+
 
 
 # Biome System
@@ -285,10 +177,10 @@ If attack succeeds:
 ## Biome Modifier System
 
 **Modifier Types:**
-- **+A (Advantage)**: +25% damage dealt
-- **+S (Strength)**: +15% damage dealt
-- **+D (Defense)**: -15% incoming damage
-- **-S (Weakness)**: -25% damage dealt
+- **+S (Strong biome)**: +15% damage dealt
+- **−S (Weak biome)**: −25% damage dealt
+
+> See `combat_reference.md` Section 10 for the full per-troop biome table.
 
 **Rules:**
 - Modifiers do NOT stack — use strongest applicable

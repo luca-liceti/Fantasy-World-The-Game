@@ -503,7 +503,7 @@ func perform_upgrade_mine(mine: Node) -> Dictionary:
 	
 	var current_level = mine.level if "level" in mine else 1
 	
-	if current_level >= GameConfig.MAX_TROOP_LEVEL:
+	if current_level >= GameConfig.MAX_MINE_LEVEL:
 		return {"success": false, "error": "Mine is max level"}
 	
 	var next_level = current_level + 1

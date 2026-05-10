@@ -199,12 +199,18 @@ func initialize(card_id: String, player_id: int) -> void:
 	has_attacked_this_turn = false
 	active_buffs.clear()
 	active_status_effects.clear()
-	
-	# Try to load the real 3D model (replacing the placeholder)
-	_load_character_model()
 	move_cooldowns.clear()
 	stat_stages = {"atk": 0, "def": 0, "speed": 0}
 	endure_uses_remaining = 1
+	
+	# Try to load the real 3D model (replacing the placeholder)
+	_load_character_model()
+	
+	# Apply starting Stealth for Shadow Assassin (combat_reference.md §11 & §14)
+	if troop_id == "shadow_assassin":
+		var stealth = StatusEffects.create_effect("stealth")
+		if stealth:
+			active_status_effects.append(stealth)
 
 
 ## Set team color for visual distinction
@@ -476,7 +482,7 @@ func can_act() -> bool:
 		if effect.prevents_action:
 			return false
 	
-	return not has_moved_this_turn or not has_attacked_this_turn
+	return not (has_moved_this_turn or has_attacked_this_turn)
 
 
 ## Check if troop can move this turn (accounts for status effects)
@@ -589,21 +595,23 @@ func tick_status_effects() -> int:
 	var to_remove: Array = []
 	
 	for effect in active_status_effects:
-		# Apply damage over time
-		if effect.damage_per_turn > 0:
+		# Apply damage over time — one tick at a time so we can stop on death
+		if effect.damage_per_turn > 0 and is_alive:
+			take_damage(effect.damage_per_turn)
 			total_damage += effect.damage_per_turn
+			if not is_alive:
+				# Troop died mid-tick; expire this effect and stop further DoT
+				effect.tick()
+				to_remove.append(effect)
+				break
 		
-		# Tick duration
+		# Tick duration (returns true when expired)
 		if effect.tick():
 			to_remove.append(effect)
 	
 	# Remove expired effects
 	for effect in to_remove:
 		active_status_effects.erase(effect)
-	
-	# Apply DoT damage
-	if total_damage > 0:
-		take_damage(total_damage)
 	
 	_recalculate_stats()
 	return total_damage
@@ -758,58 +766,9 @@ func _load_character_model() -> void:
 ## Fix common GLB material artifacts: removes unintended transparency, shimmer,
 ## and ghosting caused by AI-generated models baking incorrect PBR values.
 ##
-## C-10 OPTIMISATION: Fixed materials are cached in CharacterModelLoader by
-## (troop_id, node_path, surface_index). Only the FIRST troop of each type
-## pays the duplication cost; all subsequent instances reuse cached materials.
-## This makes same-type troop surfaces share materials → GPU batching enabled.
+## C-10 OPTIMISATION: Fixed materials are cached in CharacterModelLoader.
 func _fix_model_materials(node: Node, base_path: String = "") -> void:
-	if node is MeshInstance3D:
-		var mesh_inst := node as MeshInstance3D
-		if mesh_inst.mesh:
-			var surface_count = mesh_inst.mesh.get_surface_count()
-			for i in range(surface_count):
-				# Build a stable cache key for this surface
-				var node_path_key: String = base_path + "/" + mesh_inst.name
-				var cache_key: String = troop_id + ":" + node_path_key + ":" + str(i)
-				
-				# C-10: Check the static cache first
-				if CharacterModelLoader.has_fixed_material(cache_key):
-					mesh_inst.set_surface_override_material(i,
-						CharacterModelLoader.get_fixed_material(cache_key))
-					continue
-				
-				# Prefer override material, fall back to mesh-embedded material
-				var mat: Material = mesh_inst.get_surface_override_material(i)
-				if mat == null:
-					mat = mesh_inst.mesh.surface_get_material(i)
-				if mat == null:
-					continue
-				
-				# BaseMaterial3D covers StandardMaterial3D & ORM_Material3D
-				if mat is BaseMaterial3D:
-					# Duplicate once per troop type per surface (cached after this)
-					var fixed: BaseMaterial3D = mat.duplicate() as BaseMaterial3D
-					
-					# Force all transparency modes to disabled (removes ghosting)
-					fixed.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-					# Force cull mode to standard backface culling
-					fixed.cull_mode = BaseMaterial3D.CULL_BACK
-					# Force matte to fix shiny/white glowing effects from AI baking
-					fixed.metallic = 0.0
-					fixed.metallic_specular = 0.0
-					# Disable emission (bright glowing artifacts)
-					fixed.emission_enabled = false
-					# Maximise roughness for a matte, non-reflective finish
-					fixed.roughness = 1.0
-					
-					# Store in static cache so the next troop of this type skips duplication
-					CharacterModelLoader.store_fixed_material(cache_key, fixed)
-					mesh_inst.set_surface_override_material(i, fixed)
-	
-	# Recurse into all children
-	var my_path: String = base_path + "/" + node.name
-	for child in node.get_children():
-		_fix_model_materials(child, my_path)
+	CharacterModelLoader.fix_model_materials(node, troop_id, base_path)
 
 
 ## Create placeholder visual (used as fallback if real model isn't available)
@@ -862,6 +821,10 @@ func _create_placeholder_visual() -> void:
 	# Create material with team color
 	var material = StandardMaterial3D.new()
 	material.albedo_color = team_color
+	# VISIBILITY: Priority 20 ensures it draws OVER the Tile Glow (priority 10)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.render_priority = 20
+	material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 	mesh_instance.material_override = material
 	
 	# --- Camera collision (Layer 16) ---

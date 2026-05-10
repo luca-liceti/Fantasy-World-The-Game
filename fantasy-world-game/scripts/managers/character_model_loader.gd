@@ -328,3 +328,69 @@ static func get_model_path(troop_id: String) -> String:
 ## Get the card art path for a troop ID (for debugging/logging)
 static func get_card_art_path(troop_id: String) -> String:
 	return CARD_ART_PATHS.get(troop_id, "")
+
+
+# =============================================================================
+# ENTITY MATERIAL FIXING (C-10 & VISIBILITY)
+# =============================================================================
+
+## Fix common GLB material artifacts and apply visibility priorities.
+##
+## This method ensures:
+## 1. Transparency ghosting is removed (if not requested).
+## 2. Metallic/Specular highlights are muted for better board-game aesthetic.
+## 3. ENTITIES ARE SORTED OVER THE GLOW: 
+##    Sets transparency=ALPHA, render_priority=20, and depth_draw=ALWAYS.
+##    This allows entities to be rendered AFTER the tile glow (priority 10)
+##    while still obscuring things behind them properly.
+static func fix_model_materials(node: Node, troop_id: String = "", base_path: String = "") -> void:
+	if node is MeshInstance3D:
+		var mesh_inst := node as MeshInstance3D
+		if mesh_inst.mesh:
+			var surface_count = mesh_inst.mesh.get_surface_count()
+			for i in range(surface_count):
+				# Build a stable cache key for this surface
+				var node_path_key: String = base_path + "/" + mesh_inst.name
+				var cache_key: String = (troop_id if not troop_id.is_empty() else "generic") + ":" + node_path_key + ":" + str(i)
+				
+				# Check the static cache first
+				if has_fixed_material(cache_key):
+					mesh_inst.set_surface_override_material(i, get_fixed_material(cache_key))
+					continue
+				
+				# Prefer override material, fall back to mesh-embedded material
+				var mat: Material = mesh_inst.get_surface_override_material(i)
+				if mat == null:
+					mat = mesh_inst.mesh.surface_get_material(i)
+				if mat == null:
+					continue
+				
+				# BaseMaterial3D covers StandardMaterial3D & ORM_Material3D
+				if mat is BaseMaterial3D:
+					var fixed: BaseMaterial3D = mat.duplicate() as BaseMaterial3D
+					
+					# --- ARTIFACT FIXING ---
+					fixed.cull_mode = BaseMaterial3D.CULL_BACK
+					fixed.metallic = 0.0
+					fixed.metallic_specular = 0.0
+					fixed.emission_enabled = false
+					fixed.roughness = 1.0
+					
+					# --- VISIBILITY PRIORITY (Req: Troops over Glow) ---
+					# Move to transparent pass to enable render_priority sorting
+					fixed.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+					# Priority 20 ensures it draws OVER the Tile Glow (priority 10)
+					fixed.render_priority = 20
+					# ALWAYS draw to depth so it behaves like an opaque object (no ghosting/sorting issues)
+					fixed.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+					# Ensure it's fully opaque visually
+					fixed.albedo_color.a = 1.0
+					
+					# Store in static cache
+					store_fixed_material(cache_key, fixed)
+					mesh_inst.set_surface_override_material(i, fixed)
+	
+	# Recurse into all children
+	var my_path: String = base_path + "/" + node.name
+	for child in node.get_children():
+		fix_model_materials(child, troop_id, my_path)

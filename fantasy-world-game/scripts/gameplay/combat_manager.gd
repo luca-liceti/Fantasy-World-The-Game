@@ -40,7 +40,7 @@ enum CombatState {
 # CONSTANTS
 # =============================================================================
 const DEATH_BURST_DAMAGE: int = 30
-const MAGIC_DEF_IGNORE: float = 0.25  # Magic ignores 25% DEF
+const MAGIC_DEF_FLAT_REDUCTION: int = 20  # Flat DEF/2 reduction for magic attacks (combat_reference.md §7)
 const CRITICAL_THRESHOLD: int = 18    # Roll of 18-20 is critical
 # Selection timeout is defined in CombatBalanceConfig.SELECTION_TIME_LIMIT
 const CRITICAL_MISS_THRESHOLD: int = 1  # Roll of 1 is auto-miss
@@ -218,11 +218,15 @@ func set_defender_stance(stance: int) -> void:
 		push_warning("CombatManager: Not in selection phase")
 		return
 	
+	# Stunned defenders are locked to Brace — they cannot choose a stance
+	if current_defender and current_defender.has_status_effect("stunned"):
+		stance = DefensiveStances.DefensiveStance.BRACE
+	
 	# Check if Endure can be used
 	if stance == DefensiveStances.DefensiveStance.ENDURE:
 		if current_defender and current_defender.endure_uses_remaining <= 0:
-			push_warning("CombatManager: Endure already used this combat")
-			return
+			push_warning("CombatManager: Endure already used this match")
+			stance = DefensiveStances.DefensiveStance.BRACE
 	
 	defender_selected_stance = stance
 	defender_ready = true
@@ -246,9 +250,14 @@ func handle_selection_timeout() -> void:
 	
 	# Default selections for anyone not ready
 	if not attacker_ready:
-		# Default to first available move (should be Standard move)
-		if current_attacker and current_attacker.available_moves.size() > 0:
-			attacker_selected_move = current_attacker.available_moves[0]
+		# Use the edge-case helper to find first available Standard move
+		attacker_selected_move = CombatEdgeCases.get_default_move(current_attacker)
+		if attacker_selected_move == null:
+			# All moves on cooldown — cannot act; cancel combat cleanly
+			push_warning("CombatManager: Attacker has no available moves on timeout — cancelling combat")
+			cancel_combat()
+			selection_timeout.emit()
+			return
 		attacker_ready = true
 	
 	if not defender_ready:
@@ -431,9 +440,7 @@ func _resolve_enhanced_combat() -> void:
 	# Apply move cooldown
 	attacker.use_move(move.move_id)
 	
-	# Use Endure if selected
-	if stance == DefensiveStances.DefensiveStance.ENDURE:
-		defender.endure_uses_remaining -= 1
+	# NOTE: Endure use is now tracked only when it saves a lethal blow (see below)
 	
 	if result["attack_succeeded"]:
 		# Calculate type effectiveness (using helper that converts enum types)
@@ -453,13 +460,54 @@ func _resolve_enhanced_combat() -> void:
 		damage = stance_result["damage"]
 		result["survived_lethal"] = stance_result["survived_lethal"]
 		
+		# Endure: only consume the use when it actually saves the troop from death
+		if stance == DefensiveStances.DefensiveStance.ENDURE and result["survived_lethal"]:
+			defender.endure_uses_remaining -= 1
+		
 		result["damage_dealt"] = damage
 		
 		# Apply damage
 		defender.take_damage(damage)
 		damage_dealt.emit(defender, damage, result["is_critical_hit"])
 		
-		# Check for status effect application
+		# --- Lifesteal specials ---
+		# Soul Leech (Infernal Soul): heals 100% of damage dealt
+		if move.move_id == "infernal_soul_leech" and damage > 0:
+			attacker.heal(damage)
+		# Life Drain (Dark Magic Wizard): heals 50% of damage dealt
+		elif move.move_id == "wizard_life_drain" and damage > 0:
+			attacker.heal(damage / 2)
+		# Soul Rip (Dark Magic Wizard): heals 100% of damage dealt
+		elif move.move_id == "wizard_soul_rip" and damage > 0:
+			attacker.heal(damage)
+		
+		# --- AoE resolution (runs in addition to the primary target above) ---
+		if move.is_aoe and hex_board and defender.current_hex:
+			var aoe_targets = CombatEdgeCases.get_aoe_targets(
+				defender.current_hex, move.aoe_pattern, hex_board, false, -1)
+			for aoe_target in aoe_targets:
+				if aoe_target == defender or not aoe_target.is_alive:
+					continue
+				var aoe_eff = calculate_type_effectiveness(move, aoe_target)
+				var aoe_dmg = calculate_enhanced_damage(
+					attacker, move, aoe_target, modifiers, result["is_critical_hit"], aoe_eff)
+				# Inferno: friendlies take half power damage
+				if move.move_id == "dragon_inferno" and aoe_target.owner_player_id == attacker.owner_player_id:
+					aoe_dmg = max(1, aoe_dmg / 2)
+				aoe_target.take_damage(aoe_dmg)
+				damage_dealt.emit(aoe_target, aoe_dmg, result["is_critical_hit"])
+				# Apply effect chance independently per AoE target
+				if move.effect_id != "" and move.effect_chance > 0:
+					if randf() <= move.effect_chance:
+						var aoe_effect = StatusEffects.create_effect(move.effect_id)
+						if aoe_effect and aoe_target.apply_status_effect(aoe_effect):
+							status_effect_applied.emit(aoe_target, move.effect_id)
+				if not aoe_target.is_alive:
+					troop_killed.emit(aoe_target, attacker)
+					if aoe_target.has_death_burst():
+						_trigger_death_burst(aoe_target)
+		
+		# Check for status effect application on primary target
 		if move.effect_id != "" and move.effect_chance > 0:
 			if randf() <= move.effect_chance:
 				var effect = StatusEffects.create_effect(move.effect_id)
@@ -471,6 +519,13 @@ func _resolve_enhanced_combat() -> void:
 		if not defender.is_alive:
 			result["defender_killed"] = true
 			troop_killed.emit(defender, attacker)
+			
+			# Soul Rip on-kill Stealth (Dark Magic Wizard)
+			if move.move_id == "wizard_soul_rip" and attacker.is_alive:
+				var kill_stealth = StatusEffects.create_effect("stealth")
+				if kill_stealth:
+					kill_stealth.remaining_turns = 1
+					attacker.apply_status_effect(kill_stealth)
 			
 			# Handle death burst
 			if defender.has_death_burst():
@@ -491,6 +546,9 @@ func _resolve_enhanced_combat() -> void:
 				# Check if attacker died from counter
 				if not attacker.is_alive:
 					troop_killed.emit(attacker, defender)
+					# Chain Death Burst if attacker has the ability
+					if attacker.has_death_burst():
+						_trigger_death_burst(attacker)
 	
 	result["success"] = true
 	combat_state = CombatState.COMPLETE
@@ -604,7 +662,7 @@ func calculate_final_modifiers(attacker: Node, defender: Node, move: MoveData.Mo
 		
 		# Damage modifiers
 		"power_percent": move.power_percent if move else 1.0,
-		"positioning_damage_bonus": positioning["damage_bonus"],
+		"biome_damage_multiplier": _get_attacker_biome_multiplier(attacker),
 		"atk_stage_multiplier": attacker.get_stat_stage_multiplier("atk") if attacker else 1.0,
 		
 		# Defense modifiers
@@ -630,19 +688,22 @@ func calculate_final_modifiers(attacker: Node, defender: Node, move: MoveData.Mo
 func calculate_attack_roll(attacker: Node, _move: MoveData.Move, modifiers: Dictionary) -> Dictionary:
 	var natural_roll = randi_range(1, GameConfig.DICE_TYPE)
 	
-	var atk_stat = int(attacker.get_modified_stat("atk")) if attacker else 0
+	# ATK÷10 modifier (keeps d20 math sensible)
+	var atk_stat = attacker.get_modified_stat("atk") if attacker else 0
+	var atk_modifier: int = int(atk_stat / 10.0)
 	var accuracy_mod = modifiers.get("accuracy_modifier", 0)
 	var position_bonus = modifiers.get("positioning_hit_bonus", 0)
 	
-	var total_roll = natural_roll + atk_stat + accuracy_mod + position_bonus
+	# Roll = d20 + (ATK÷10) + Move Accuracy + Position Bonus
+	var total_roll = natural_roll + atk_modifier + accuracy_mod + position_bonus
 	
-	# Check for critical hit (natural 18-20)
+	# Crit: natural 18-20 (combat_reference.md)
 	var is_crit = natural_roll >= CRITICAL_THRESHOLD
 	
-	# Check for critical miss (natural 1)
+	# Critical miss: natural 1
 	var is_miss = natural_roll <= CRITICAL_MISS_THRESHOLD
 	
-	# Stealth bonus: guaranteed crit
+	# Stealth guarantees crit (removed on attack)
 	if attacker and attacker.is_stealthed():
 		is_crit = true
 		attacker.remove_status_effect("stealth")
@@ -656,46 +717,51 @@ func calculate_attack_roll(attacker: Node, _move: MoveData.Move, modifiers: Dict
 
 
 ## Calculate defense DC (Difficulty Class to hit)
+## DC = 10 + (DEF÷10) + Stance Bonus + Position Bonus
 func calculate_defense_dc(defender: Node, _stance: int, modifiers: Dictionary) -> int:
-	var base_dc = 10  # Base DC
-	
-	var def_stat = int(defender.get_modified_stat("def")) if defender else 0
+	var base_dc = 10
+	var def_stat = defender.get_modified_stat("def") if defender else 0
+	var def_modifier: int = int(def_stat / 10.0)
 	var stance_bonus = modifiers.get("stance_def_bonus", 0) + modifiers.get("stance_evasion_bonus", 0)
 	var position_bonus = modifiers.get("positioning_def_bonus", 0)
-	
-	return base_dc + def_stat + stance_bonus + position_bonus
+	return base_dc + def_modifier + stance_bonus + position_bonus
 
 
-## Calculate enhanced damage with all modifiers
+## Calculate enhanced damage
+## Formula: (ATK × Power% × TypeEff × BiomeMod) − DEF/2
+## Crit: 2× applied BEFORE DEF subtraction
+## Magic: subtract flat 20 from DEF/2 term (min 0)
 func calculate_enhanced_damage(attacker: Node, move: MoveData.Move, defender: Node, modifiers: Dictionary, is_crit: bool, type_effectiveness: float) -> int:
 	# Base ATK with stat stages
-	var base_atk = attacker.get_modified_stat("atk") if attacker else 50
+	var base_atk = attacker.get_modified_stat("atk") if attacker else 50.0
 	
 	# Apply move power percent
 	var power_mult = modifiers.get("power_percent", 1.0)
-	var damage = base_atk * power_mult
 	
-	# Apply type effectiveness
-	damage *= type_effectiveness
+	# Apply biome modifier (attacker's troop affinity for their current biome)
+	var biome_mod = modifiers.get("biome_damage_multiplier", 1.0)
 	
-	# Apply positioning damage bonus
-	damage *= (1.0 + modifiers.get("positioning_damage_bonus", 0.0))
+	# Raw damage before DEF
+	var raw_damage = base_atk * power_mult * type_effectiveness * biome_mod
 	
-	# Apply DEF reduction (DEF / 2)
-	var defender_def = defender.get_modified_stat("def") if defender else 0
-	damage -= defender_def / 2.0
-	
-	# Apply magic damage (ignores 25% DEF)
-	if move and move.damage_type == MoveData.DamageType.DARK:
-		if attacker and attacker.has_magic_damage():
-			damage += defender_def * MAGIC_DEF_IGNORE / 2.0
-	
-	# Critical hit doubles damage
+	# Crit doubles raw damage BEFORE DEF subtraction
 	if is_crit:
-		damage *= 2.0
+		raw_damage *= 2.0
 	
-	# Minimum damage is 1
-	return max(1, int(damage))
+	# DEF reduction: DEF/2
+	var defender_def = defender.get_modified_stat("def") if defender else 0.0
+	var def_reduction = defender_def / 2.0
+	
+	# Magic: subtract flat 20 from the DEF/2 term (min 0)
+	var magic_types = [MoveData.DamageType.DARK, MoveData.DamageType.HOLY, MoveData.DamageType.NATURE]
+	if move and move.damage_type in magic_types and attacker and attacker.has_magic_damage():
+		def_reduction = max(0.0, def_reduction - MAGIC_DEF_FLAT_REDUCTION)
+	
+	# Soul Rip special: reduces DEF/2 by 50 instead of 20
+	if move and move.move_id == "wizard_soul_rip":
+		def_reduction = max(0.0, (defender_def / 2.0) - 50.0)
+	
+	return max(1, int(raw_damage - def_reduction))
 
 
 ## Roll combat dice with rerolls for ties
@@ -758,9 +824,9 @@ func _calculate_damage(attacker: Node, defender: Node, attacker_biome: Biomes.Ty
 	# Get base DEF
 	var effective_def = defender.current_def
 	
-	# Apply magic damage (ignores 25% DEF)
+	# Apply magic damage: subtract flat 20 from the DEF/2 term (matches enhanced engine)
 	if attacker.has_magic_damage():
-		effective_def = int(effective_def * (1.0 - MAGIC_DEF_IGNORE))
+		effective_def = max(0, effective_def - MAGIC_DEF_FLAT_REDUCTION)
 	
 	# Apply anti-air bonus
 	if defender.is_air_unit():
@@ -789,6 +855,17 @@ func _get_unit_biome(unit: Node) -> Biomes.Type:
 	if unit.current_hex and "biome_type" in unit.current_hex:
 		return unit.current_hex.biome_type
 	return Biomes.Type.PLAINS  # Default
+
+
+## Get the biome damage multiplier for the attacker's current hex
+## Applies the troop's biome affinity: +15% (strong), -25% (weak), 1.0 (neutral)
+func _get_attacker_biome_multiplier(attacker: Node) -> float:
+	if attacker == null:
+		return 1.0
+	var biome = _get_unit_biome(attacker)
+	var modifier_key = Biomes.get_troop_modifier(attacker.troop_id, biome)
+	var modifier_val = Biomes.get_modifier_value(modifier_key)
+	return 1.0 + modifier_val
 
 
 # =============================================================================
@@ -822,16 +899,18 @@ func _trigger_death_burst(dying_unit: Node) -> Dictionary:
 		
 		var occupant = tile.occupant
 		
-		# Only damage enemies
-		if "owner_player_id" in occupant and occupant.owner_player_id != dying_unit.owner_player_id:
-			if "take_damage" in occupant:
-				occupant.take_damage(damage_per_target)
-				targets.append(occupant)
-				damage_dealt.emit(occupant, damage_per_target, false)
-				
-				# Check if this also killed them
-				if "is_alive" in occupant and not occupant.is_alive:
-					troop_killed.emit(occupant, dying_unit)
+		# Death Burst hits ALL adjacent units — friendly fire included (combat_reference.md §14)
+		if "take_damage" in occupant:
+			occupant.take_damage(damage_per_target)
+			targets.append(occupant)
+			damage_dealt.emit(occupant, damage_per_target, false)
+			
+			# Check if this also killed them
+			if "is_alive" in occupant and not occupant.is_alive:
+				troop_killed.emit(occupant, dying_unit)
+				# Chain: if this unit also has Death Burst, trigger it
+				if occupant.has_death_burst():
+					_trigger_death_burst(occupant)
 	
 	if not targets.is_empty():
 		death_burst_triggered.emit(dying_unit, targets, damage_per_target)
@@ -839,18 +918,22 @@ func _trigger_death_burst(dying_unit: Node) -> Dictionary:
 	return {"targets": targets, "damage_per_target": damage_per_target}
 
 
-## Execute multi-strike attack (Hydra attacking 2 adjacent enemies)
-## Returns: Array of combat results
+## Execute multi-strike attack (Hydra — Frenzy Strike hits single target with 4 rolls)
+## Each roll is resolved independently via the enhanced combat path.
+## attacker and defender are the participating nodes; move is the Frenzy Strike move.
 func execute_multi_strike(attacker: Node, targets: Array) -> Array:
 	var results: Array = []
-	
-	# Limit to 2 targets max
+	# Limit to 2 targets max (legacy multi-strike path; Frenzy Strike uses its own handler)
 	var actual_targets = targets.slice(0, 2)
-	
 	for target in actual_targets:
-		var result = execute_combat(attacker, target)
-		results.append(result)
-	
+		# Route through the enhanced engine with the attacker's Standard move as fallback
+		current_attacker = attacker
+		current_defender = target
+		attacker_selected_move = CombatEdgeCases.get_default_move(attacker)
+		defender_selected_stance = DefensiveStances.DefensiveStance.BRACE
+		if attacker_selected_move:
+			_resolve_enhanced_combat()
+		results.append({"target": target})
 	return results
 
 
@@ -899,20 +982,24 @@ func execute_heal(healer: Node, target: Node) -> Dictionary:
 # NPC COMBAT
 # =============================================================================
 
-## Execute combat against an NPC
+## Execute combat against an NPC using the canonical enhanced engine.
 ## Returns: Dictionary with combat results and loot
 func execute_npc_combat(attacker: Node, npc: Node) -> Dictionary:
-	# Use standard combat
-	var combat_result = execute_combat(attacker, npc)
+	# Set up enhanced combat state (NPCs use Standard move + auto-Brace)
+	current_attacker = attacker
+	current_defender = npc
+	attacker_selected_move = CombatEdgeCases.get_default_move(attacker)
+	defender_selected_stance = DefensiveStances.DefensiveStance.BRACE
+	var combat_result: Dictionary = {"success": false, "defender_killed": false}
+	if attacker_selected_move:
+		_resolve_enhanced_combat()
+		combat_result = {"success": true, "defender_killed": not npc.is_alive}
 	
 	# If NPC was killed, calculate rewards
 	if combat_result["defender_killed"] and "npc_id" in npc:
 		var npc_data = CardData.get_npc(npc.npc_id)
-		
 		combat_result["gold_reward"] = npc_data.get("gold_reward", 0)
 		combat_result["xp_reward"] = npc_data.get("xp_reward", 0)
-		
-		# Roll for rare drop
 		var drop_chance = npc_data.get("drop_chance", 0.0)
 		if randf() < drop_chance:
 			combat_result["rare_drop"] = npc_data.get("rare_drop", "")
@@ -920,7 +1007,6 @@ func execute_npc_combat(attacker: Node, npc: Node) -> Dictionary:
 			combat_result["rare_drop"] = ""
 	
 	return combat_result
-
 
 # =============================================================================
 # UTILITY

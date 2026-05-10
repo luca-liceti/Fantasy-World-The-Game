@@ -284,6 +284,10 @@ func _create_placeholder_visual() -> void:
 	# Red color for enemies
 	var material = StandardMaterial3D.new()
 	material.albedo_color = Color(0.8, 0.2, 0.2)
+	# VISIBILITY: Priority 20 ensures it draws OVER the Tile Glow (priority 10)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.render_priority = 20
+	material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 	mesh_instance.material_override = material
 	
 	# --- Camera collision (Layer 16) ---

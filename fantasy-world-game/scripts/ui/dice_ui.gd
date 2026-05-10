@@ -97,7 +97,7 @@ var _saved_cam     : Dictionary = {}   # snapshot for restore
 
 func _ready() -> void:
 	layer = 100
-	process_mode = Node.PROCESS_MODE_PAUSABLE
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_create_ui()
 	hide_immediate()
 

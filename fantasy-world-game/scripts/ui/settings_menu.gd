@@ -9,6 +9,7 @@ extends CanvasLayer
 # SIGNALS
 # =============================================================================
 signal closed
+signal closing
 signal settings_applied
 
 # =============================================================================
@@ -36,6 +37,7 @@ var _setting_ctrls:   Dictionary     = {}
 var _pending:         Dictionary     = {}
 
 var _is_showing_confirm: bool = false
+var is_instant: bool = false
 
 
 # =============================================================================
@@ -44,10 +46,13 @@ var _is_showing_confirm: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer = 20
+	layer = 150
 	_build_ui()
 	_switch_tab("VIDEO")
-	_animate_in()
+	if not is_instant:
+		_animate_in()
+	else:
+		if _root: _root.modulate.a = 1.0
 
 
 # =============================================================================
@@ -550,7 +555,12 @@ func _show_discard_confirm() -> void:
 	add_child(confirm_layer)
 
 func _close() -> void:
-	_animate_out()
+	closing.emit()
+	if is_instant:
+		closed.emit()
+		queue_free()
+	else:
+		_animate_out()
 
 
 # =============================================================================
@@ -587,6 +597,7 @@ func _btn_release_anim(btn: Button) -> void:
 
 
 # =============================================================================
+# =============================================================================
 # INPUT
 # =============================================================================
 
@@ -597,3 +608,20 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			_on_close_pressed()
 			get_viewport().set_input_as_handled()
+
+
+# =============================================================================
+# UTILITY
+# =============================================================================
+
+## Toggle the background scrim (dark overlay). Useful for seamless transitions 
+## when another menu already provides an overlay.
+func set_scrim_visible(is_visible: bool) -> void:
+	if _root and _root.get_child_count() > 0:
+		var scrim = _root.get_child(0) as ColorRect
+		if scrim:
+			scrim.visible = is_visible
+
+
+func _delay(seconds: float, on_done: Callable) -> void:
+	get_tree().create_timer(seconds).timeout.connect(on_done, CONNECT_ONE_SHOT)

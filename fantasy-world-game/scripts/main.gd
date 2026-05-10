@@ -390,14 +390,15 @@ func _setup_game_ui() -> void:
 		
 		# Create Dice UI for combat visualization (3D d20 die toss)
 		dice_ui = DiceUI.new()
-		dice_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
+		dice_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 		add_child(dice_ui)
 		dice_ui.set_camera(camera, self )
+		dice_ui.dice_dismissed.connect(_on_dice_ui_dismissed)
 
 
 		# Create Card Selection UI
 		card_selection_ui = CardSelectionUIScene.new()
-		card_selection_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
+		card_selection_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 		add_child(card_selection_ui)
 		card_selection_ui.deck_confirmed.connect(_on_deck_confirmed)
 		card_selection_ui.pick_made.connect(_on_pick_made)
@@ -409,7 +410,7 @@ func _setup_game_ui() -> void:
 		# Create First Move Dice UI for turn order roll
 		if not disable_first_move_dice_ui:
 			first_move_dice_ui = FirstMoveDiceUIScene.new()
-			first_move_dice_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
+			first_move_dice_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 			add_child(first_move_dice_ui)
 			first_move_dice_ui.roll_complete.connect(_on_first_move_roll_complete)
 			# Inject camera + root refs so the cinematic can drive camera & spawn dice
@@ -419,7 +420,7 @@ func _setup_game_ui() -> void:
 		
 		# Create Enhanced Combat Selection UI
 		combat_selection_ui = CombatSelectionUIScene.new()
-		combat_selection_ui.process_mode = Node.PROCESS_MODE_PAUSABLE
+		combat_selection_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 		combat_selection_ui.layer = 120 # Above most UI
 		add_child(combat_selection_ui)
 		combat_selection_ui.move_selected.connect(_on_enhanced_move_selected)
@@ -539,6 +540,9 @@ func _start_deck_selection(player_id: int) -> void:
 	current_selecting_player = player_id
 	game_manager.current_state = GameManager.GameState.DECK_SELECTION
 	
+	# Pause background gameplay during deck selection
+	get_tree().paused = true
+	
 	print("=== DECK SELECTION (Sequential) ===")
 	print("Player %d - Select your deck!" % (player_id + 1))
 	print("card_selection_ui exists: %s" % (card_selection_ui != null))
@@ -560,6 +564,9 @@ func _start_deck_selection(player_id: int) -> void:
 func _start_draft_selection() -> void:
 	is_selecting_decks = true
 	game_manager.current_state = GameManager.GameState.DECK_SELECTION
+	
+	# Pause background gameplay during deck selection
+	get_tree().paused = true
 	_draft_picks = {0: {}, 1: {}}
 	_draft_turn_count = 0
 	_draft_starting_player = randi() % 2 # Random first picker
@@ -682,6 +689,10 @@ func _on_deck_selection_canceled() -> void:
 func _finalize_game_start() -> void:
 	is_selecting_decks = false
 	decks_confirmed = true
+	
+	# Unpause will happen after first move roll cinematic
+	# (which is started in _proceed_to_first_move)
+	# But we set is_selecting_decks to false now.
 	
 	print("=== FINALIZE GAME START ===")
 	
@@ -914,6 +925,9 @@ func _start_game_after_roll() -> void:
 	game_manager.turn_manager._begin_new_turn()
 	
 	game_started = true
+	
+	# Unpause the game now that deck selection and first-move roll are done
+	get_tree().paused = false
 	print("DEBUG: Updating UI...")
 	_update_ui()
 	
@@ -1155,7 +1169,10 @@ func _pan_camera(direction: Vector3, delta: float) -> void:
 # =============================================================================
 
 func _process(delta: float) -> void:
-	if is_paused:
+	if _is_gameplay_inhibited():
+		# Exclusively controlled by UI tweens or cinematics
+		if ignore_camera_process:
+			_update_camera_transform()
 		return
 		
 	_handle_keyboard_movement(delta)
@@ -1210,14 +1227,18 @@ func _handle_keyboard_movement(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# Mouse button events — blocked during dice roll
-	if event is InputEventMouseButton:
-		if not dice_roll_active:
+	# Block gameplay inputs if a menu or cinematic is active
+	# (Allow ESC for pause menu handling)
+	var is_inhibited = _is_gameplay_inhibited()
+	
+	# Mouse events
+	if event is InputEventMouseButton or event is InputEventMouseMotion:
+		if is_inhibited:
+			return
+		
+		if event is InputEventMouseButton:
 			_handle_mouse_button(event)
-
-	# Mouse motion events — blocked during dice roll
-	if event is InputEventMouseMotion:
-		if not dice_roll_active:
+		elif event is InputEventMouseMotion:
 			_handle_mouse_motion(event)
 
 	# Keyboard events
@@ -1226,13 +1247,27 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			_handle_key_press(event)
 			return
-		# During dice roll, block everything else
-		if dice_roll_active:
+		
+		# Block everything else if inhibited
+		if is_inhibited:
 			return
-		# Normal gameplay key handling
-		if is_paused:
-			return
+			
 		_handle_key_press(event)
+
+
+## Centralized check for states that should block background interaction
+func _is_gameplay_inhibited() -> bool:
+	if is_paused: return true
+	if is_selecting_decks: return true
+	if dice_roll_active: return true
+	if combat_selection_ui and combat_selection_ui.visible: return true
+	return false
+
+
+func _on_dice_ui_dismissed() -> void:
+	# Resume gameplay after combat results are dismissed
+	if not is_paused:
+		get_tree().paused = false
 
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
@@ -1964,23 +1999,36 @@ func _close_pause_menu() -> void:
 
 
 func _open_settings_from_pause() -> void:
-	# Hide the pause menu while settings is open
+	# Instant switch as requested
 	if pause_menu:
 		pause_menu.visible = false
 	
 	var settings_menu = SettingsMenuScene.new()
+	settings_menu.is_instant = true # Disable animations for this transition
 	settings_menu.process_mode = Node.PROCESS_MODE_ALWAYS
-	# Add to scene root, not pause_menu, to avoid z-ordering issues
 	add_child(settings_menu)
 	
-	# When settings closes, show pause menu again
+	# When settings starts closing, show pause panel again immediately
+	settings_menu.closing.connect(func():
+		if pause_menu:
+			pause_menu.visible = true
+			for child in pause_menu.get_children():
+				if child is PanelContainer:
+					child.visible = true
+					child.modulate.a = 1.0 # Ensure it's fully opaque
+	)
+	
+	# Cleanup connection
 	settings_menu.closed.connect(_on_settings_closed)
 
 
 func _on_settings_closed() -> void:
-	# Show pause menu again after settings is closed
+	# Fallback to ensure pause menu is restored
 	if pause_menu:
 		pause_menu.visible = true
+		for child in pause_menu.get_children():
+			if child is PanelContainer:
+				child.visible = true
 
 
 func _return_to_main_menu() -> void:
@@ -2482,6 +2530,9 @@ func _on_combat_selection_started(attacker: Node, defender: Node) -> void:
 	
 	# Transition camera to front-quarter combat view
 	_enter_combat_camera(attacker, defender)
+	
+	# Pause background during selection
+	get_tree().paused = true
 	
 	if not combat_selection_ui:
 		push_error("CombatSelectionUI not found!")

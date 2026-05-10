@@ -43,7 +43,7 @@ class Move:
 	var effect_chance: float        # 0.0 - 1.0 (probability to apply effect)
 	var description: String
 	var is_aoe: bool                # True if hits multiple hexes
-	var aoe_pattern: Array          # Hex offsets for AoE (e.g., [[0,1], [1,0]])
+	var aoe_pattern                 # Hex offsets for AoE (e.g., [[0,1], [1,0]]) or named pattern string
 	var targets_self: bool          # True for self-buffs/heals
 	
 	func _init(data: Dictionary = {}) -> void:
@@ -179,8 +179,8 @@ const MOVES: Dictionary = {
 		"move_type": MoveType.POWER,
 		"damage_type": DamageType.NATURE,
 		"power_percent": 1.5,
-		"accuracy_modifier": -2,
-		"cooldown_turns": 4,
+		"accuracy_modifier": -3,
+		"cooldown_turns": 3,
 		"effect_id": "poisoned",
 		"effect_chance": 0.8,
 		"description": "Spray acid. 80% chance to poison."
@@ -227,21 +227,183 @@ const MOVES: Dictionary = {
 		"effect_chance": 0.4,
 		"description": "Wave of darkness. 40% chance to terrify."
 	},
-	"dragon_wing_buffet": {
-		"move_id": "dragon_wing_buffet",
-		"move_name": "Wing Buffet",
+	"dragon_inferno": {
+		"move_id": "dragon_inferno",
+		"move_name": "Inferno",
 		"move_type": MoveType.SPECIAL,
-		"damage_type": DamageType.PHYSICAL,
-		"power_percent": 0.5,
-		"accuracy_modifier": 8,
-		"cooldown_turns": 3,
-		"effect_id": "slowed",
-		"effect_chance": 1.0,
-		"description": "Buffet with wings. Always slows target."
+		"damage_type": DamageType.FIRE,
+		"power_percent": 0.7,
+		"accuracy_modifier": 0,
+		"cooldown_turns": 4,
+		"effect_id": "burned",
+		"effect_chance": 0.4,
+		"description": "70% ATK Fire to target hex + all 6 adjacent hexes. 40% Burn each. Friendlies take 35% ATK (half power).",
+		"is_aoe": true,
+		"aoe_pattern": "center_and_adjacent"
 	},
 	
 	# =========================================================================
-	# GRIFFIN (Air/Hybrid)
+	# STONE GIANT (Ground Tank)
+	# =========================================================================
+	"giant_fist_strike": {
+		"move_id": "giant_fist_strike",
+		"move_name": "Fist Strike",
+		"move_type": MoveType.STANDARD,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 1.0,
+		"accuracy_modifier": 0,
+		"cooldown_turns": 0,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "A heavy punch with a stone fist."
+	},
+	"giant_boulder_hurl": {
+		"move_id": "giant_boulder_hurl",
+		"move_name": "Boulder Hurl",
+		"move_type": MoveType.POWER,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 1.5,
+		"accuracy_modifier": -3,
+		"cooldown_turns": 3,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "Hurl a massive boulder. High damage, low accuracy."
+	},
+	"giant_tremor": {
+		"move_id": "giant_tremor",
+		"move_name": "Tremor",
+		"move_type": MoveType.PRECISION,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 0.8,
+		"accuracy_modifier": 5,
+		"cooldown_turns": 2,
+		"effect_id": "rooted",
+		"effect_chance": 0.6,
+		"description": "Slam the ground. 60% chance to Root target."
+	},
+	"giant_ground_slam": {
+		"move_id": "giant_ground_slam",
+		"move_name": "Ground Slam",
+		"move_type": MoveType.SPECIAL,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 0.9,
+		"accuracy_modifier": 0,
+		"cooldown_turns": 4,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "Slam the earth — 90% ATK to all 6 adjacent hexes. Knocks all hit targets back 1 hex.",
+		"is_aoe": true,
+		"aoe_pattern": "adjacent"
+	},
+	
+	# =========================================================================
+	# SKY SERPENT (Air/Hybrid)
+	# =========================================================================
+	"serpent_strike": {
+		"move_id": "serpent_strike",
+		"move_name": "Serpent Strike",
+		"move_type": MoveType.STANDARD,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 1.0,
+		"accuracy_modifier": 0,
+		"cooldown_turns": 0,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "A swift aerial strike."
+	},
+	"serpent_gale_slash": {
+		"move_id": "serpent_gale_slash",
+		"move_name": "Gale Slash",
+		"move_type": MoveType.POWER,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 1.5,
+		"accuracy_modifier": -3,
+		"cooldown_turns": 3,
+		"effect_id": "slowed",
+		"effect_chance": 0.4,
+		"description": "Slash with wind force. 40% chance to slow."
+	},
+	"serpent_storm_sense": {
+		"move_id": "serpent_storm_sense",
+		"move_name": "Storm Sense",
+		"move_type": MoveType.PRECISION,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 0.8,
+		"accuracy_modifier": 5,
+		"cooldown_turns": 2,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "Accurate strike guided by storm instinct."
+	},
+	"serpent_storm_dive": {
+		"move_id": "serpent_storm_dive",
+		"move_name": "Storm Dive",
+		"move_type": MoveType.SPECIAL,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 1.0,
+		"accuracy_modifier": 4,
+		"cooldown_turns": 4,
+		"effect_id": "slowed",
+		"effect_chance": 1.0,
+		"description": "Teleport up to 5 hexes then strike. +4 roll. Slows on crit."
+	},
+	
+	# =========================================================================
+	# FROST VALKYRIE (Air/Hybrid)
+	# =========================================================================
+	"valkyrie_blade": {
+		"move_id": "valkyrie_blade",
+		"move_name": "Valkyrie Blade",
+		"move_type": MoveType.STANDARD,
+		"damage_type": DamageType.ICE,
+		"power_percent": 1.0,
+		"accuracy_modifier": 0,
+		"cooldown_turns": 0,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "A slashing ice blade attack."
+	},
+	"valkyrie_charging_strike": {
+		"move_id": "valkyrie_charging_strike",
+		"move_name": "Charging Strike",
+		"move_type": MoveType.POWER,
+		"damage_type": DamageType.PHYSICAL,
+		"power_percent": 1.5,
+		"accuracy_modifier": -3,
+		"cooldown_turns": 3,
+		"effect_id": "stunned",
+		"effect_chance": 0.3,
+		"description": "A powerful charge. 30% chance to stun."
+	},
+	"valkyrie_frost_bolt": {
+		"move_id": "valkyrie_frost_bolt",
+		"move_name": "Frost Bolt",
+		"move_type": MoveType.PRECISION,
+		"damage_type": DamageType.ICE,
+		"power_percent": 0.8,
+		"accuracy_modifier": 5,
+		"cooldown_turns": 2,
+		"effect_id": "slowed",
+		"effect_chance": 0.7,
+		"description": "Precise ice bolt. 70% chance to slow."
+	},
+	"valkyrie_ice_lance": {
+		"move_id": "valkyrie_ice_lance",
+		"move_name": "Ice Lance",
+		"move_type": MoveType.SPECIAL,
+		"damage_type": DamageType.ICE,
+		"power_percent": 0.85,
+		"accuracy_modifier": 0,
+		"cooldown_turns": 4,
+		"effect_id": "rooted",
+		"effect_chance": 1.0,
+		"description": "Pierce in a straight line up to Range 4. 85% ATK ice damage + Root 2 turns to each target hit.",
+		"is_aoe": true,
+		"aoe_pattern": "line_4"
+	},
+	
+	# =========================================================================
+	# GRIFFIN (NPC only — not a player troop)
 	# =========================================================================
 	"griffin_talon": {
 		"move_id": "griffin_talon",
@@ -312,36 +474,36 @@ const MOVES: Dictionary = {
 		"move_name": "Shadow Blast",
 		"move_type": MoveType.POWER,
 		"damage_type": DamageType.DARK,
-		"power_percent": 1.8,
+		"power_percent": 1.5,
 		"accuracy_modifier": -3,
-		"cooldown_turns": 4,
-		"effect_id": "cursed",
-		"effect_chance": 0.5,
-		"description": "Massive dark blast. 50% curse."
+		"cooldown_turns": 3,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "Massive dark blast. High damage, lower accuracy."
 	},
 	"wizard_life_drain": {
 		"move_id": "wizard_life_drain",
 		"move_name": "Life Drain",
-		"move_type": MoveType.SPECIAL,
+		"move_type": MoveType.PRECISION,
 		"damage_type": DamageType.DARK,
 		"power_percent": 0.8,
-		"accuracy_modifier": 2,
+		"accuracy_modifier": 5,
+		"cooldown_turns": 2,
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "80% ATK Dark damage. Heals caster for 50% of damage dealt."
+	},
+	"wizard_soul_rip": {
+		"move_id": "wizard_soul_rip",
+		"move_name": "Soul Rip",
+		"move_type": MoveType.SPECIAL,
+		"damage_type": DamageType.DARK,
+		"power_percent": 0.9,
+		"accuracy_modifier": 0,
 		"cooldown_turns": 4,
 		"effect_id": "",
 		"effect_chance": 0.0,
-		"description": "Drain HP. Heal for 50% of damage dealt."
-	},
-	"wizard_curse": {
-		"move_id": "wizard_curse",
-		"move_name": "Hex Curse",
-		"move_type": MoveType.PRECISION,
-		"damage_type": DamageType.DARK,
-		"power_percent": 0.5,
-		"accuracy_modifier": 6,
-		"cooldown_turns": 3,
-		"effect_id": "cursed",
-		"effect_chance": 1.0,
-		"description": "Weak attack. Always curses target."
+		"description": "90% ATK Dark. DEF/2 reduced by flat 50. Heals 100% of damage dealt. On kill: grants Stealth 1 turn."
 	},
 	
 	# =========================================================================
@@ -428,28 +590,31 @@ const MOVES: Dictionary = {
 	},
 	"cleric_purify": {
 		"move_id": "cleric_purify",
-		"move_name": "Purify",
-		"move_type": MoveType.SPECIAL,
+		"move_name": "Purifying Light",
+		"move_type": MoveType.PRECISION,
 		"damage_type": DamageType.HOLY,
-		"power_percent": 0.0,
-		"accuracy_modifier": 0,
-		"cooldown_turns": 3,
+		"power_percent": 0.8,
+		"accuracy_modifier": 5,
+		"cooldown_turns": 2,
 		"effect_id": "",
 		"effect_chance": 0.0,
-		"description": "Remove all negative status effects from self.",
-		"targets_self": true
+		"description": "80% ATK Holy damage. Cleanses all debuffs from target ally in range.",
+		"targets_self": false
 	},
-	"cleric_resurrection": {
-		"move_id": "cleric_resurrection",
-		"move_name": "Resurrection",
+	"cleric_divine_surge": {
+		"move_id": "cleric_divine_surge",
+		"move_name": "Divine Surge",
 		"move_type": MoveType.SPECIAL,
 		"damage_type": DamageType.HOLY,
 		"power_percent": 0.0,
 		"accuracy_modifier": 0,
-		"cooldown_turns": 8,
+		"cooldown_turns": 6,
 		"effect_id": "",
 		"effect_chance": 0.0,
-		"description": "Ultimate: Revive a fallen ally at 50% HP."
+		"is_aoe": true,
+		"aoe_pattern": "range_2",
+		"targets_self": true,
+		"description": "Heal every friendly troop within Range 2 (incl. self) for 25 HP and cleanse all their status effects."
 	},
 	
 	# =========================================================================
@@ -457,40 +622,51 @@ const MOVES: Dictionary = {
 	# =========================================================================
 	"infernal_slash": {
 		"move_id": "infernal_slash",
-		"move_name": "Hell Slash",
+		"move_name": "Infernal Slash",
 		"move_type": MoveType.STANDARD,
 		"damage_type": DamageType.FIRE,
 		"power_percent": 1.0,
 		"accuracy_modifier": 0,
 		"cooldown_turns": 0,
-		"effect_id": "burned",
-		"effect_chance": 0.2,
-		"description": "Fiery slash. 20% burn chance."
+		"effect_id": "",
+		"effect_chance": 0.0,
+		"description": "A standard fiery slash."
 	},
 	"infernal_immolate": {
 		"move_id": "infernal_immolate",
 		"move_name": "Immolate",
 		"move_type": MoveType.POWER,
 		"damage_type": DamageType.FIRE,
-		"power_percent": 1.7,
-		"accuracy_modifier": -2,
+		"power_percent": 1.5,
+		"accuracy_modifier": -3,
 		"cooldown_turns": 3,
 		"effect_id": "burned",
-		"effect_chance": 0.9,
-		"description": "Engulf in flames. 90% burn chance."
+		"effect_chance": 0.8,
+		"description": "Engulf in flames. 80% chance to burn."
 	},
 	"infernal_dark_pact": {
 		"move_id": "infernal_dark_pact",
 		"move_name": "Dark Pact",
-		"move_type": MoveType.SPECIAL,
+		"move_type": MoveType.PRECISION,
 		"damage_type": DamageType.DARK,
-		"power_percent": 0.0,
+		"power_percent": 0.8,
+		"accuracy_modifier": 5,
+		"cooldown_turns": 2,
+		"effect_id": "cursed",
+		"effect_chance": 0.5,
+		"description": "Dark strike. 50% chance to Curse (-25% ATK, 3 turns)."
+	},
+	"infernal_soul_leech": {
+		"move_id": "infernal_soul_leech",
+		"move_name": "Soul Leech",
+		"move_type": MoveType.SPECIAL,
+		"damage_type": DamageType.FIRE,
+		"power_percent": 0.8,
 		"accuracy_modifier": 0,
 		"cooldown_turns": 4,
 		"effect_id": "",
 		"effect_chance": 0.0,
-		"description": "Sacrifice 20% HP to gain +4 ATK stages.",
-		"targets_self": true
+		"description": "80% ATK Fire damage. Heals caster for 100% of damage dealt."
 	},
 	"infernal_self_destruct": {
 		"move_id": "infernal_self_destruct",
@@ -525,39 +701,41 @@ const MOVES: Dictionary = {
 	"assassin_backstab": {
 		"move_id": "assassin_backstab",
 		"move_name": "Backstab",
-		"move_type": MoveType.POWER,
+		"move_type": MoveType.SPECIAL,
 		"damage_type": DamageType.PHYSICAL,
-		"power_percent": 2.5,
-		"accuracy_modifier": -2,
+		# power_percent = 1.5 — the auto-crit doubles this to 3× effective damage total.
+		# Do NOT set to 3.0 — that would stack with the crit multiplier for 6× damage (unbalanced).
+		"power_percent": 1.5,
+		"accuracy_modifier": 0,    # Cannot miss (only relevant when not in Stealth; see combat_manager)
 		"cooldown_turns": 4,
-		"effect_id": "",
-		"effect_chance": 0.0,
-		"description": "Devastating strike. Best used after Vanish for guaranteed crit."
+		"effect_id": "cursed",
+		"effect_chance": 1.0,      # Always applies Cursed (-25% ATK, 3 turns) on hit
+		"description": "In Stealth: 3\u00d7 ATK, auto-crit, cannot miss, applies Cursed. Out of Stealth: 150% ATK, -3 accuracy."
 	},
 	"assassin_vanish": {
 		"move_id": "assassin_vanish",
 		"move_name": "Vanish",
-		"move_type": MoveType.SPECIAL,
+		"move_type": MoveType.PRECISION,
 		"damage_type": DamageType.DARK,
 		"power_percent": 0.0,
 		"accuracy_modifier": 0,
-		"cooldown_turns": 4,
+		"cooldown_turns": 2,
 		"effect_id": "stealth",
 		"effect_chance": 1.0,
-		"description": "Become invisible. Next attack is guaranteed crit.",
+		"description": "Vanish into shadow. Gain Stealth for 3 turns — next attack is a guaranteed crit.",
 		"targets_self": true
 	},
 	"assassin_poison_blade": {
 		"move_id": "assassin_poison_blade",
 		"move_name": "Poison Blade",
-		"move_type": MoveType.PRECISION,
+		"move_type": MoveType.POWER,
 		"damage_type": DamageType.NATURE,
-		"power_percent": 0.8,
-		"accuracy_modifier": 4,
-		"cooldown_turns": 2,
+		"power_percent": 1.5,
+		"accuracy_modifier": -3,
+		"cooldown_turns": 3,
 		"effect_id": "poisoned",
-		"effect_chance": 1.0,
-		"description": "Venomous strike. Always poisons."
+		"effect_chance": 0.7,
+		"description": "Powerful venomous strike. 70% chance to poison."
 	},
 	
 	# =========================================================================
@@ -787,25 +965,33 @@ const MOVES: Dictionary = {
 # =============================================================================
 
 const TROOP_MOVES: Dictionary = {
-	"medieval_knight": ["knight_slash", "knight_shield_bash", "knight_heavy_strike", "knight_rally"],
-	"four_headed_hydra": ["hydra_bite", "hydra_multi_strike", "hydra_regenerate", "hydra_acid_spray"],
-	"dark_blood_dragon": ["dragon_claw", "dragon_fire_breath", "dragon_dark_pulse", "dragon_wing_buffet"],
-	"griffin": ["griffin_talon", "griffin_dive_bomb", "griffin_screech", "griffin_gust"],
-	"dark_magic_wizard": ["wizard_dark_bolt", "wizard_shadow_blast", "wizard_life_drain", "wizard_curse"],
-	"elven_archer": ["archer_arrow", "archer_volley", "archer_poison_arrow", "archer_aimed_shot"],
-	"celestial_cleric": ["cleric_smite", "cleric_heal", "cleric_purify", "cleric_resurrection"],
-	"infernal_soul": ["infernal_slash", "infernal_immolate", "infernal_dark_pact", "infernal_self_destruct"],
-	"shadow_assassin": ["assassin_stab", "assassin_backstab", "assassin_vanish", "assassin_poison_blade"],
+	# =========================================================================
+	# 12 CANONICAL PLAYER TROOPS
+	# =========================================================================
+	# Ground Tanks
+	"medieval_knight":   ["knight_slash", "knight_heavy_strike", "knight_shield_bash", "knight_rally"],
+	"stone_giant":       ["giant_fist_strike", "giant_boulder_hurl", "giant_tremor", "giant_ground_slam"],
+	"four_headed_hydra": ["hydra_bite", "hydra_acid_spray", "hydra_regenerate", "hydra_multi_strike"],
+	# Air/Hybrid
+	"dark_blood_dragon": ["dragon_claw", "dragon_fire_breath", "dragon_dark_pulse", "dragon_inferno"],
+	"sky_serpent":       ["serpent_strike", "serpent_gale_slash", "serpent_storm_sense", "serpent_storm_dive"],
+	"frost_valkyrie":    ["valkyrie_blade", "valkyrie_charging_strike", "valkyrie_frost_bolt", "valkyrie_ice_lance"],
+	# Ranged/Magic
+	"dark_magic_wizard": ["wizard_dark_bolt", "wizard_shadow_blast", "wizard_life_drain", "wizard_soul_rip"],
+	"demon_of_darkness": ["demon_strike", "demon_hellfire", "demon_terrify", "demon_dark_slash"],
+	"elven_archer":      ["archer_arrow", "archer_volley", "archer_poison_arrow", "archer_aimed_shot"],
+	# Flex/Support/Assassin
+	"celestial_cleric":  ["cleric_smite", "cleric_heal", "cleric_purify", "cleric_divine_surge"],
+	"shadow_assassin":   ["assassin_stab", "assassin_backstab", "assassin_vanish", "assassin_poison_blade"],
+	"infernal_soul":     ["infernal_slash", "infernal_immolate", "infernal_dark_pact", "infernal_soul_leech"],
+	
+	# =========================================================================
+	# NPC TROOPS (used by enemy encounters — NOT player-selectable)
+	# =========================================================================
+	"griffin":     ["griffin_talon", "griffin_dive_bomb", "griffin_screech", "griffin_gust"],
 	"necromancer": ["necro_touch", "necro_soul_rip", "necro_fear", "necro_summon"],
 	"frost_giant": ["giant_smash", "giant_glacier", "giant_freeze", "giant_stomp"],
-	"phoenix": ["phoenix_peck", "phoenix_inferno", "phoenix_rebirth", "phoenix_cleanse"],
-	# Additional troops using thematically appropriate moves
-	"sky_serpent": ["griffin_talon", "griffin_gust", "griffin_dive_bomb", "dragon_wing_buffet"],
-	"frost_valkyrie": ["giant_smash", "giant_freeze", "knight_slash", "giant_stomp"],
-	"demon_of_darkness": ["demon_strike", "demon_hellfire", "demon_terrify", "demon_dark_slash"],
-	"thunder_behemoth": ["giant_smash", "giant_stomp", "knight_heavy_strike", "giant_glacier"],
-	"frost_revenant": ["giant_smash", "giant_glacier", "giant_freeze", "necro_touch"],
-	"ironclad_golem": ["knight_slash", "knight_shield_bash", "knight_heavy_strike", "knight_rally"]
+	"phoenix":     ["phoenix_peck", "phoenix_inferno", "phoenix_rebirth", "phoenix_cleanse"]
 }
 
 

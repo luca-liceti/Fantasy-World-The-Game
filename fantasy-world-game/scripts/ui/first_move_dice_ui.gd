@@ -116,7 +116,7 @@ var _p2_actual_settle: Vector3
 func _ready() -> void:
 	layer = 110
 	visible = false
-	process_mode = Node.PROCESS_MODE_PAUSABLE
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_hud()
 
 

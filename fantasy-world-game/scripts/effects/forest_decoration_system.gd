@@ -238,9 +238,9 @@ const BIOME_CONFIG: Dictionary = {
 			PATH_PINE_SML_1, PATH_PINE_SML_2,
 			PATH_PINE_MED_1, PATH_PINE_MED_2, # Weighted towards medium
 		],
-		"large_max": 4, # Dense clusters
-		"large_attempt_chance": 0.98, # Almost always place
-		"large_chance": 0.85, # High success rate
+		"large_max": 3, # Reduced from 4 to decrease visual clutter
+		"large_attempt_chance": 0.95, # High placement rate
+		"large_chance": 0.75, # Balanced success rate
 		"large_min_radius": 0.55,
 	},
 

@@ -51,66 +51,64 @@ const EFFECTS: Dictionary = {
 		"description": "Cannot act or move. Auto-cures after 1 turn.",
 		"color": Color(1.0, 1.0, 0.0)
 	},
-	# Phase 8.1.2 - Burned: 20 damage at turn start, -10% ATK, 3 turns
+	# Burned: 10 damage at turn start, 3 turns (combat_reference.md)
 	"burned": {
 		"effect_id": "burned",
 		"effect_name": "Burned",
 		"duration_turns": 3,
-		"damage_per_turn": 20,  # Updated from 10 to 20 per Phase 8.1.2
-		"stat_modifiers": {"atk": -0.1},
-		"prevents_action": false,
-		"prevents_movement": false,
-		"description": "Takes 20 damage per turn. ATK reduced by 10%.",
-		"color": Color(1.0, 0.4, 0.0)
-	},
-	# Phase 8.1.3 - Poisoned: 15 damage at turn start, 3 turns
-	"poisoned": {
-		"effect_id": "poisoned",
-		"effect_name": "Poisoned",
-		"duration_turns": 3,  # Updated from 4 to 3 per Phase 8.1.3
-		"damage_per_turn": 15,  # Updated from 8 to 15 per Phase 8.1.3
+		"damage_per_turn": 10,
 		"stat_modifiers": {},
 		"prevents_action": false,
 		"prevents_movement": false,
-		"description": "Takes 15 damage per turn.",
+		"description": "Takes 10 damage per turn for 3 turns.",
+		"color": Color(1.0, 0.4, 0.0)
+	},
+	# Poisoned: 8 damage at turn start, 4 turns (combat_reference.md)
+	"poisoned": {
+		"effect_id": "poisoned",
+		"effect_name": "Poisoned",
+		"duration_turns": 4,
+		"damage_per_turn": 8,
+		"stat_modifiers": {},
+		"prevents_action": false,
+		"prevents_movement": false,
+		"description": "Takes 8 damage per turn for 4 turns.",
 		"color": Color(0.5, 0.0, 0.5)
 	},
-	# Phase 8.1.4 - Slowed: -1 to -2 Speed, Disadvantage on attacks, 2 turns
+	# Slowed: -2 Speed (flat), 2 turns (combat_reference.md)
 	"slowed": {
 		"effect_id": "slowed",
 		"effect_name": "Slowed",
 		"duration_turns": 2,
 		"damage_per_turn": 0,
-		"stat_modifiers": {"speed": -0.5},
+		"stat_modifiers": {"speed": -2},
 		"prevents_action": false,
 		"prevents_movement": false,
-		"gives_disadvantage": true,  # Added per Phase 8.1.4
-		"description": "Movement speed halved. Attacks have disadvantage.",
+		"description": "Movement speed reduced by 2.",
 		"color": Color(0.0, 0.5, 1.0)
 	},
-	# Phase 8.1.5 - Cursed: Take +30% damage from all sources, 2 turns
+	# Cursed: -25% ATK, 3 turns (combat_reference.md)
 	"cursed": {
 		"effect_id": "cursed",
 		"effect_name": "Cursed",
-		"duration_turns": 2,  # Updated from 3 to 2 per Phase 8.1.5
+		"duration_turns": 3,
 		"damage_per_turn": 0,
-		"stat_modifiers": {},
-		"damage_taken_multiplier": 1.3,  # +30% damage received per Phase 8.1.5
+		"stat_modifiers": {"atk": -0.25},
 		"prevents_action": false,
 		"prevents_movement": false,
-		"description": "Takes +30% damage from all sources.",
+		"description": "ATK reduced by 25% for 3 turns.",
 		"color": Color(0.3, 0.0, 0.3)
 	},
-	# Phase 8.1.6 - Terrified: -25% ATK, 2 turns
+	# Terrified: -25% DEF, 2 turns (combat_reference.md)
 	"terrified": {
 		"effect_id": "terrified",
 		"effect_name": "Terrified",
 		"duration_turns": 2,
 		"damage_per_turn": 0,
-		"stat_modifiers": {"atk": -0.25},  # Updated to -25% per Phase 8.1.6
+		"stat_modifiers": {"def": -0.25},
 		"prevents_action": false,
 		"prevents_movement": false,
-		"description": "ATK reduced by 25%.",
+		"description": "DEF reduced by 25% for 2 turns.",
 		"color": Color(0.2, 0.2, 0.2)
 	},
 	# Phase 8.1.7 - Rooted: Cannot move (can still attack), 1-2 turns
@@ -125,18 +123,18 @@ const EFFECTS: Dictionary = {
 		"description": "Cannot move, but can still attack.",
 		"color": Color(0.4, 0.3, 0.0)
 	},
-	# Phase 8.1.8 - Stealth: Cannot be targeted, 1 turn, attacking ends it
+	# Stealth: 3 turns, next attack guaranteed crit, attacking ends it (combat_reference.md)
 	"stealth": {
 		"effect_id": "stealth",
 		"effect_name": "Stealth",
-		"duration_turns": 1,
+		"duration_turns": 3,
 		"damage_per_turn": 0,
 		"stat_modifiers": {},
 		"prevents_action": false,
 		"prevents_movement": false,
-		"description": "Invisible. Next attack is guaranteed critical. Attacking ends stealth.",
+		"description": "Stealth for 3 turns. Next attack is a guaranteed critical. Attacking ends Stealth.",
 		"is_buff": true,
-		"removed_on_attack": true,  # Added per Phase 8.1.8
+		"removed_on_attack": true,
 		"color": Color(0.5, 0.5, 0.5)
 	}
 }
@@ -146,25 +144,11 @@ const EFFECTS: Dictionary = {
 # Phase 8.2 - Condition Immunities
 # =============================================================================
 
+## Immunities per combat_reference.md Section 11.
+## Shadow Assassin starts each match with Stealth (applied at spawn, not an immunity).
 const IMMUNITIES: Dictionary = {
-	# Phase 8.2.1 - Tanks immune to Terrified
-	"medieval_knight": ["terrified"],
-	"stone_giant": ["terrified"],
-	"four_headed_hydra": ["terrified", "poisoned"],
-	
-	# Phase 8.2.2 - Undead/Demon immune to Poisoned
-	"demon_of_darkness": ["poisoned"],
-	"infernal_soul": ["burned", "poisoned"],
-	"necromancer": ["poisoned", "cursed"],
-	
-	# Phase 8.2.3 - Air Units immune to Rooted
-	"dark_blood_dragon": ["rooted", "burned", "terrified"],
-	"sky_serpent": ["rooted"],
-	"frost_valkyrie": ["rooted"],
-	
-	# Other immunities
-	"phoenix": ["burned", "rooted", "poisoned"],
-	"frost_giant": ["slowed"],
+	"infernal_soul": ["burned"],
+	"frost_valkyrie": ["slowed"],
 	"celestial_cleric": ["cursed"]
 }
 

@@ -1,26 +1,14 @@
-# 📋 PROJECT TODO: CORE IMPROVEMENTS
+# 📋 PROJECT TODO: CORE IMPROVEMENTS. (Update/Add to Project Bible during implementation)
 
 ## 🎨 VISUALS & RENDERING
-- [ ] **Tavern Lighting Overhaul**:
-    - Relink all lighting to originate strictly from light sources (candles).
-    - Implement gradual decaying strength for more realism.
-    - Shift to more "organic" light shapes and colors (avoiding perfect circles and uniform colors).
-- [ ] **Full PBR Integration**: Ensure the Game Board and Board Border utilize all corresponding textures (Diffuse, Normal, Roughness, AO) and heightmaps/displacement.
-- [ ] **Shader Polish**: General improvement and optimization of existing shaders.
-- [ ] **Biome Texture Research**: Implement better biome textures for higher visual fidelity.
-- [ ] **Visual Polishing**: Add cross fading where biomes meet each other.
+- [ ] **Visual Polishing**: Add cross fading where biomes meet each other. Add different levels for it in settings.
 
 ## 🌍 ENVIRONMENT & SCALING
-- [ ] **Biome Cleanup**: Remove "Hills" completely from the biome generation system.
 - [ ] **Scale Calibration**: Adjust environment scaling to ensure 1:1 realism between characters and world objects.
 
 ## 🖥️ UI & UX
 - [ ] **Visual Layering**:
     - Troops must be visible **OVER** the selected tile glow.
     - Tile glow must be visible **OVER** biome decorations (grass, trees, etc.).
-- [ ] **UI Theme Integration**: Finish applying the global `UITHEME` to all elements of the Main Game UI.
-- [ ] **Combat Presentation**: Fix and improve character closeups and the closeup sequence order. During special  the attacking character should be positioned front right quarter view, positioned on left side of the screen, while having the attack UI on the right side of the screen. Once done, switches to defending character with same layout and positioning. For normal combat 
-
-## ⚔️ GAMEPLAY & MECHANICS
-- [ ] **True Signature Specials**: Implement unique special moves (Reference: Claude notes).
-- [ ] **Combo Attacks**: Implement the combo attack system (Reference: Claude notes).
+- [ ] **UI Theme Integration**: Make rule where all current and future UI follow `UITHEME` global theme.
+- [ ] **Combat Presentation**: Fix and improve character closeups and the closeup sequence order. Camera angles and views should follow the thought process how its done in mortal kombat. Character closeups during special attacks. Fit combating characters in camera view during normal comabt showing attacking, defending, and damage.

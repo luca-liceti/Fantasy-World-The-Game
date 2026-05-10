@@ -95,6 +95,7 @@ const STANCE_COLORS = {
 # =============================================================================
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	_create_precomputed_styles()
 	_create_ui()

@@ -89,58 +89,59 @@ const BASE_HEIGHTS: Dictionary = {
 # =============================================================================
 # TROOP BIOME MODIFIERS
 # =============================================================================
-# Modifier types: "A" = Advantage (+25%), "S" = Strength (+15%), 
-#                 "D" = Defense (-15% incoming), "W" = Weakness (-25%)
-# null = no modifier (neutral)
+# Modifier codes: "S" = strong (+15% damage dealt), "W" = weak (−25% damage dealt), null = no effect.
 
+# Troop biome modifiers — canonical table from combat_reference.md.
+# Each troop has exactly ONE strong biome (+15% damage) and ONE weak biome (−25% damage).
+# Modifier codes: "S" = strong (+15%), "W" = weak (−25%), null = no modifier.
 const TROOP_MODIFIERS: Dictionary = {
 	"medieval_knight": {
-		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: "W",
-		Type.PLAINS: "S", Type.ASHLANDS: null, Type.SWAMP: null
+		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: null,
+		Type.PLAINS: "S",  Type.ASHLANDS: null, Type.SWAMP: "W"
 	},
 	"stone_giant": {
-		Type.FOREST: null, Type.PEAKS: "A", Type.WASTES: null,
-		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: "W"
+		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: "S",
+		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: "W"
 	},
 	"four_headed_hydra": {
-		Type.FOREST: null, Type.PEAKS: "W", Type.WASTES: "S",
-		Type.PLAINS: null, Type.ASHLANDS: "A", Type.SWAMP: "S"
-	},
-	"dark_blood_dragon": {
-		Type.FOREST: "W", Type.PEAKS: null, Type.WASTES: "A",
-		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: null
-	},
-	"sky_serpent": {
-		Type.FOREST: "S", Type.PEAKS: "A", Type.WASTES: null,
-		Type.PLAINS: "S", Type.ASHLANDS: "W", Type.SWAMP: null
-	},
-	"frost_valkyrie": {
-		Type.FOREST: null, Type.PEAKS: "A", Type.WASTES: "W",
-		Type.PLAINS: null, Type.ASHLANDS: "W", Type.SWAMP: null
-	},
-	"dark_magic_wizard": {
-		Type.FOREST: "A", Type.PEAKS: null, Type.WASTES: "S",
+		Type.FOREST: "W", Type.PEAKS: null, Type.WASTES: null,
 		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: "S"
 	},
+	"dark_blood_dragon": {
+		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: "S",
+		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: "W"
+	},
+	"sky_serpent": {
+		Type.FOREST: null, Type.PEAKS: "S",  Type.WASTES: null,
+		Type.PLAINS: null, Type.ASHLANDS: "W", Type.SWAMP: null
+	},
+	"frost_valkyrie": {
+		Type.FOREST: null, Type.PEAKS: "S",  Type.WASTES: "W",
+		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: null
+	},
+	"dark_magic_wizard": {
+		Type.FOREST: "S",  Type.PEAKS: null, Type.WASTES: null,
+		Type.PLAINS: "W",  Type.ASHLANDS: null, Type.SWAMP: null
+	},
 	"demon_of_darkness": {
-		Type.FOREST: "W", Type.PEAKS: null, Type.WASTES: "S",
-		Type.PLAINS: "W", Type.ASHLANDS: "A", Type.SWAMP: null
+		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: null,
+		Type.PLAINS: "W",  Type.ASHLANDS: "S", Type.SWAMP: null
 	},
 	"elven_archer": {
-		Type.FOREST: "A", Type.PEAKS: null, Type.WASTES: "W",
-		Type.PLAINS: "S", Type.ASHLANDS: null, Type.SWAMP: "W"
+		Type.FOREST: "S",  Type.PEAKS: null, Type.WASTES: "W",
+		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: null
 	},
 	"celestial_cleric": {
-		Type.FOREST: "S", Type.PEAKS: "S", Type.WASTES: "W",
-		Type.PLAINS: "D", Type.ASHLANDS: "W", Type.SWAMP: null
+		Type.FOREST: null, Type.PEAKS: null, Type.WASTES: null,
+		Type.PLAINS: "S",  Type.ASHLANDS: "W", Type.SWAMP: null
 	},
 	"shadow_assassin": {
-		Type.FOREST: "A", Type.PEAKS: "W", Type.WASTES: null,
-		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: "S"
+		Type.FOREST: null, Type.PEAKS: "W",  Type.WASTES: null,
+		Type.PLAINS: null, Type.ASHLANDS: null, Type.SWAMP: "S"
 	},
 	"infernal_soul": {
-		Type.FOREST: "W", Type.PEAKS: "W", Type.WASTES: null,
-		Type.PLAINS: null, Type.ASHLANDS: "A", Type.SWAMP: "S"
+		Type.FOREST: null, Type.PEAKS: "W",  Type.WASTES: null,
+		Type.PLAINS: null, Type.ASHLANDS: "S", Type.SWAMP: null
 	}
 }
 
@@ -181,9 +182,7 @@ static func get_troop_modifier(troop_id: String, biome_type: Type):
 ## Get modifier value based on modifier type
 static func get_modifier_value(modifier_type) -> float:
 	match modifier_type:
-		"A": return GameConfig.ADVANTAGE_MODIFIER   # +25%
 		"S": return GameConfig.STRENGTH_MODIFIER    # +15%
-		"D": return GameConfig.DEFENSE_MODIFIER     # -15% incoming
 		"W": return GameConfig.WEAKNESS_MODIFIER    # -25%
 		_: return 0.0
 

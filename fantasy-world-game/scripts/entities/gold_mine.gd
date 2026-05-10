@@ -254,29 +254,8 @@ func _update_visual() -> void:
 ## Fix common GLB material artifacts: removes unintended transparency, shimmer,
 ## and ghosting caused by AI-generated models baking incorrect PBR values.
 func _fix_model_materials(node: Node) -> void:
-	if node is MeshInstance3D:
-		var mesh_inst := node as MeshInstance3D
-		if mesh_inst.mesh:
-			var surface_count = mesh_inst.mesh.get_surface_count()
-			for i in range(surface_count):
-				var mat: Material = mesh_inst.get_surface_override_material(i)
-				if mat == null:
-					mat = mesh_inst.mesh.surface_get_material(i)
-				if mat == null:
-					continue
-				
-				if mat is BaseMaterial3D:
-					var fixed: BaseMaterial3D = mat.duplicate() as BaseMaterial3D
-					fixed.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-					fixed.cull_mode = BaseMaterial3D.CULL_BACK
-					fixed.metallic = 0.0
-					fixed.metallic_specular = 0.0
-					fixed.emission_enabled = false
-					fixed.roughness = 1.0
-					mesh_inst.set_surface_override_material(i, fixed)
-	
-	for child in node.get_children():
-		_fix_model_materials(child)
+	# Gold mines don't have a specific troop ID for caching, so we use "gold_mine"
+	CharacterModelLoader.fix_model_materials(node, "gold_mine")
 
 
 # =============================================================================

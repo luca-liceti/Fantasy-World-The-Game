@@ -28,7 +28,7 @@ enum RollResult {
 # =============================================================================
 
 const DICE_TYPE: int = 20
-const CRITICAL_HIT_THRESHOLD: int = 20    # Natural 20 only
+const CRITICAL_HIT_THRESHOLD: int = 18    # Natural 18-20 (combat_reference.md)
 const CRITICAL_MISS_THRESHOLD: int = 1    # Natural 1 only
 const BASE_DC: int = 10                   # Base Defense Class
 const STAT_DIVISOR: float = 10.0          # ATK/10, DEF/10 for modifiers
