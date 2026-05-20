@@ -154,6 +154,15 @@ const DEBUG_SKIP_DECK_SELECTION: bool = true
 const DEBUG_SKIP_FIRST_MOVE_DICE: bool = true
 const DEBUG_DEFAULT_DECK: Array[String] = ["medieval_knight", "elven_archer", "celestial_cleric", "frost_valkyrie"] # Default deck when skipping
 
+## Set to true to enable the combat debug sandbox.
+## On game start one random troop per player is picked and placed
+## adjacent to each other so you can test combat immediately.
+const DEBUG_COMBAT_MODE: bool = true
+
+# Debug combat state
+var _debug_attacker: Troop = null   # Player 0 troop used as the attacker
+var _debug_defender: Troop = null   # Player 1 troop used as the defender
+
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
@@ -945,6 +954,10 @@ func _start_game_after_roll() -> void:
 	print("=== Game started! ===")
 	print("Player 1 (Blue): %s" % str(player_decks[0]))
 	print("Player 2 (Red): %s" % str(player_decks[1]))
+	
+	# DEBUG COMBAT SANDBOX — set up after troops are spawned
+	if DEBUG_COMBAT_MODE:
+		call_deferred("_setup_debug_combat")
 
 
 ## Spawn troops based on the selected decks
@@ -1417,6 +1430,37 @@ func _handle_key_press(event: InputEventKey) -> void:
 			# Toggle keyboard shortcuts overlay
 			if game_ui:
 				game_ui.toggle_keyboard_overlay()
+		
+		# ── DEBUG COMBAT SANDBOX ──────────────────────────────────────────────
+		KEY_F5:
+			# Trigger enhanced combat between debug attacker & defender
+			if DEBUG_COMBAT_MODE:
+				_debug_trigger_combat()
+		
+		KEY_F6:
+			# Re-roll: pick a new random pair of combatants
+			if DEBUG_COMBAT_MODE:
+				_setup_debug_combat()
+		
+		KEY_F7:
+			# Apply a random status effect to the debug defender
+			if DEBUG_COMBAT_MODE:
+				_debug_apply_random_status()
+		
+		KEY_F8:
+			# Damage the debug attacker down to 10 HP (near-death test)
+			if DEBUG_COMBAT_MODE:
+				_debug_set_near_death(_debug_attacker)
+		
+		KEY_F9:
+			# Full heal both debug combatants & clear all status effects
+			if DEBUG_COMBAT_MODE:
+				_debug_full_heal()
+		
+		KEY_F10:
+			# Print detailed stat sheet for both debug combatants
+			if DEBUG_COMBAT_MODE:
+				_debug_combat_print_status()
 
 
 ## Selects troop based on slot number (1-4 keys select troops 1-4)
@@ -2564,6 +2608,209 @@ func _on_game_over(winner_id: int) -> void:
 	print("=== GAME OVER ===")
 	print("PLAYER %d WINS!" % (winner_id + 1))
 	game_ui.show_info("PLAYER %d WINS!" % (winner_id + 1))
+
+
+# =============================================================================
+# DEBUG COMBAT SANDBOX
+# =============================================================================
+
+## Select one random living troop per player, move them adjacent on the board,
+## and print the full combat debug menu to the console.
+func _setup_debug_combat() -> void:
+	if not game_manager or not game_manager.player_manager:
+		push_warning("[DEBUG] _setup_debug_combat: GameManager not ready")
+		return
+	
+	var p0 = game_manager.player_manager.get_player(0)
+	var p1 = game_manager.player_manager.get_player(1)
+	
+	if not p0 or p0.troops.is_empty() or not p1 or p1.troops.is_empty():
+		push_warning("[DEBUG] _setup_debug_combat: No troops available")
+		return
+	
+	# Pick one random living troop from each player
+	var living0: Array = p0.troops.filter(func(t): return t and t.is_alive)
+	var living1: Array = p1.troops.filter(func(t): return t and t.is_alive)
+	
+	if living0.is_empty() or living1.is_empty():
+		push_warning("[DEBUG] _setup_debug_combat: All troops dead")
+		return
+	
+	_debug_attacker = living0[randi() % living0.size()]
+	_debug_defender = living1[randi() % living1.size()]
+	
+	# ── Place them adjacent on the board ─────────────────────────────────────
+	# Find a pair of adjacent, unoccupied (by other units) tiles near the centre.
+	if hex_board and _debug_attacker.current_hex and _debug_defender.current_hex:
+		var atk_coord = _debug_attacker.current_hex.coordinates
+		var neighbours = atk_coord.get_all_neighbors()
+		var placed := false
+		for nb_coord in neighbours:
+			var tile = hex_board.get_tile_at(nb_coord)
+			# Acceptable if empty OR already occupied by the defender
+			if tile and (not tile.is_occupied() or tile.occupant == _debug_defender):
+				_debug_defender.move_to_hex(tile)
+				_debug_defender.has_moved_this_turn = false
+				placed = true
+				break
+		if not placed:
+			# Fallback: just leave them wherever they are (may be out of range)
+			push_warning("[DEBUG] Could not place defender adjacent — they may be out of melee range")
+	
+	# Reset turn flags so they can act immediately
+	_debug_attacker.has_moved_this_turn = false
+	_debug_attacker.has_attacked_this_turn = false
+	_debug_defender.has_moved_this_turn = false
+	_debug_defender.has_attacked_this_turn = false
+	
+	# Reset endure uses in case they were spent in a previous round
+	_debug_attacker.endure_uses_remaining = 1
+	_debug_defender.endure_uses_remaining = 1
+	
+	# Print the debug menu
+	print("")
+	print("╔══════════════════════════════════════════════════════════╗")
+	print("║          🗡️  DEBUG COMBAT SANDBOX ACTIVE 🗡️              ║")
+	print("╠══════════════════════════════════════════════════════════╣")
+	print("║  ATTACKER (P1/Blue): %-36s║" % _debug_attacker.display_name)
+	print("║  DEFENDER (P2/Red):  %-36s║" % _debug_defender.display_name)
+	print("╠══════════════════════════════════════════════════════════╣")
+	print("║  F5  → Trigger enhanced combat (move + stance selection) ║")
+	print("║  F6  → Re-roll: pick a new random pair of combatants     ║")
+	print("║  F7  → Apply random status effect to DEFENDER            ║")
+	print("║  F8  → Damage ATTACKER to 10 HP (near-death test)        ║")
+	print("║  F9  → Full heal both combatants & clear status effects  ║")
+	print("║  F10 → Print detailed stat sheet for both combatants     ║")
+	print("╚══════════════════════════════════════════════════════════╝")
+	print("")
+
+
+## Trigger an enhanced combat between the two debug combatants.
+func _debug_trigger_combat() -> void:
+	if not _debug_attacker or not _debug_defender:
+		print("[DEBUG] No debug combatants set — press F6 to assign them")
+		return
+	if not _debug_attacker.is_alive or not _debug_defender.is_alive:
+		print("[DEBUG] One or both combatants are dead — press F6 to reset")
+		return
+	if game_manager.current_state == GameManager.GameState.ENHANCED_COMBAT:
+		print("[DEBUG] Combat already in progress")
+		return
+	
+	# Allow the attacker to attack even if it already acted this turn
+	_debug_attacker.has_attacked_this_turn = false
+	_debug_attacker.has_moved_this_turn = false
+	
+	# Bypass game state check by forcing PLAYING state temporarily
+	var prev_state = game_manager.current_state
+	game_manager.current_state = GameManager.GameState.PLAYING
+	
+	print("[DEBUG] Triggering combat: %s vs %s" % [_debug_attacker.display_name, _debug_defender.display_name])
+	
+	var result = game_manager.action_enhanced_attack(_debug_attacker, _debug_defender)
+	if not result.get("success", false):
+		print("[DEBUG] Combat failed: %s" % result.get("error", "unknown error"))
+		game_manager.current_state = prev_state
+
+
+## Apply one random status effect to the debug defender.
+func _debug_apply_random_status() -> void:
+	if not _debug_defender or not _debug_defender.is_alive:
+		print("[DEBUG] No living defender — press F6 first")
+		return
+	
+	var effects = ["stunned", "poisoned", "burned", "rooted", "slowed", "terrified", "cursed"]
+	var chosen = effects[randi() % effects.size()]
+	var effect = StatusEffects.create_effect(chosen)
+	if effect:
+		if _debug_defender.apply_status_effect(effect):
+			print("[DEBUG] Applied '%s' to %s" % [chosen, _debug_defender.display_name])
+		else:
+			print("[DEBUG] %s is immune to '%s'" % [_debug_defender.display_name, chosen])
+	else:
+		print("[DEBUG] StatusEffects.create_effect('%s') returned null" % chosen)
+
+
+## Damage a troop down to 10 HP for near-death testing.
+func _debug_set_near_death(troop: Troop) -> void:
+	if not troop or not troop.is_alive:
+		print("[DEBUG] Troop is null or dead")
+		return
+	var target_hp = 10
+	if troop.current_hp <= target_hp:
+		print("[DEBUG] %s already at %d HP" % [troop.display_name, troop.current_hp])
+		return
+	var dmg = troop.current_hp - target_hp
+	troop.take_damage(dmg)
+	print("[DEBUG] Damaged %s to %d HP (was %d)" % [troop.display_name, troop.current_hp, troop.current_hp + dmg])
+
+
+## Full-heal both debug combatants and clear all status effects.
+func _debug_full_heal() -> void:
+	for troop in [_debug_attacker, _debug_defender]:
+		if not troop or not troop.is_alive:
+			continue
+		troop.current_hp = troop.max_hp
+		troop.active_status_effects.clear()
+		troop.move_cooldowns.clear()
+		troop.endure_uses_remaining = 1
+		troop.stat_stages = {"atk": 0, "def": 0, "speed": 0}
+		troop.has_attacked_this_turn = false
+		troop.has_moved_this_turn = false
+		print("[DEBUG] Fully healed %s (%d/%d HP, all effects cleared)" % [troop.display_name, troop.current_hp, troop.max_hp])
+
+
+## Print a detailed combat stat sheet for both debug combatants.
+func _debug_combat_print_status() -> void:
+	print("")
+	print("══════════════ DEBUG COMBAT STAT SHEET ══════════════")
+	for label_troop in [["ATTACKER", _debug_attacker], ["DEFENDER", _debug_defender]]:
+		var label: String = label_troop[0]
+		var troop: Troop = label_troop[1]
+		if not troop:
+			print("%s: (none)" % label)
+			continue
+		
+		print("── %s: %s (Player %d) ──" % [label, troop.display_name, troop.owner_player_id + 1])
+		print("  Troop ID : %s" % troop.troop_id)
+		print("  HP       : %d / %d" % [troop.current_hp, troop.max_hp])
+		print("  ATK      : %d  (base %d, modified %.1f)" % [troop.current_atk, troop.base_atk, troop.get_modified_stat("atk")])
+		print("  DEF      : %d  (base %d, modified %.1f)" % [troop.current_def, troop.base_def, troop.get_modified_stat("def")])
+		print("  Range    : %d | Speed: %d | Level: %d" % [troop.current_range, troop.current_speed, troop.level])
+		print("  DmgType  : %s" % troop.damage_type)
+		print("  Ability  : %s" % str(troop.ability))
+		print("  Alive    : %s | Stealth: %s" % [str(troop.is_alive), str(troop.is_stealthed())])
+		
+		# Status effects
+		if troop.active_status_effects.is_empty():
+			print("  Status   : (none)")
+		else:
+			var status_list: Array = []
+			for fx in troop.active_status_effects:
+				status_list.append("%s(%dt)" % [fx.effect_id, fx.remaining_turns])
+			print("  Status   : %s" % ", ".join(status_list))
+		
+		# Stat stages
+		print("  Stages   : ATK%+d DEF%+d SPD%+d" % [troop.stat_stages.get("atk", 0), troop.stat_stages.get("def", 0), troop.stat_stages.get("speed", 0)])
+		
+		# Moves & cooldowns
+		var move_lines: Array = []
+		for move in troop.available_moves:
+			var cd = troop.get_move_cooldown(move.move_id)
+			var ready = "✓" if cd <= 0 else "CD:%d" % cd
+			move_lines.append("%s [%s]" % [move.move_name, ready])
+		print("  Moves    : %s" % " | ".join(move_lines))
+		
+		# Endure
+		print("  Endure   : %d use(s) remaining" % troop.endure_uses_remaining)
+		
+		# Hex position
+		if troop.current_hex and "coordinates" in troop.current_hex:
+			print("  Position : %s" % troop.current_hex.coordinates._to_string())
+		print("")
+	
+	print("══════════════════════════════════════════════════════")
+	print("")
 
 
 # =============================================================================
