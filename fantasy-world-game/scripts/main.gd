@@ -1226,7 +1226,7 @@ func _handle_keyboard_movement(delta: float) -> void:
 		is_camera_transitioning = false # User manual control overrides transitions
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
 	# Block gameplay inputs if a menu or cinematic is active
 	# (Allow ESC for pause menu handling)
 	var is_inhibited = _is_gameplay_inhibited()
@@ -1272,6 +1272,10 @@ func _on_dice_ui_dismissed() -> void:
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	match event.button_index:
+		MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				_process_3d_selection(event.position)
+		
 		MOUSE_BUTTON_RIGHT:
 			# Right-click to rotate view
 			is_rotating = event.pressed
@@ -1293,6 +1297,49 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		
 		MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom_camera(1)
+
+
+## Processes 3D selection via prioritized camera raycast.
+## Resolves Layer 2 (Units/Mines) first, then falls back to Layer 1 (Board Terrain).
+func _process_3d_selection(screen_position: Vector2) -> void:
+	if not camera:
+		return
+	
+	var space_state = get_world_3d().direct_space_state
+	
+	# Project ray from camera
+	var ray_origin = camera.project_ray_origin(screen_position)
+	var ray_normal = camera.project_ray_normal(screen_position)
+	var ray_end = ray_origin + ray_normal * 200.0 # Max ray distance
+	
+	# --- PHASE 1: Query Unit/Entity Layer (Layer 2) ---
+	var unit_query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	unit_query.collision_mask = 1 << 1 # Layer 2 (Units)
+	unit_query.collide_with_areas = true
+	unit_query.collide_with_bodies = true
+	
+	var hit = space_state.intersect_ray(unit_query)
+	if hit and hit.collider:
+		var clicked_entity = hit.collider.get_parent() # Click area is child of Troop/GoldMine
+		var tile = null
+		if clicked_entity and "current_hex" in clicked_entity:
+			tile = clicked_entity.current_hex
+		
+		if tile:
+			_on_tile_selected(tile)
+			return
+			
+	# --- PHASE 2: Query Ground/Terrain Layer (Layer 1) ---
+	var terrain_query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	terrain_query.collision_mask = 1 << 0 # Layer 1 (Board Terrain)
+	terrain_query.collide_with_bodies = true
+	
+	hit = space_state.intersect_ray(terrain_query)
+	if hit and hit.collider:
+		var tile = hit.collider.get_parent() as HexTile
+		if tile:
+			_on_tile_selected(tile)
+
 
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:

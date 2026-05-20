@@ -931,18 +931,17 @@ func from_dict(data: Dictionary) -> void:
 
 
 # =============================================================================
-# INPUT HANDLING (Troop click redirection)
+# INPUT HANDLING (Troop click collision)
 # =============================================================================
 
-## Create an invisible cylinder around the troop to capture mouse clicks,
-## forwarding them to the hex tile underneath. Allows players to click the
-## character directly instead of having to aim solely for the terrain tile.
+## Create an invisible cylinder around the troop to capture mouse clicks.
+## Placed on Collision Layer 2 (Units) for centralized camera raycasting.
 func _create_click_area() -> void:
 	if click_area: return
 	
 	click_area = Area3D.new()
 	click_area.name = "TroopClickArea"
-	click_area.collision_layer = 1 # Layer 1 — same as hex tile mouse picking
+	click_area.collision_layer = 1 << 1 # Layer 2 — Units
 	click_area.collision_mask = 0
 	
 	var col_shape = CollisionShape3D.new()
@@ -954,25 +953,4 @@ func _create_click_area() -> void:
 	
 	click_area.add_child(col_shape)
 	add_child(click_area)
-	
-	# Connect signals to forward to current_hex
-	click_area.input_event.connect(_on_click_area_input_event)
-	click_area.mouse_entered.connect(_on_click_area_mouse_entered)
-	click_area.mouse_exited.connect(_on_click_area_mouse_exited)
 
-
-func _on_click_area_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			if current_hex and current_hex.has_method("on_mouse_clicked"):
-				current_hex.on_mouse_clicked()
-
-
-func _on_click_area_mouse_entered() -> void:
-	if current_hex and current_hex.has_method("on_mouse_entered"):
-		current_hex.on_mouse_entered()
-
-
-func _on_click_area_mouse_exited() -> void:
-	if current_hex and current_hex.has_method("on_mouse_exited"):
-		current_hex.on_mouse_exited()

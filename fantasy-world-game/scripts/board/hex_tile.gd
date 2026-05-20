@@ -588,10 +588,10 @@ func _create_terrain_collision() -> void:
 	# Bind mouse signals directly to the collision body
 	terrain_collision_body.mouse_entered.connect(on_mouse_entered)
 	terrain_collision_body.mouse_exited.connect(on_mouse_exited)
-	terrain_collision_body.input_event.connect(_on_trimesh_input_event)
 	
 	# Build initial convex shape
 	_rebuild_terrain_collision()
+
 
 
 ## Rebuild the terrain collision shape to match the current vertex heights.
@@ -693,7 +693,7 @@ func _setup_materials() -> void:
 	# Selection material (using central UI gold, semi-transparent)
 	selection_material = StandardMaterial3D.new()
 	var sel_col = UITheme.C_GOLD
-	sel_col.a = 0.35 # Slightly more transparent for clarity
+	sel_col.a = 0.2 # Slightly more transparent for clarity
 	selection_material.albedo_color = sel_col
 	selection_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	selection_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -704,7 +704,7 @@ func _setup_materials() -> void:
 	
 	# Hover material (subtle white glow)
 	hover_material = StandardMaterial3D.new()
-	hover_material.albedo_color = Color(1.0, 1.0, 1.0, 0.25)
+	hover_material.albedo_color = Color(1.0, 1.0, 1.0, 0.15)
 	hover_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	hover_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	hover_material.no_depth_test = true
@@ -712,7 +712,7 @@ func _setup_materials() -> void:
 	
 	# Movement material (blue)
 	movement_material = StandardMaterial3D.new()
-	movement_material.albedo_color = Color(0.2, 0.5, 1.0, 0.4)
+	movement_material.albedo_color = Color(0.2, 0.5, 1.0, 0.2)
 	movement_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	movement_material.emission_enabled = true
 	movement_material.emission = Color(0.2, 0.4, 0.8)
@@ -722,7 +722,7 @@ func _setup_materials() -> void:
 	
 	# Attack material (red)
 	attack_material = StandardMaterial3D.new()
-	attack_material.albedo_color = Color(1.0, 0.2, 0.2, 0.4)
+	attack_material.albedo_color = Color(1.0, 0.2, 0.2, 0.2)
 	attack_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	attack_material.emission_enabled = true
 	attack_material.emission = Color(0.8, 0.2, 0.2)
@@ -854,7 +854,4 @@ func on_mouse_clicked() -> void:
 	tile_clicked.emit(self )
 
 
-func _on_trimesh_input_event(_camera: Node, event: InputEvent, _position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			on_mouse_clicked()
+

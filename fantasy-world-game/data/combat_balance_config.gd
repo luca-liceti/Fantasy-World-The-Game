@@ -179,10 +179,10 @@ const STEALTH_DURATION: int = 3
 # =============================================================================
 
 ## Selection time limit (seconds) - Enhanced Mode
-const SELECTION_TIME_LIMIT: float = 10.0
+const SELECTION_TIME_LIMIT: float = 30.0
 
 ## Simple Mode timer (longer for new players)
-const SIMPLE_MODE_TIME_LIMIT: float = 15.0
+const SIMPLE_MODE_TIME_LIMIT: float = 30.0
 
 ## Warning at this many seconds remaining
 const SELECTION_WARNING_TIME: float = 5.0
