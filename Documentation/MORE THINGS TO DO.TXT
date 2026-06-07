@@ -9,3 +9,7 @@
 ## 🖥️ UI & UX
 - [ ] **UI Theme Integration**: Make rule where all current and future UI follow `UITHEME` global theme.
 - [ ] **Combat Presentation**: Fix and improve character closeups and the closeup sequence order. Camera angles and views should follow the thought process how its done in mortal kombat. Character closeups during special attacks. Fit combating characters in camera view during normal comabt showing attacking, defending, and damage.
+
+
+- GOAL: MAKE COMBAT MORE UNDERSTANDABLE AT AN ENTRY LEVEL. MORE PLAIN ENGLISH, WHILE STILL ALLOWING THE MOST TECHNICAL ASPECT.
+- GOAL: REDO COMBAT FLOW/UI. DICE ROLL POPUP SCREEN SHOULD BE REMOVED, LEAVING PHYSICAL DICE ROLL REMAINING. DURING DICE ROLL IN COMBAT. A SPLIT SCREEN SHOWING THE DICE ROLLING AT BOTH SIDES OF THE TABLE (SCREEN SPLIT 50/50 SHOWING PLAYER ONE ROLLING (THEIR TURN) AND CENTERING TOP VIEW OF DIE, THEN OTHER SIDE OF SCREEN SHOWING PLAYER TWO ROLLING AND CENTERING TOP VIEW OF THEIR DIE)

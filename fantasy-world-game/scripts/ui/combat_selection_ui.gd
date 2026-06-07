@@ -1,6 +1,9 @@
-## Combat Selection UI
-## Handles the move selection for attacker and stance selection for defender
-## Part of the D&D × Pokémon hybrid combat system
+## Combat Selection UI — Redesigned
+## Bottom-anchored combat panel showing the two combatants in side-view,
+## HP bars, a 2×2 move grid (attacker) and 4 stacked stance buttons (defender).
+##
+## Design language: dark near-black background, gold Cinzel typography,
+## colour-coded move buttons, plain-English hook lines + stat rows.
 class_name CombatSelectionUI
 extends CanvasLayer
 
@@ -13,81 +16,94 @@ signal ready_pressed()
 signal timeout()
 
 # =============================================================================
-# UI ELEMENTS
+# LAYOUT CONSTANTS
 # =============================================================================
-var main_container: Control
-var background_panel: PanelContainer
-var content_container: VBoxContainer
+const PANEL_HEIGHT       : float = 460.0
+const MOVE_BTN_H         : float = 90.0
+const STANCE_BTN_H       : float = 62.0
+const CORNER_R           : int   = 10
+const PAD                : float = 10.0
+const INFO_BAR_H         : float = 36.0
 
-# Header & Stats
-var header_label: Label
-var combatants_label: Label
-var stats_container: HBoxContainer
-var attacker_stats_label: Label
-var defender_stats_label: Label
+# Colour tokens
+const C_BG               := Color(0.035, 0.035, 0.060, 0.97)
+const C_BTN_BASE         := Color(0.055, 0.055, 0.090, 1.0)
+const C_BORDER_GOLD      := Color(0.88, 0.76, 0.44, 0.45)
+const C_HEADER_MOVE      := Color(0.78, 0.25, 0.25)   # red
+const C_HEADER_STANCE    := Color(0.32, 0.52, 0.82)   # steel blue
 
-# Positioning Modifiers
-var modifiers_label: Label
+# Move type border colours
+const MOVE_TYPE_COLORS := {
+	MoveData.MoveType.STANDARD : Color(0.52, 0.52, 0.60),   # silver-gray
+	MoveData.MoveType.POWER    : Color(0.80, 0.20, 0.20),   # deep red
+	MoveData.MoveType.PRECISION: Color(0.22, 0.44, 0.82),   # steel blue
+	MoveData.MoveType.SPECIAL  : Color(0.55, 0.20, 0.80),   # royal purple
+}
 
-# Selection panels
-var attacker_panel: PanelContainer
-var defender_panel: PanelContainer
+# Stance border colours
+const STANCE_COLORS := {
+	DefensiveStances.DefensiveStance.BRACE  : Color(0.28, 0.45, 0.75),
+	DefensiveStances.DefensiveStance.DODGE  : Color(0.25, 0.70, 0.35),
+	DefensiveStances.DefensiveStance.COUNTER: Color(0.85, 0.50, 0.10),
+	DefensiveStances.DefensiveStance.ENDURE : Color(0.75, 0.20, 0.20),
+}
 
-# Move buttons (for attacker)
-var move_buttons: Array[Button] = []
-var move_tooltips: Array[PanelContainer] = []
+# =============================================================================
+# NODE REFERENCES
+# =============================================================================
+## Root control spanning the full screen (bottom-anchored panel lives inside)
+var _root          : Control
 
-# Stance buttons (for defender)
-var stance_buttons: Array[Button] = []
+## The dark panel itself
+var _panel         : PanelContainer
 
-# Ready button and status
-var ready_button: Button
-var waiting_label: Label
-var is_ready: bool = false
+## Info bar labels
+var _info_label    : Label
+var _timer_label   : Label
+var _timer_bar     : ProgressBar
 
-# Timer
-var timer_bar: ProgressBar
-var timer_label: Label
-var current_time: float = CombatBalanceConfig.SELECTION_TIME_LIMIT
-var max_time: float = CombatBalanceConfig.SELECTION_TIME_LIMIT
-var timer_running: bool = false
+## HP bar rows (attacker + defender)
+var _hp_bar_atk    : ProgressBar
+var _hp_bar_def    : ProgressBar
+var _hp_lbl_atk    : Label
+var _hp_lbl_def    : Label
 
-var _bar_fill_normal: StyleBoxFlat
-var _bar_fill_warning: StyleBoxFlat
-var _bar_fill_critical: StyleBoxFlat
+## Move column
+var _move_header   : Label
+var _move_buttons  : Array[Button] = []
 
-# State
-var is_attacker: bool = true
-var current_troop: Node = null
-var current_target: Node = null  # Added for prediction
-var selected_move: MoveData.Move = null
+## Stance column
+var _stance_header : Label
+var _stance_buttons: Array[Button] = []
+
+## Confirm button + waiting label
+var _confirm_btn   : Button
+var _waiting_lbl   : Label
+
+## Modifiers strip (Flanking, Cover…)
+var _mod_label     : Label
+
+# =============================================================================
+# STATE
+# =============================================================================
+var is_attacker    : bool  = true
+var current_troop  : Node  = null
+var current_target : Node  = null
+
+var selected_move  : MoveData.Move = null
 var selected_stance: int = DefensiveStances.DefensiveStance.BRACE
+var is_ready       : bool  = false
 
-# Combat Mode (Simple vs Enhanced)
-var combat_mode: int = GameConfig.CombatMode.ENHANCED
-var mode_config: Dictionary = {}
+var current_time   : float = CombatBalanceConfig.SELECTION_TIME_LIMIT
+var max_time       : float = CombatBalanceConfig.SELECTION_TIME_LIMIT
+var timer_running  : bool  = false
 
-# Recommended move index (for Simple Mode hints)
-var recommended_move_index: int = -1
+var _last_timer_sec: int   = -1
 
-# =============================================================================
-# COLORS & STYLING
-# =============================================================================
-const BG_COLOR = Color(0, 0, 0, 0)
-const PANEL_COLOR = Color(0, 0, 0, 0)
-const BORDER_COLOR = Color(0.3, 0.4, 0.5)
-const MOVE_COLORS = {
-	MoveData.MoveType.STANDARD: Color(0.6, 0.6, 0.7),
-	MoveData.MoveType.POWER: Color(0.9, 0.3, 0.3),
-	MoveData.MoveType.PRECISION: Color(0.3, 0.6, 0.9),
-	MoveData.MoveType.SPECIAL: Color(0.7, 0.3, 0.9)
-}
-const STANCE_COLORS = {
-	DefensiveStances.DefensiveStance.BRACE: Color(0.3, 0.5, 0.8),
-	DefensiveStances.DefensiveStance.DODGE: Color(0.2, 0.8, 0.2),
-	DefensiveStances.DefensiveStance.COUNTER: Color(0.9, 0.5, 0.1),
-	DefensiveStances.DefensiveStance.ENDURE: Color(0.8, 0.2, 0.2)
-}
+# Precomputed timer fill styles
+var _fill_normal   : StyleBoxFlat
+var _fill_warn     : StyleBoxFlat
+var _fill_crit     : StyleBoxFlat
 
 
 # =============================================================================
@@ -95,827 +111,734 @@ const STANCE_COLORS = {
 # =============================================================================
 
 func _ready() -> void:
+	layer = 90
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	_create_precomputed_styles()
-	_create_ui()
-
-func _create_precomputed_styles() -> void:
-	_bar_fill_normal = StyleBoxFlat.new()
-	_bar_fill_normal.bg_color = Color(0.2, 0.7, 0.3)
-	_bar_fill_normal.set_corner_radius_all(4)
-	
-	_bar_fill_warning = StyleBoxFlat.new()
-	_bar_fill_warning.bg_color = Color(0.9, 0.7, 0.2)
-	_bar_fill_warning.set_corner_radius_all(4)
-	
-	_bar_fill_critical = StyleBoxFlat.new()
-	_bar_fill_critical.bg_color = Color(0.9, 0.2, 0.2)
-	_bar_fill_critical.set_corner_radius_all(4)
+	_precompute_styles()
+	_build_ui()
 
 
-func _process(delta: float) -> void:
-	if timer_running and visible:
-		current_time -= delta
-		_update_timer_display()
-		
-		if current_time <= 0:
-			timer_running = false
-			visible = false  # Hide UI immediately on timeout
-			# Only emit timeout signal - main.gd will handle combat resolution
-			# This prevents race conditions from emitting both timeout AND move/stance signals
-			timeout.emit()
+func _precompute_styles() -> void:
+	_fill_normal = StyleBoxFlat.new()
+	_fill_normal.bg_color = Color(0.20, 0.72, 0.32)
+	_fill_normal.set_corner_radius_all(3)
+
+	_fill_warn = StyleBoxFlat.new()
+	_fill_warn.bg_color = Color(0.92, 0.72, 0.18)
+	_fill_warn.set_corner_radius_all(3)
+
+	_fill_crit = StyleBoxFlat.new()
+	_fill_crit.bg_color = Color(0.90, 0.20, 0.20)
+	_fill_crit.set_corner_radius_all(3)
 
 
-func _create_ui() -> void:
-	# Main container - fullscreen overlay
-	main_container = Control.new()
-	main_container.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(main_container)
-	
-	# Semi-transparent background — UITheme overlay
-	var bg = UITheme.make_overlay_bg()
-	main_container.add_child(bg)
-	
-	# Center panel
-	background_panel = PanelContainer.new()
-	background_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	background_panel.custom_minimum_size = Vector2(650, 500)
-	background_panel.position = Vector2(-325, -520) # 20px padding from bottom
-	main_container.add_child(background_panel)
-	
-	background_panel.add_theme_stylebox_override("panel", UITheme.overlay_panel(UITheme.C_GOLD))
-	
-	# Content container
-	content_container = VBoxContainer.new()
-	content_container.add_theme_constant_override("separation", 10)
-	background_panel.add_child(content_container)
-	
-	_create_header()
-	_create_stats_display()
-	_create_timer()
-	_create_modifiers_display()
-	_create_selection_panels()
-	_create_ready_section()
+# =============================================================================
+# UI CONSTRUCTION
+# =============================================================================
+
+func _build_ui() -> void:
+	# ── Full-screen root (mouse passthrough) ──────────────────────────────────
+	_root = Control.new()
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_root)
+
+	# ── Bottom panel ──────────────────────────────────────────────────────────
+	_panel = PanelContainer.new()
+	_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_panel.custom_minimum_size = Vector2(0, PANEL_HEIGHT)
+	_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_root.add_child(_panel)
+
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = C_BG
+	panel_style.border_color = C_BORDER_GOLD
+	panel_style.set_border_width(SIDE_TOP, 2)
+	panel_style.set_border_width(SIDE_LEFT, 0)
+	panel_style.set_border_width(SIDE_RIGHT, 0)
+	panel_style.set_border_width(SIDE_BOTTOM, 0)
+	_panel.add_theme_stylebox_override("panel", panel_style)
+
+	# ── Inner margin ──────────────────────────────────────────────────────────
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left",   int(PAD))
+	margin.add_theme_constant_override("margin_right",  int(PAD))
+	margin.add_theme_constant_override("margin_top",    4)
+	margin.add_theme_constant_override("margin_bottom", int(PAD))
+	_panel.add_child(margin)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	margin.add_child(vbox)
+
+	_build_info_bar(vbox)
+	_build_mod_strip(vbox)
+	_build_body(vbox)
+	_build_hp_bars(vbox)
 
 
-func _create_header() -> void:
-	var header_container = VBoxContainer.new()
-	header_container.add_theme_constant_override("separation", 4)
-	content_container.add_child(header_container)
-	
-	# Title
-	header_label = Label.new()
-	header_label.text = "⚔️ COMBAT! ⚔️"
-	header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(header_label, 28, UITheme.C_GOLD_BRIGHT, true)
-	header_container.add_child(header_label)
-	
-	# Combatants
-	combatants_label = Label.new()
-	combatants_label.text = "Attacker vs Defender"
-	combatants_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(combatants_label, 16, UITheme.C_WARM_WHITE)
-	header_container.add_child(combatants_label)
+func _build_info_bar(parent: VBoxContainer) -> void:
+	var bar = HBoxContainer.new()
+	bar.custom_minimum_size = Vector2(0, INFO_BAR_H)
+	bar.add_theme_constant_override("separation", 12)
+	parent.add_child(bar)
 
+	# Combatant label
+	_info_label = Label.new()
+	_info_label.text = "⚔️  — vs —"
+	_info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_info_label.clip_text = true
+	UITheme.style_label(_info_label, 13, UITheme.C_GOLD)
+	bar.add_child(_info_label)
 
-func _create_stats_display() -> void:
-	stats_container = HBoxContainer.new()
-	stats_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	stats_container.add_theme_constant_override("separation", 40)
-	content_container.add_child(stats_container)
-	
-	attacker_stats_label = Label.new()
-	attacker_stats_label.text = "ATK: -- | HP: --/--"
-	UITheme.style_label(attacker_stats_label, 14, Color(0.9, 0.6, 0.6))
-	stats_container.add_child(attacker_stats_label)
-	
-	var vs = Label.new()
-	vs.text = "VS"
-	UITheme.style_label(vs, 14, UITheme.C_DIM)
-	stats_container.add_child(vs)
-	
-	defender_stats_label = Label.new()
-	defender_stats_label.text = "DEF: -- | HP: --/--"
-	UITheme.style_label(defender_stats_label, 14, Color(0.6, 0.6, 0.9))
-	stats_container.add_child(defender_stats_label)
-
-
-func _create_modifiers_display() -> void:
-	modifiers_label = Label.new()
-	modifiers_label.text = "Positioning: Normal"
-	modifiers_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(modifiers_label, 12, UITheme.C_GOLD)
-
-
-func _create_timer() -> void:
-	var timer_container = HBoxContainer.new()
-	timer_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	content_container.add_child(timer_container)
-	
-	# Timer icon
-	var timer_icon = Label.new()
-	timer_icon.text = "⏱️ "
-	timer_icon.add_theme_font_size_override("font_size", 18)
-	timer_container.add_child(timer_icon)
-	
-	# Progress bar
-	timer_bar = ProgressBar.new()
-	timer_bar.custom_minimum_size = Vector2(250, 20)
-	timer_bar.max_value = max_time
-	timer_bar.value = current_time
-	timer_bar.show_percentage = false
-	timer_container.add_child(timer_bar)
-	
-	# Style the progress bar
-	var bar_bg = StyleBoxFlat.new()
-	bar_bg.bg_color = Color(0.15, 0.15, 0.2)
-	bar_bg.set_corner_radius_all(4)
-	timer_bar.add_theme_stylebox_override("background", bar_bg)
-	
-	timer_bar.add_theme_stylebox_override("fill", _bar_fill_normal)
-	
 	# Timer label
-	timer_label = Label.new()
-	timer_label.text = " 10s"
-	timer_label.add_theme_font_size_override("font_size", 16)
-	timer_label.add_theme_color_override("font_color", Color.WHITE)
-	timer_container.add_child(timer_label)
+	_timer_label = Label.new()
+	_timer_label.text = "10s"
+	_timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	UITheme.style_label(_timer_label, 14, UITheme.C_GOLD_BRIGHT, true)
+	bar.add_child(_timer_label)
+
+	# Timer progress bar
+	_timer_bar = ProgressBar.new()
+	_timer_bar.custom_minimum_size = Vector2(140, 10)
+	_timer_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_timer_bar.max_value = max_time
+	_timer_bar.value = max_time
+	_timer_bar.show_percentage = false
+
+	var bar_bg = StyleBoxFlat.new()
+	bar_bg.bg_color = Color(0.12, 0.12, 0.18)
+	bar_bg.set_corner_radius_all(3)
+	_timer_bar.add_theme_stylebox_override("background", bar_bg)
+	_timer_bar.add_theme_stylebox_override("fill", _fill_normal)
+	bar.add_child(_timer_bar)
 
 
-func _create_selection_panels() -> void:
-	# Attacker panel (moves)
-	attacker_panel = _create_panel_section("🗡️ SELECT YOUR MOVE", Color(0.8, 0.4, 0.4))
-	content_container.add_child(attacker_panel)
-	
-	var attacker_grid = GridContainer.new()
-	attacker_grid.columns = 2
-	attacker_grid.add_theme_constant_override("h_separation", 10)
-	attacker_grid.add_theme_constant_override("v_separation", 10)
-	attacker_panel.get_child(0).add_child(attacker_grid)
-	
-	# Create 4 move buttons
+func _build_mod_strip(parent: VBoxContainer) -> void:
+	_mod_label = Label.new()
+	_mod_label.text = ""
+	_mod_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mod_label.visible = false
+	UITheme.style_label(_mod_label, 11, UITheme.C_GOLD)
+	parent.add_child(_mod_label)
+
+
+func _build_body(parent: VBoxContainer) -> void:
+	# Two-column layout: moves (65%) | stances (35%)
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", int(PAD))
+	hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(hbox)
+
+	_build_move_column(hbox)
+	_build_stance_column(hbox)
+
+	# Confirm button row below columns
+	var confirm_row = HBoxContainer.new()
+	confirm_row.alignment = BoxContainer.ALIGNMENT_END
+	confirm_row.add_theme_constant_override("separation", 12)
+	confirm_row.visible = false # Hidden since we now auto-confirm
+	parent.add_child(confirm_row)
+
+	_waiting_lbl = Label.new()
+	_waiting_lbl.text = ""
+	_waiting_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_waiting_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	UITheme.style_label(_waiting_lbl, 13, UITheme.C_DIM)
+	confirm_row.add_child(_waiting_lbl)
+
+	_confirm_btn = Button.new()
+	_confirm_btn.text = "✅  CONFIRM"
+	_confirm_btn.custom_minimum_size = Vector2(150, 42)
+	UITheme.apply_hud_button(_confirm_btn, Color(0.25, 0.75, 0.38), 16)
+	_confirm_btn.pressed.connect(_on_confirm_pressed)
+	confirm_row.add_child(_confirm_btn)
+
+
+func _build_move_column(parent: HBoxContainer) -> void:
+	var col = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_stretch_ratio = 0.65
+	col.add_theme_constant_override("separation", 6)
+	parent.add_child(col)
+
+	_move_header = Label.new()
+	_move_header.text = "YOUR MOVE"
+	UITheme.style_label(_move_header, 12, C_HEADER_MOVE, true)
+	col.add_child(_move_header)
+
+	var grid = GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	col.add_child(grid)
+
 	for i in range(4):
-		var move_btn = _create_move_button(i)
-		move_buttons.append(move_btn)
-		attacker_grid.add_child(move_btn)
-	
-	# Defender panel (stances)
-	defender_panel = _create_panel_section("🛡️ SELECT YOUR STANCE", Color(0.4, 0.5, 0.8))
-	content_container.add_child(defender_panel)
-	
-	var defender_grid = GridContainer.new()
-	defender_grid.columns = 4
-	defender_grid.add_theme_constant_override("h_separation", 10)
-	defender_panel.get_child(0).add_child(defender_grid)
-	
-	# Create 4 stance buttons
+		var btn = _make_move_button(i)
+		_move_buttons.append(btn)
+		grid.add_child(btn)
+
+
+func _build_stance_column(parent: HBoxContainer) -> void:
+	var col = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_stretch_ratio = 0.35
+	col.add_theme_constant_override("separation", 6)
+	parent.add_child(col)
+
+	_stance_header = Label.new()
+	_stance_header.text = "YOUR STANCE"
+	UITheme.style_label(_stance_header, 12, C_HEADER_STANCE, true)
+	col.add_child(_stance_header)
+
 	var stances = DefensiveStances.get_all_stances()
 	for i in range(4):
-		var stance_btn = _create_stance_button(stances[i])
-		stance_buttons.append(stance_btn)
-		defender_grid.add_child(stance_btn)
+		var btn = _make_stance_button(stances[i])
+		_stance_buttons.append(btn)
+		col.add_child(btn)
 
 
-func _create_panel_section(title: String, accent_color: Color) -> PanelContainer:
-	var panel = PanelContainer.new()
-	
-	panel.add_theme_stylebox_override("panel", UITheme.section_panel(accent_color))
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	panel.add_child(vbox)
-	
-	var title_label = Label.new()
-	title_label.text = title
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(title_label, 16, accent_color, true)
-	vbox.add_child(title_label)
-	
-	return panel
+func _build_hp_bars(parent: VBoxContainer) -> void:
+	# Thin HP bars shown at the very bottom — not visible until show_* called
+	var row = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	parent.add_child(row)
+
+	# Attacker HP
+	_hp_lbl_atk = Label.new()
+	_hp_lbl_atk.text = ""
+	_hp_lbl_atk.custom_minimum_size = Vector2(110, 0)
+	_hp_lbl_atk.clip_text = true
+	UITheme.style_label(_hp_lbl_atk, 11, Color(0.90, 0.50, 0.50))
+	row.add_child(_hp_lbl_atk)
+
+	_hp_bar_atk = _make_hp_bar(Color(0.82, 0.24, 0.24))
+	row.add_child(_hp_bar_atk)
+
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(20, 0)
+	row.add_child(spacer)
+
+	_hp_bar_def = _make_hp_bar(Color(0.24, 0.44, 0.82))
+	row.add_child(_hp_bar_def)
+
+	_hp_lbl_def = Label.new()
+	_hp_lbl_def.text = ""
+	_hp_lbl_def.custom_minimum_size = Vector2(110, 0)
+	_hp_lbl_def.clip_text = true
+	_hp_lbl_def.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	UITheme.style_label(_hp_lbl_def, 11, Color(0.50, 0.62, 0.90))
+	row.add_child(_hp_lbl_def)
 
 
-func _create_move_button(index: int) -> Button:
-	var button = Button.new()
-	button.custom_minimum_size = Vector2(300, 85)
-	button.text = "Move %d" % (index + 1)
-	button.add_theme_font_size_override("font_size", 12)
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.15, 0.15, 0.2)
-	normal_style.border_color = UITheme.C_GOLD.darkened(0.5)
-	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(8)
-	normal_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("normal", normal_style)
-	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = Color(0.2, 0.2, 0.28)
-	hover_style.border_color = UITheme.C_GOLD
-	hover_style.set_border_width_all(2)
-	hover_style.set_corner_radius_all(8)
-	hover_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("hover", hover_style)
-	
-	var disabled_style = StyleBoxFlat.new()
-	disabled_style.bg_color = Color(0.1, 0.1, 0.12, 0.5)
-	disabled_style.border_color = Color(0.2, 0.2, 0.2)
-	disabled_style.set_border_width_all(1)
-	disabled_style.set_corner_radius_all(8)
-	disabled_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("disabled", disabled_style)
-	
-	button.pressed.connect(_on_move_button_pressed.bind(index))
-	
-	return button
+func _make_hp_bar(fill_color: Color) -> ProgressBar:
+	var bar = ProgressBar.new()
+	bar.custom_minimum_size = Vector2(0, 10)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.max_value = 100.0
+	bar.value = 100.0
+	bar.show_percentage = false
+
+	var bg = StyleBoxFlat.new()
+	bg.bg_color = Color(0.10, 0.10, 0.14)
+	bg.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("background", bg)
+
+	var fill = StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("fill", fill)
+	return bar
 
 
-func _create_stance_button(stance: int) -> Button:
-	var data = DefensiveStances.get_stance_data(stance)
+# =============================================================================
+# BUTTON FACTORIES
+# =============================================================================
+
+func _make_move_button(index: int) -> Button:
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(0, MOVE_BTN_H)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.clip_text = false
+	btn.text = "Move %d" % (index + 1)
+
+	# Ensure font-size is small by default (will be styled per-move)
+	btn.add_theme_font_size_override("font_size", 11)
+	if UITheme.font_regular():
+		btn.add_theme_font_override("font", UITheme.font_regular())
+
+	_apply_move_btn_style(btn, Color(0.52, 0.52, 0.60), true)
+	btn.pressed.connect(_on_move_pressed.bind(index))
+	return btn
+
+
+func _apply_move_btn_style(btn: Button, accent: Color, enabled: bool, selected: bool = false) -> void:
+	var base_col = accent if enabled else Color(0.28, 0.28, 0.30)
+
+	var normal_s = StyleBoxFlat.new()
+	normal_s.bg_color = C_BTN_BASE if enabled else Color(0.040, 0.040, 0.060, 0.6)
+	normal_s.border_color = UITheme.C_GOLD_BRIGHT if selected else base_col
+	normal_s.set_border_width_all(3 if selected else 2)
+	normal_s.set_corner_radius_all(CORNER_R)
+	normal_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("normal", normal_s)
+
+	var hover_s = StyleBoxFlat.new()
+	hover_s.bg_color = base_col.darkened(0.55) if enabled else Color(0.040, 0.040, 0.060, 0.6)
+	hover_s.border_color = base_col.lightened(0.3) if enabled else Color(0.28, 0.28, 0.30)
+	hover_s.set_border_width_all(2)
+	hover_s.set_corner_radius_all(CORNER_R)
+	hover_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("hover", hover_s)
+	btn.add_theme_stylebox_override("focus", hover_s)
+
+	var pressed_s = StyleBoxFlat.new()
+	pressed_s.bg_color = UITheme.C_GOLD.darkened(0.5)
+	pressed_s.border_color = UITheme.C_GOLD_BRIGHT
+	pressed_s.set_border_width_all(3)
+	pressed_s.set_corner_radius_all(CORNER_R)
+	pressed_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("pressed", pressed_s)
+
+	var disabled_s = StyleBoxFlat.new()
+	disabled_s.bg_color = Color(0.040, 0.040, 0.060, 0.55)
+	disabled_s.border_color = Color(0.25, 0.25, 0.28)
+	disabled_s.set_border_width_all(1)
+	disabled_s.set_corner_radius_all(CORNER_R)
+	disabled_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("disabled", disabled_s)
+
+
+func _make_stance_button(stance: int) -> Button:
 	var color = STANCE_COLORS.get(stance, Color.WHITE)
-	
-	var button = Button.new()
-	button.custom_minimum_size = Vector2(130, 85)
-	button.text = data["name"] + "\n" + _get_stance_short_desc(stance)
-	button.add_theme_font_size_override("font_size", 11)
-	
-	var normal_style = StyleBoxFlat.new()
-	normal_style.bg_color = color.darkened(0.7)
-	normal_style.border_color = UITheme.C_GOLD.darkened(0.5)
-	normal_style.set_border_width_all(2)
-	normal_style.set_corner_radius_all(8)
-	normal_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("normal", normal_style)
-	
-	var hover_style = StyleBoxFlat.new()
-	hover_style.bg_color = color.darkened(0.5)
-	hover_style.border_color = UITheme.C_GOLD
-	hover_style.set_border_width_all(2)
-	hover_style.set_corner_radius_all(8)
-	hover_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("hover", hover_style)
-	
-	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = color.darkened(0.3)
-	pressed_style.border_color = Color(1.0, 0.9, 0.5)
-	pressed_style.set_border_width_all(3)
-	pressed_style.set_corner_radius_all(8)
-	pressed_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("pressed", pressed_style)
-	
-	var disabled_style = StyleBoxFlat.new()
-	disabled_style.bg_color = Color(0.1, 0.1, 0.12, 0.5)
-	disabled_style.border_color = Color(0.2, 0.2, 0.2)
-	disabled_style.set_border_width_all(1)
-	disabled_style.set_corner_radius_all(8)
-	disabled_style.set_content_margin_all(8)
-	button.add_theme_stylebox_override("disabled", disabled_style)
-	
-	button.pressed.connect(_on_stance_button_pressed.bind(stance))
-	
-	return button
+
+	var btn = Button.new()
+	btn.custom_minimum_size = Vector2(0, STANCE_BTN_H)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.text = _build_stance_text(stance)
+	btn.add_theme_font_size_override("font_size", 11)
+	if UITheme.font_regular():
+		btn.add_theme_font_override("font", UITheme.font_regular())
+
+	_apply_stance_btn_style(btn, color, true, false)
+	btn.pressed.connect(_on_stance_pressed.bind(stance))
+	return btn
 
 
-func _get_stance_short_desc(stance: int) -> String:
-	match stance:
-		DefensiveStances.DefensiveStance.BRACE:
-			return "+3 DEF\n-20% DMG"
-		DefensiveStances.DefensiveStance.DODGE:
-			return "+5 Evasion"
-		DefensiveStances.DefensiveStance.COUNTER:
-			return "50% ATK\non miss"
-		DefensiveStances.DefensiveStance.ENDURE:
-			return "Survive\nat 1 HP"
+func _apply_stance_btn_style(btn: Button, accent: Color, enabled: bool, selected: bool) -> void:
+	var border_col = UITheme.C_GOLD_BRIGHT if selected else accent
+
+	var normal_s = StyleBoxFlat.new()
+	normal_s.bg_color = accent.darkened(0.78) if enabled else Color(0.04, 0.04, 0.06, 0.5)
+	normal_s.border_color = border_col
+	normal_s.set_border_width_all(3 if selected else 2)
+	normal_s.set_corner_radius_all(CORNER_R)
+	normal_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("normal", normal_s)
+
+	var hover_s = StyleBoxFlat.new()
+	hover_s.bg_color = accent.darkened(0.62)
+	hover_s.border_color = accent.lightened(0.3)
+	hover_s.set_border_width_all(2)
+	hover_s.set_corner_radius_all(CORNER_R)
+	hover_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("hover", hover_s)
+	btn.add_theme_stylebox_override("focus", hover_s)
+
+	var pressed_s = StyleBoxFlat.new()
+	pressed_s.bg_color = accent.darkened(0.40)
+	pressed_s.border_color = UITheme.C_GOLD_BRIGHT
+	pressed_s.set_border_width_all(3)
+	pressed_s.set_corner_radius_all(CORNER_R)
+	pressed_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("pressed", pressed_s)
+
+	var disabled_s = StyleBoxFlat.new()
+	disabled_s.bg_color = Color(0.04, 0.04, 0.06, 0.5)
+	disabled_s.border_color = Color(0.25, 0.25, 0.28)
+	disabled_s.set_border_width_all(1)
+	disabled_s.set_corner_radius_all(CORNER_R)
+	disabled_s.set_content_margin_all(int(PAD))
+	btn.add_theme_stylebox_override("disabled", disabled_s)
+
+
+# =============================================================================
+# TEXT BUILDERS
+# =============================================================================
+
+func _build_move_text(move: MoveData.Move, troop: Node) -> String:
+	# Line 1: icon + name
+	var icon = _move_icon(move.move_type)
+	var line1 = "%s %s" % [icon, move.move_name]
+
+	# Line 2: plain-English hook
+	var line2 = _move_hook(move.move_type)
+
+	# Line 3: stats
+	var parts: Array[String] = []
+	var pct = int(move.power_percent * 100.0)
+	parts.append("%d%% DMG" % pct)
+
+	if move.accuracy_modifier > 0:
+		parts.append("+%d ACC" % move.accuracy_modifier)
+	elif move.accuracy_modifier < 0:
+		parts.append("%d ACC" % move.accuracy_modifier)
+
+	var cd = troop.get_move_cooldown(move.move_id) if troop else 0
+	if cd > 0:
+		parts.append("⏳ %d-turn cooldown" % cd)
+	else:
+		parts.append("No cooldown")
+
+	# Optional effectiveness append (kept on line 3 if space — else own line)
+	if current_target:
+		var eff_text = _get_effectiveness_tag(move.damage_type, current_target.troop_id)
+		if eff_text != "":
+			return "%s\n%s\n%s\n%s" % [line1, line2, "  ".join(parts), eff_text]
+
+	return "%s\n%s\n%s" % [line1, line2, "  ·  ".join(parts)]
+
+
+func _move_icon(move_type: int) -> String:
+	match move_type:
+		MoveData.MoveType.STANDARD : return "⚔️"
+		MoveData.MoveType.POWER    : return "💥"
+		MoveData.MoveType.PRECISION: return "🎯"
+		MoveData.MoveType.SPECIAL  : return "✨"
+	return "❓"
+
+
+func _move_hook(move_type: int) -> String:
+	match move_type:
+		MoveData.MoveType.STANDARD : return "Reliable strike — safe every turn"
+		MoveData.MoveType.POWER    : return "Heavy blow — risky but hits hard"
+		MoveData.MoveType.PRECISION: return "Careful strike — high accuracy"
+		MoveData.MoveType.SPECIAL  : return "Unique ability — use it wisely"
 	return ""
 
 
-func _create_ready_section() -> void:
-	var ready_container = HBoxContainer.new()
-	ready_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	ready_container.add_theme_constant_override("separation", 20)
-	content_container.add_child(ready_container)
-	
-	# Ready button — styled via UITheme
-	ready_button = Button.new()
-	ready_button.text = "✅ READY"
-	ready_button.custom_minimum_size = Vector2(160, 50)
-	UITheme.apply_hud_button(ready_button, Color(0.3, 0.8, 0.4), 20)
-	ready_button.pressed.connect(_on_ready_pressed)
-	ready_container.add_child(ready_button)
-	
-	# Waiting label
-	waiting_label = Label.new()
-	waiting_label.text = ""
-	UITheme.style_label(waiting_label, 16, UITheme.C_WARM_WHITE)
-	ready_container.add_child(waiting_label)
+func _get_effectiveness_tag(damage_type: int, target_id: String) -> String:
+	var eff = TypeEffectiveness.get_effectiveness(damage_type, target_id)
+	if eff >= 1.5:
+		return "✨ Super Effective!"
+	elif eff == 0.0:
+		return "🛡️ Immune"
+	elif eff <= 0.5:
+		return "↓ Resisted"
+	return ""
+
+
+func _build_stance_text(stance: int) -> String:
+	match stance:
+		DefensiveStances.DefensiveStance.BRACE:
+			return "🛡️  Brace\nTank the hit — less damage, no knockback.\n+3 DEF  ·  −20% damage"
+		DefensiveStances.DefensiveStance.DODGE:
+			return "⚡  Dodge\nTry to sidestep — harder to hit you.\n+5 Evasion"
+		DefensiveStances.DefensiveStance.COUNTER:
+			return "↩️  Counter\nGamble — if they miss, you hit back.\n50% ATK on miss"
+		DefensiveStances.DefensiveStance.ENDURE:
+			return "💪  Endure\nLast resort — survive a fatal blow at 1 HP.\nOnce per match"
+	return ""
+
+
+func _build_stance_text_used() -> String:
+	return "💪  Endure\nAlready used this match.\n(Unavailable)"
 
 
 # =============================================================================
-# PUBLIC METHODS
+# PUBLIC API
 # =============================================================================
 
-## Set the combat mode (SIMPLE or ENHANCED)
-func set_combat_mode(mode: int) -> void:
-	combat_mode = mode
-	mode_config = GameConfig.get_combat_mode_config(mode)
-	
-	# Update timer based on mode
-	max_time = mode_config.get("timer_seconds", CombatBalanceConfig.SELECTION_TIME_LIMIT)
-
-
-## Show the selection UI for the attacker
+## Show move selection for the attacking player
 func show_attacker_selection(attacker: Node, defender: Node, modifiers: Array = []) -> void:
-	is_attacker = true
-	current_troop = attacker
+	is_attacker    = true
+	current_troop  = attacker
 	current_target = defender
-	selected_move = null
-	is_ready = false
-	recommended_move_index = -1
-	
-	combatants_label.text = "%s ⚔️ %s" % [attacker.display_name, defender.display_name]
-	
-	# Update Stats Display
-	var atk_val = attacker.get_modified_stat("atk")
-	var hp_cur = attacker.current_hp
-	var hp_max = attacker.max_hp
-	attacker_stats_label.text = "ATK: %d | HP: %d/%d" % [atk_val, hp_cur, hp_max]
-	
-	var def_val = defender.get_modified_stat("def")
-	var def_hp_cur = defender.current_hp
-	var def_hp_max = defender.max_hp
-	defender_stats_label.text = "DEF: %d | HP: %d/%d" % [def_val, def_hp_cur, def_hp_max]
-	
-	# Update Modifiers based on mode
-	if mode_config.get("show_positioning", true):
-		if modifiers.is_empty():
-			modifiers_label.text = "Positioning: Normal"
-		else:
-			modifiers_label.text = "Modifiers: " + ", ".join(modifiers)
+	selected_move  = null
+	is_ready       = false
+
+	# Info bar
+	var atk_name = attacker.display_name if attacker else "Attacker"
+	var def_name = defender.display_name if defender else "Defender"
+	_info_label.text = "⚔️  %s  →  %s" % [atk_name, def_name]
+
+	# HP bars
+	if attacker:
+		_hp_lbl_atk.text = "%s  %d/%d HP" % [atk_name, attacker.current_hp, attacker.max_hp]
+		_hp_bar_atk.max_value = attacker.max_hp
+		_hp_bar_atk.value    = attacker.current_hp
+	if defender:
+		_hp_lbl_def.text = "%d/%d HP  %s" % [defender.current_hp, defender.max_hp, def_name]
+		_hp_bar_def.max_value = defender.max_hp
+		_hp_bar_def.value    = defender.current_hp
+
+	# Modifiers strip
+	if not modifiers.is_empty():
+		_mod_label.text    = _build_modifiers_text(modifiers)
+		_mod_label.visible = true
 	else:
-		# Simple Mode - hide positioning complexity
-		modifiers_label.text = "Choose your attack!"
-	
-	# Show attacker panel, hide defender panel
-	attacker_panel.visible = true
-	defender_panel.visible = false
-	
-	# Populate move buttons (respects Simple Mode filtering)
-	_populate_move_buttons(attacker)
-	
-	# Reset timer
+		_mod_label.visible = false
+
+	# Show/hide panels
+	_move_header.visible   = true
+	_stance_header.visible = false
+	for btn in _move_buttons:
+		btn.get_parent().visible = true
+	for btn in _stance_buttons:
+		btn.visible = false
+
+	_populate_moves(attacker)
+	_refresh_confirm(false)
 	_start_timer()
-	
 	visible = true
 
 
-## Show the selection UI for the defender
+## Show stance selection for the defending player
 func show_defender_selection(attacker: Node, defender: Node) -> void:
-	is_attacker = false
-	current_troop = defender
-	current_target = attacker # Opponent
+	is_attacker    = false
+	current_troop  = defender
+	current_target = attacker
 	selected_stance = DefensiveStances.DefensiveStance.BRACE
-	is_ready = false
-	
-	# Simple Mode: Auto-select stance and skip defender UI
-	if mode_config.get("auto_defender_stance", false):
-		# Auto-select Brace (safest option for new players)
-		selected_stance = DefensiveStances.DefensiveStance.BRACE
-		is_ready = true
-		stance_selected.emit(selected_stance)
-		ready_pressed.emit()
-		return  # Don't show UI, auto-proceed
-	
-	combatants_label.text = "%s 🛡️ %s" % [defender.display_name, attacker.display_name]
-	
-	# Update Stats Display
-	var def_val = defender.get_modified_stat("def")
-	var hp_cur = defender.current_hp
-	var hp_max = defender.max_hp
-	attacker_stats_label.text = "DEF: %d | HP: %d/%d" % [def_val, hp_cur, hp_max]
-	attacker_stats_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.9))
-	
-	var atk_val = attacker.get_modified_stat("atk")
-	defender_stats_label.text = "ATK: %d" % atk_val
-	defender_stats_label.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
-	
-	modifiers_label.text = "Prepare to defend!"
-	
-	# Show defender panel, hide attacker panel
-	attacker_panel.visible = false
-	defender_panel.visible = true
-	
-	# Update stance buttons (check if Endure is available)
-	_update_stance_buttons(defender)
-	
-	# Reset timer
+	is_ready       = false
+
+	# Info bar
+	var atk_name = attacker.display_name if attacker else "Attacker"
+	var def_name = defender.display_name if defender else "Defender"
+	_info_label.text = "🛡️  %s  defending against  %s" % [def_name, atk_name]
+
+	# HP bars
+	if attacker:
+		_hp_lbl_atk.text = "%s  %d/%d HP" % [atk_name, attacker.current_hp, attacker.max_hp]
+		_hp_bar_atk.max_value = attacker.max_hp
+		_hp_bar_atk.value    = attacker.current_hp
+	if defender:
+		_hp_lbl_def.text = "%d/%d HP  %s" % [defender.current_hp, defender.max_hp, def_name]
+		_hp_bar_def.max_value = defender.max_hp
+		_hp_bar_def.value    = defender.current_hp
+
+	_mod_label.visible = false
+
+	# Show/hide panels
+	_move_header.visible   = false
+	_stance_header.visible = true
+	for btn in _move_buttons:
+		btn.get_parent().visible = false
+	for btn in _stance_buttons:
+		btn.visible = true
+
+	_update_stance_availability(defender)
+	_highlight_selected_stance(selected_stance)
+	_refresh_confirm(true)  # Brace pre-selected so confirm is immediately available
 	_start_timer()
-	
 	visible = true
 
 
-## Hide the selection UI
+## Hide the UI
 func hide_selection() -> void:
-	visible = false
+	visible       = false
 	timer_running = false
 
 
-## Set waiting state (after player is ready)
+## Switch to waiting state after confirming
 func set_waiting_state() -> void:
-	waiting_label.text = "⏳ Waiting for opponent..."
-	ready_button.disabled = true
+	_waiting_lbl.text      = "⏳  Waiting for opponent…"
+	_confirm_btn.disabled  = true
+	_confirm_btn.text      = "⏳  Waiting…"
 
 
 # =============================================================================
 # PRIVATE METHODS
 # =============================================================================
 
-func _populate_move_buttons(troop: Node) -> void:
+func _populate_moves(troop: Node) -> void:
 	var moves = troop.available_moves if troop else []
-	var moves_visible = mode_config.get("moves_visible", 4)
-	var show_damage_types = mode_config.get("show_damage_types", true)
-	var hint_recommended = mode_config.get("hint_recommended_move", false)
-	
-	# Calculate recommended move for Simple Mode
-	if hint_recommended and current_target:
-		recommended_move_index = _calculate_recommended_move(troop, current_target)
-	
-	# Filter moves for Simple Mode (show Standard + best Special)
-	var filtered_moves = _get_filtered_moves(moves, moves_visible)
-	
+
 	for i in range(4):
-		var button = move_buttons[i]
-		
-		# In Simple Mode, hide extra buttons
-		if i >= moves_visible:
-			button.visible = false
+		var btn = _move_buttons[i]
+
+		if i >= moves.size():
+			btn.text     = "---"
+			btn.visible  = false
+			btn.disabled = true
 			continue
-		else:
-			button.visible = true
-		
-		if i < filtered_moves.size():
-			var move = filtered_moves[i]
-			var cooldown = troop.get_move_cooldown(move.move_id)
-			var is_available = cooldown <= 0
-			
-			# Build button text based on mode
-			var text = ""
-			if combat_mode == GameConfig.CombatMode.SIMPLE:
-				# Simplified display for new players
-				text = _build_simple_move_text(move, troop, cooldown)
-			else:
-				# Full display for Enhanced Mode
-				var type_str = ["STD", "PWR", "PRC", "SPC"][move.move_type]
-				var power_str = str(int(move.power_percent * 100)) + "%"
-				var acc_str = ("+" if move.accuracy_modifier >= 0 else "") + str(move.accuracy_modifier)
-				
-				text = "%s\n%s | %s PWR | %s ACC" % [move.move_name, type_str, power_str, acc_str]
-				
-				# Add Effectiveness Preview
-				if current_target and show_damage_types:
-					var target_id = current_target.troop_id
-					var damage_type = move.damage_type
-					var effectiveness_text = _get_matchup_text(damage_type, target_id)
-					text += "\n" + effectiveness_text
-				
-				if cooldown > 0:
-					text += "\n⏳ %d turns" % cooldown
-			
-			button.text = text
-			button.disabled = not is_available
-			
-			# Color based on move type, with recommendation highlight
-			var color = MOVE_COLORS.get(move.move_type, Color.WHITE)
-			var is_recommended = hint_recommended and (i == recommended_move_index)
-			_style_move_button_with_recommendation(button, color, is_available, is_recommended)
-		else:
-			button.text = "---"
-			button.disabled = true
-			button.visible = false
+
+		btn.visible = true
+		var move     = moves[i]
+		var cooldown = troop.get_move_cooldown(move.move_id) if troop else 0
+		var available = cooldown <= 0
+
+		btn.text     = _build_move_text(move, troop)
+		btn.disabled = not available
+
+		var color = MOVE_TYPE_COLORS.get(move.move_type, Color(0.52, 0.52, 0.60))
+		_apply_move_btn_style(btn, color, available)
+
+	# Colour labels
+	for btn in _move_buttons:
+		btn.add_theme_color_override("font_color",          UITheme.C_GOLD)
+		btn.add_theme_color_override("font_hover_color",    UITheme.C_GOLD_BRIGHT)
+		btn.add_theme_color_override("font_pressed_color",  UITheme.C_GOLD_BRIGHT)
+		btn.add_theme_color_override("font_disabled_color", UITheme.C_DIM)
 
 
-func _get_matchup_text(damage_type: int, target_id: String) -> String:
-	var effectiveness = TypeEffectiveness.get_effectiveness(damage_type, target_id)
-	
-	if effectiveness >= 1.5:
-		return "✨ Super Effective!"
-	elif effectiveness == 0.0:
-		return "🛡️ Immune"
-	elif effectiveness <= 0.5:
-		return "🛡️ Resisted"
-	else:
-		return ""
+func _update_stance_availability(defender: Node) -> void:
+	var stances = DefensiveStances.get_all_stances()
+	for i in range(_stance_buttons.size()):
+		var btn     = _stance_buttons[i]
+		var stance  = stances[i]
+		var color   = STANCE_COLORS.get(stance, Color.WHITE)
+		var enabled = true
 
-
-func _style_move_button(button: Button, color: Color, enabled: bool) -> void:
-	if enabled:
-		var normal_style = StyleBoxFlat.new()
-		normal_style.bg_color = color.darkened(0.7)
-		normal_style.border_color = color.darkened(0.4)
-		normal_style.set_border_width_all(2)
-		normal_style.set_corner_radius_all(8)
-		button.add_theme_stylebox_override("normal", normal_style)
-		
-		var hover_style = StyleBoxFlat.new()
-		hover_style.bg_color = color.darkened(0.5)
-		hover_style.border_color = color
-		hover_style.set_border_width_all(2)
-		hover_style.set_corner_radius_all(8)
-		button.add_theme_stylebox_override("hover", hover_style)
-
-
-func _update_stance_buttons(defender: Node) -> void:
-	for i in range(stance_buttons.size()):
-		var button = stance_buttons[i]
-		var stance = DefensiveStances.get_all_stances()[i]
-		
-		# Check if Endure is available
 		if stance == DefensiveStances.DefensiveStance.ENDURE:
-			var can_use = defender.endure_uses_remaining > 0 if defender else true
-			button.disabled = not can_use
-			if not can_use:
-				button.text = "Endure\n(USED)"
+			var has_uses = defender.endure_uses_remaining > 0 if defender else true
+			enabled = has_uses
+			if not has_uses:
+				btn.text = _build_stance_text_used()
+			else:
+				btn.text = _build_stance_text(stance)
+		else:
+			btn.text = _build_stance_text(stance)
+
+		btn.disabled = not enabled
+		_apply_stance_btn_style(btn, color, enabled, stance == selected_stance)
+
+	# Font colours
+	for btn in _stance_buttons:
+		btn.add_theme_color_override("font_color",          UITheme.C_WARM_WHITE)
+		btn.add_theme_color_override("font_hover_color",    UITheme.C_GOLD_BRIGHT)
+		btn.add_theme_color_override("font_pressed_color",  UITheme.C_GOLD_BRIGHT)
+		btn.add_theme_color_override("font_disabled_color", UITheme.C_DIM)
+
+
+func _highlight_selected_stance(stance: int) -> void:
+	var stances = DefensiveStances.get_all_stances()
+	for i in range(_stance_buttons.size()):
+		var btn    = _stance_buttons[i]
+		var s      = stances[i]
+		var color  = STANCE_COLORS.get(s, Color.WHITE)
+		var enabled = not btn.disabled
+		_apply_stance_btn_style(btn, color, enabled, s == stance)
+
+
+func _highlight_selected_move(index: int) -> void:
+	var moves = current_troop.available_moves if current_troop else []
+	for i in range(_move_buttons.size()):
+		var btn   = _move_buttons[i]
+		var color : Color
+		if i < moves.size():
+			color = MOVE_TYPE_COLORS.get(moves[i].move_type, Color(0.52, 0.52, 0.60))
+		else:
+			color = Color(0.52, 0.52, 0.60)
+		_apply_move_btn_style(btn, color, not btn.disabled, i == index)
+
+
+func _build_modifiers_text(modifiers: Array) -> String:
+	var parts: Array[String] = []
+	for m in modifiers:
+		match m:
+			"flanking"  : parts.append("⚔️ Flanking (+3 to hit)")
+			"cover"     : parts.append("🌲 In cover (+3 their DEF)")
+			"surrounded": parts.append("😰 Surrounded (–3 DEF)")
+			_           : parts.append(str(m))
+	return "  ·  ".join(parts)
+
+
+func _refresh_confirm(enabled: bool) -> void:
+	_confirm_btn.disabled = not enabled
+	_confirm_btn.text     = "✅  CONFIRM"
+	_waiting_lbl.text     = ""
 
 
 func _start_timer() -> void:
 	current_time = max_time
 	timer_running = true
-	waiting_label.text = ""
-	ready_button.disabled = false
-	is_ready = false
+	_waiting_lbl.text    = ""
+	_confirm_btn.disabled = false
+	_confirm_btn.text    = "✅  CONFIRM"
+	_last_timer_sec      = -1
 	_update_timer_display()
 
 
-var _last_timer_seconds: int = -1
-
 func _update_timer_display() -> void:
-	timer_bar.value = current_time
-	var display_seconds = int(current_time)
-	
-	if display_seconds != _last_timer_seconds:
-		_last_timer_seconds = display_seconds
-		timer_label.text = " %ds" % display_seconds
-		
-		if display_seconds <= 3:
-			timer_bar.add_theme_stylebox_override("fill", _bar_fill_critical)
-			timer_label.add_theme_color_override("font_color", Color.RED)
-		elif display_seconds <= 5:
-			timer_bar.add_theme_stylebox_override("fill", _bar_fill_warning)
-			timer_label.add_theme_color_override("font_color", Color.YELLOW)
+	_timer_bar.value = current_time
+	var secs = int(current_time)
+
+	if secs != _last_timer_sec:
+		_last_timer_sec = secs
+		_timer_label.text = "%ds" % secs
+
+		if secs <= 3:
+			_timer_bar.add_theme_stylebox_override("fill", _fill_crit)
+			_timer_label.add_theme_color_override("font_color", Color(1.0, 0.30, 0.30))
+		elif secs <= 5:
+			_timer_bar.add_theme_stylebox_override("fill", _fill_warn)
+			_timer_label.add_theme_color_override("font_color", Color(0.95, 0.80, 0.20))
 		else:
-			timer_bar.add_theme_stylebox_override("fill", _bar_fill_normal)
-			timer_label.add_theme_color_override("font_color", Color.WHITE)
+			_timer_bar.add_theme_stylebox_override("fill", _fill_normal)
+			_timer_label.add_theme_color_override("font_color", UITheme.C_GOLD_BRIGHT)
 
 
-func _on_move_button_pressed(index: int) -> void:
-	if current_troop and index < current_troop.available_moves.size():
-		selected_move = current_troop.available_moves[index]
-		
-		# Highlight selected button
-		for i in range(move_buttons.size()):
-			var button = move_buttons[i]
-			if i == index:
-				var style = StyleBoxFlat.new()
-				style.bg_color = Color(0.3, 0.5, 0.3)
-				style.border_color = Color(0.5, 1.0, 0.5)
-				style.set_border_width_all(3)
-				style.set_corner_radius_all(8)
-				button.add_theme_stylebox_override("normal", style)
-			elif not button.disabled:
-				var move = current_troop.available_moves[i] if i < current_troop.available_moves.size() else null
-				if move:
-					var color = MOVE_COLORS.get(move.move_type, Color.WHITE)
-					_style_move_button(button, color, true)
+# =============================================================================
+# PROCESS
+# =============================================================================
+
+func _process(delta: float) -> void:
+	if not visible or not timer_running:
+		return
+
+	current_time -= delta
+	_update_timer_display()
+
+	if current_time <= 0.0:
+		timer_running = false
+		visible = false
+		timeout.emit()
 
 
-func _on_stance_button_pressed(stance: int) -> void:
+# =============================================================================
+# BUTTON CALLBACKS
+# =============================================================================
+
+func _on_move_pressed(index: int) -> void:
+	if not current_troop:
+		return
+	if index >= current_troop.available_moves.size():
+		return
+
+	selected_move = current_troop.available_moves[index]
+	_highlight_selected_move(index)
+	_on_confirm_pressed()
+
+
+func _on_stance_pressed(stance: int) -> void:
 	selected_stance = stance
-	
-	# Highlight selected button
-	var stances = DefensiveStances.get_all_stances()
-	for i in range(stance_buttons.size()):
-		var button = stance_buttons[i]
-		var btn_stance = stances[i]
-		var color = STANCE_COLORS.get(btn_stance, Color.WHITE)
-		
-		if btn_stance == stance:
-			var style = StyleBoxFlat.new()
-			style.bg_color = color.darkened(0.3)
-			style.border_color = Color(1.0, 0.9, 0.5)
-			style.set_border_width_all(3)
-			style.set_corner_radius_all(8)
-			button.add_theme_stylebox_override("normal", style)
-		elif not button.disabled:
-			var normal_style = StyleBoxFlat.new()
-			normal_style.bg_color = color.darkened(0.7)
-			normal_style.border_color = UITheme.C_GOLD.darkened(0.5)
-			normal_style.set_border_width_all(2)
-			normal_style.set_corner_radius_all(8)
-			button.add_theme_stylebox_override("normal", normal_style)
+	_highlight_selected_stance(stance)
+	_on_confirm_pressed()
 
 
-func _on_ready_pressed() -> void:
+func _on_confirm_pressed() -> void:
 	if is_ready:
 		return
-	
-	is_ready = true
+
+	is_ready      = true
 	timer_running = false
-	
-	if is_attacker:
-		if selected_move:
-			move_selected.emit(selected_move)
-		else:
-			# Default to first available move
-			if current_troop and current_troop.available_moves.size() > 0:
-				selected_move = current_troop.available_moves[0]
-				move_selected.emit(selected_move)
-	else:
-		stance_selected.emit(selected_stance)
-	
+
+	# Call this first so we don't overwrite UI if the emitted signal triggers another UI phase
 	ready_pressed.emit()
 	set_waiting_state()
 
-
-func _on_timeout() -> void:
-	if is_ready:
-		return
-	
-	is_ready = true
-	
-	# Auto-select defaults
 	if is_attacker:
-		if current_troop and current_troop.available_moves.size() > 0:
+		if selected_move:
+			move_selected.emit(selected_move)
+		elif current_troop and current_troop.available_moves.size() > 0:
+			# Default to first available move
 			selected_move = current_troop.available_moves[0]
 			move_selected.emit(selected_move)
 	else:
-		selected_stance = DefensiveStances.DefensiveStance.BRACE
 		stance_selected.emit(selected_stance)
-	
-	ready_pressed.emit()
-
-
-# =============================================================================
-# SIMPLE MODE HELPER METHODS
-# =============================================================================
-
-## Get filtered moves for Simple Mode
-## Returns Standard move + best available special move
-func _get_filtered_moves(moves: Array, max_count: int) -> Array:
-	if max_count >= 4 or moves.size() <= max_count:
-		return moves
-	
-	var filtered = []
-	var standard_move = null
-	var best_special = null
-	var best_special_score = -1.0
-	
-	for move in moves:
-		if move.move_type == MoveData.MoveType.STANDARD:
-			standard_move = move
-		else:
-			# Score special moves by power * (1 + accuracy/10)
-			var score = move.power_percent * (1.0 + float(move.accuracy_modifier) / 10.0)
-			if score > best_special_score:
-				best_special_score = score
-				best_special = move
-	
-	# Always include Standard first
-	if standard_move:
-		filtered.append(standard_move)
-	
-	# Add best special move
-	if best_special and filtered.size() < max_count:
-		filtered.append(best_special)
-	
-	# Fill remaining slots if needed
-	for move in moves:
-		if filtered.size() >= max_count:
-			break
-		if move not in filtered:
-			filtered.append(move)
-	
-	return filtered
-
-
-## Build simplified move text for Simple Mode
-func _build_simple_move_text(move: MoveData.Move, troop: Node, cooldown: int) -> String:
-	var text = move.move_name + "\n"
-	
-	# Show power as simple stars
-	var power_stars = _get_power_stars(move.power_percent)
-	text += "Power: %s\n" % power_stars
-	
-	# Show simple hit chance if we have a target
-	if current_target:
-		var hit_chance = _estimate_hit_chance(troop, current_target, move)
-		text += "Hit: ~%d%%\n" % hit_chance
-		
-		# Show simple effectiveness
-		var eff_text = CombatBalanceConfig.get_simple_effectiveness_text(
-			move.damage_type, current_target.troop_id
-		)
-		if eff_text == "STRONG":
-			text += "✅ STRONG"
-		elif eff_text == "WEAK":
-			text += "⚠️ WEAK"
-	
-	if cooldown > 0:
-		text += "\n⏳ Wait %d" % cooldown
-	
-	return text
-
-
-## Convert power percent to star rating
-func _get_power_stars(power: float) -> String:
-	if power >= 1.5:
-		return "⭐⭐⭐"  # High power
-	elif power >= 1.0:
-		return "⭐⭐"    # Medium power
-	elif power >= 0.5:
-		return "⭐"      # Low power
-	else:
-		return "—"       # Utility (no damage)
-
-
-## Estimate hit chance for Simple Mode display
-func _estimate_hit_chance(attacker: Node, defender: Node, move: MoveData.Move) -> int:
-	# Simplified calculation for display purposes
-	var atk = attacker.get_modified_stat("atk") if attacker else 50
-	var def = defender.get_modified_stat("def") if defender else 50
-	
-	var atk_mod = int(atk / 10.0) + move.accuracy_modifier
-	var dc = 10 + int(def / 10.0)
-	
-	# On d20: need to roll >= (dc - atk_mod) to hit
-	var min_roll_needed = dc - atk_mod
-	
-	# Clamp to valid d20 range
-	min_roll_needed = clamp(min_roll_needed, 1, 20)
-	
-	# Calculate probability: (21 - min_roll_needed) / 20 * 100
-	var hit_chance = int((21.0 - float(min_roll_needed)) / 20.0 * 100.0)
-	
-	return clamp(hit_chance, 5, 95)  # Never show 0% or 100%
-
-
-## Calculate recommended move for Simple Mode hints
-func _calculate_recommended_move(troop: Node, target: Node) -> int:
-	if not troop or not target:
-		return 0
-	
-	var moves = troop.available_moves
-	var best_index = 0
-	var best_score = -1.0
-	
-	for i in range(moves.size()):
-		var move = moves[i]
-		var cooldown = troop.get_move_cooldown(move.move_id)
-		
-		if cooldown > 0:
-			continue  # Skip moves on cooldown
-		
-		# Score = power * effectiveness * hit_chance_factor
-		var effectiveness = TypeEffectiveness.get_effectiveness(move.damage_type, target.troop_id)
-		var hit_factor = 1.0 + float(move.accuracy_modifier) / 10.0
-		var score = move.power_percent * effectiveness * hit_factor
-		
-		# Bonus for Standard moves (reliable)
-		if move.move_type == MoveData.MoveType.STANDARD:
-			score *= 1.1
-		
-		if score > best_score:
-			best_score = score
-			best_index = i
-	
-	return best_index
-
-
-## Style move button with optional recommendation highlight
-func _style_move_button_with_recommendation(button: Button, color: Color, enabled: bool, is_recommended: bool) -> void:
-	if not enabled:
-		var disabled_style = StyleBoxFlat.new()
-		disabled_style.bg_color = Color(0.1, 0.1, 0.12, 0.5)
-		disabled_style.border_color = Color(0.2, 0.2, 0.2)
-		disabled_style.set_border_width_all(1)
-		disabled_style.set_corner_radius_all(8)
-		button.add_theme_stylebox_override("normal", disabled_style)
-		return
-	
-	if is_recommended:
-		# Golden highlight for recommended move
-		var normal_style = StyleBoxFlat.new()
-		normal_style.bg_color = Color(0.3, 0.35, 0.15)
-		normal_style.border_color = Color(1.0, 0.85, 0.3)
-		normal_style.set_border_width_all(3)
-		normal_style.set_corner_radius_all(8)
-		button.add_theme_stylebox_override("normal", normal_style)
-		
-		var hover_style = StyleBoxFlat.new()
-		hover_style.bg_color = Color(0.4, 0.45, 0.2)
-		hover_style.border_color = Color(1.0, 0.9, 0.5)
-		hover_style.set_border_width_all(3)
-		hover_style.set_corner_radius_all(8)
-		button.add_theme_stylebox_override("hover", hover_style)
-	else:
-		# Normal styling
-		_style_move_button(button, color, enabled)

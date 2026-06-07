@@ -14,7 +14,7 @@ const SettingsMenuScene = preload("res://scripts/ui/settings_menu.gd")
 const CardSelectionUIScene = preload("res://scripts/ui/card_selection_ui.gd")
 const FirstMoveDiceUIScene = preload("res://scripts/ui/first_move_dice_ui.gd")
 const CombatSelectionUIScene = preload("res://scripts/ui/combat_selection_ui.gd")
-const CombatResolutionUIScene = preload("res://scripts/ui/combat_resolution_ui.gd")
+const CombatDiceSplitUIScene = preload("res://scripts/ui/combat_dice_split_ui.gd")
 
 # =============================================================================
 # NODE REFERENCES
@@ -25,11 +25,10 @@ var camera_pivot: Node3D
 var camera_body: CharacterBody3D # Physical camera carrier (collision)
 var game_manager: GameManager
 var game_ui: GameUI
-var dice_ui: DiceUI
+var combat_dice_split_ui: CombatDiceSplitUI
 var card_selection_ui: Node # CardSelectionUI
 var first_move_dice_ui: FirstMoveDiceUI # UI for initial turn order roll
 var combat_selection_ui: CombatSelectionUI # Enhanced combat UI for move/stance selection
-var combat_resolution_ui: Node # Enhanced combat resolution display
 var terrain_loading_screen: CanvasLayer = null # Loading screen during terrain generation
 
 # Dynamic lighting state
@@ -397,12 +396,11 @@ func _setup_game_ui() -> void:
 		game_ui.action_end_turn_pressed.connect(_on_action_end_turn)
 		game_ui.troop_slot_selected.connect(_on_troop_slot_selected)
 		
-		# Create Dice UI for combat visualization (3D d20 die toss)
-		dice_ui = DiceUI.new()
-		dice_ui.process_mode = Node.PROCESS_MODE_ALWAYS
-		add_child(dice_ui)
-		dice_ui.set_camera(camera, self )
-		dice_ui.dice_dismissed.connect(_on_dice_ui_dismissed)
+		# Create CombatDiceSplitUI for split-screen combat visualization
+		combat_dice_split_ui = CombatDiceSplitUIScene.new()
+		add_child(combat_dice_split_ui)
+		combat_dice_split_ui.set_main(self)
+		combat_dice_split_ui.roll_complete.connect(_on_combat_roll_complete)
 
 
 		# Create Card Selection UI
@@ -435,8 +433,6 @@ func _setup_game_ui() -> void:
 		combat_selection_ui.move_selected.connect(_on_enhanced_move_selected)
 		combat_selection_ui.stance_selected.connect(_on_enhanced_stance_selected)
 		combat_selection_ui.timeout.connect(_on_enhanced_combat_timeout)
-		# Initialize with Enhanced mode by default (will be updated when game starts)
-		combat_selection_ui.set_combat_mode(GameConfig.CombatMode.ENHANCED)
 		print("Enhanced Combat Selection UI created")
 	else:
 		push_error("GameUI CanvasLayer not found!")
@@ -1274,11 +1270,15 @@ func _is_gameplay_inhibited() -> bool:
 	if is_selecting_decks: return true
 	if dice_roll_active: return true
 	if combat_selection_ui and combat_selection_ui.visible: return true
+	if combat_dice_split_ui and combat_dice_split_ui.visible: return true
 	return false
 
 
-func _on_dice_ui_dismissed() -> void:
-	# Resume gameplay after combat results are dismissed
+func _on_combat_roll_complete() -> void:
+	# Restore camera and resume gameplay after combat results finish displaying
+	_exit_combat_camera()
+	_cancel_action_mode()
+	_update_ui()
 	if not is_paused:
 		get_tree().paused = false
 
@@ -2517,7 +2517,7 @@ func _try_attack_at(tile: HexTile) -> void:
 			return
 		
 		# Legacy combat - show dice UI with combat results
-		if dice_ui:
+		if combat_dice_split_ui:
 			var atk_roll = 0
 			var def_roll = 0
 			var atk_rolls = result.get("attacker_rolls", [])
@@ -2527,16 +2527,18 @@ func _try_attack_at(tile: HexTile) -> void:
 			if not def_rolls.is_empty():
 				def_roll = def_rolls[-1] # Last roll
 			
-			dice_ui.display_combat_sequence(
+			combat_dice_split_ui.show_combat_roll(
 				attacker.display_name,
 				defender.display_name,
-				attacker.current_atk,
-				defender.current_def,
 				atk_roll,
+				attacker.current_atk,
+				atk_roll + attacker.current_atk,
+				10 + defender.current_def,
 				def_roll,
 				result.get("attack_succeeded", false),
 				result.get("damage_dealt", 0),
-				result.get("is_critical", false)
+				result.get("is_critical", false),
+				result
 			)
 		
 		print("Combat: %s vs %s - Damage: %d, Killed: %s" % [
@@ -2832,22 +2834,22 @@ func _on_combat_selection_started(attacker: Node, defender: Node) -> void:
 		push_error("CombatSelectionUI not found!")
 		return
 	
-	# Set combat mode on the UI (propagate from game settings)
-	var combat_mode = game_manager.get_combat_mode()
-	combat_selection_ui.set_combat_mode(combat_mode)
-	
 	# Determine which player is the local player (in local play, show attacker first)
 	var current_player_id = game_manager.turn_manager.get_active_player_id()
 	
-	if attacker.owner_player_id == current_player_id:
+	if attacker is NPC:
+		print("Attacker is NPC, auto-selecting default move.")
+		var move = CombatEdgeCases.get_default_move(attacker)
+		if move:
+			game_manager.on_move_selected(move)
+	elif attacker.owner_player_id == current_player_id:
 		# Local player is attacking - show move selection
 		combat_selection_ui.show_attacker_selection(attacker, defender)
-		print("Showing move selection for attacker (Mode: %s)" % ("SIMPLE" if combat_mode == GameConfig.CombatMode.SIMPLE else "ENHANCED"))
+		print("Showing move selection for attacker")
 	else:
 		# Local player is defending - show stance selection
-		# In Simple Mode, this will auto-select Brace and skip the UI
 		combat_selection_ui.show_defender_selection(attacker, defender)
-		print("Showing stance selection for defender (Mode: %s)" % ("SIMPLE" if combat_mode == GameConfig.CombatMode.SIMPLE else "ENHANCED"))
+		print("Showing stance selection for defender")
 
 
 ## Called when attacker selects a move
@@ -2873,8 +2875,11 @@ func _on_enhanced_move_selected(move: MoveData.Move) -> void:
 	var attacker = game_manager.current_combat_attacker
 	var defender = game_manager.current_combat_defender
 	
-	if defender and combat_selection_ui:
-		# Give defender a chance to pick stance
+	if defender is NPC:
+		print("Defender is NPC, auto-selecting brace.")
+		game_manager.on_stance_selected(DefensiveStances.DefensiveStance.BRACE)
+	elif defender and combat_selection_ui:
+		# Give human defender a chance to pick stance
 		combat_selection_ui.show_defender_selection(attacker, defender)
 
 
@@ -2923,31 +2928,39 @@ func _on_combat_resolved(result: Dictionary) -> void:
 	print("=== COMBAT RESOLVED ===")
 	print("Result: %s" % str(result))
 	
-	# Restore camera to pre-combat view
-	_exit_combat_camera()
-	
 	# Hide selection UI if still visible
 	if combat_selection_ui:
 		combat_selection_ui.hide_selection()
 	
-	# Show result with dice UI
-	if dice_ui:
+	# Show result with split-screen dice UI
+	if combat_dice_split_ui:
 		var attacker = result.get("attacker")
 		var defender = result.get("defender")
 		var attacker_name = attacker.display_name if attacker else "Attacker"
 		var defender_name = defender.display_name if defender else "Defender"
 		
-		dice_ui.display_combat_sequence(
+		var atk_natural = result.get("natural_roll", result.get("attack_roll", 0))
+		var atk_total = result.get("total_attack_roll", atk_natural)
+		var atk_stat = atk_total - atk_natural
+		
+		combat_dice_split_ui.show_combat_roll(
 			attacker_name,
 			defender_name,
-			result.get("attack_roll", 0),
-			result.get("defense_dc", 0),
-			result.get("attack_roll", 0),
-			result.get("defense_dc", 0),
-			result.get("hit", false),
-			result.get("damage", 0),
-			result.get("is_critical", false)
+			atk_natural,
+			atk_stat,
+			atk_total,
+			result.get("defense_dc", 10),
+			randi_range(1, 20), # Mock defender roll for visuals
+			result.get("hit", result.get("attack_succeeded", false)),
+			result.get("damage_dealt", result.get("damage", 0)),
+			result.get("is_critical_hit", result.get("is_critical", false)),
+			result
 		)
+	else:
+		# If no UI, restore camera immediately
+		_exit_combat_camera()
+		_cancel_action_mode()
+		_update_ui()
 	
 	# Handle kill
 	if result.get("defender_killed", false):
@@ -2955,10 +2968,6 @@ func _on_combat_resolved(result: Dictionary) -> void:
 		if defender:
 			troops.erase(defender)
 			print("%s was defeated!" % defender.display_name)
-	
-	# Cancel action mode and update UI
-	_cancel_action_mode()
-	_update_ui()
 
 
 ## Switch camera to view from behind the specified player's troops

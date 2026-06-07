@@ -81,7 +81,6 @@ var settings: Dictionary = {
 	"turn_timer": GameConfig.DEFAULT_TURN_TIMER,
 	"player_names": ["Player 1", "Player 2"],
 	"use_enhanced_combat": true,  # Enhanced combat system with move/stance selection
-	"combat_mode": GameConfig.DEFAULT_COMBAT_MODE,  # SIMPLE or ENHANCED
 	"ai_difficulty": CombatBalanceConfig.AIDifficulty.NORMAL  # AI difficulty level
 }
 
@@ -184,23 +183,11 @@ func initialize_game(game_settings: Dictionary = {}) -> void:
 	game_initialized.emit()
 
 
-## Set the combat mode (SIMPLE or ENHANCED)
-## This affects UI complexity, timer length, and defender auto-stance
-func set_combat_mode(mode: int) -> void:
-	settings["combat_mode"] = mode
-	print("Combat mode set to: %s" % ("SIMPLE" if mode == GameConfig.CombatMode.SIMPLE else "ENHANCED"))
-
-
 ## Set the AI difficulty level
 func set_ai_difficulty(difficulty: int) -> void:
 	settings["ai_difficulty"] = difficulty
 	var diff_names = ["EASY", "NORMAL", "HARD"]
 	print("AI difficulty set to: %s" % diff_names[difficulty])
-
-
-## Get the current combat mode
-func get_combat_mode() -> int:
-	return settings.get("combat_mode", GameConfig.CombatMode.ENHANCED)
 
 
 ## Get the current AI difficulty
